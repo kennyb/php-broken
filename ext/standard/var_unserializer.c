@@ -383,20 +383,22 @@ static inline int object_common2(UNSERIALIZE_PARAMETER, long elements)
 /*
 b - boolean FALSE (yes)
 B - boolean TRUE (yes)
-i - byte (no)
-I - word (no)
+i - byte (yes)
+I - word (yes)
 d - doubleword (yes)
-D - quadword (no)
-s* - < 2^8 byte long string (no)
-S** - < 2^16 byte long string (no)
+D - quadword (---)
+f - 4 byte float (no)
+F - 8 byte float (no)
+s* - < 2^8 byte long string (yes)
+S** - < 2^16 byte long string (yes)
 w**** - < 2^32 byte long string (yes)
-W******** - < 2^64 byte long string (no)
+W******** - < 2^64 byte long string (---)
 a* - array with < 2^8 byte size map (no)
 A** - array with < 2^16 byte size map (no)
-m**** - array with < 2^32 byte size map (yes)
-M******** - array with < 2^64 byte size map (no)
+m**** - array with < 2^32 byte size map (no)
+M******** - array with < 2^64 byte size map (---)
 o - object (not implemented)
-O - custom object serialization (yes)
+O - custom object serialization (no)
 
 later, we can optimize size with:
 '1' '2' '3' '4' '5' ... literals as well
@@ -468,6 +470,19 @@ PHPAPI int php_var_binunserialize(UNSERIALIZE_PARAMETER)
 				ZVAL_STRINGL(*rval, data, intval, 1);
 				return 1;
 			
+			case '0':
+			case '1':
+			case '2':
+			case '3':
+			case '4':
+			case '5':
+			case '6':
+			case '7':
+			case '8':
+			case '9':
+				ZVAL_LONG(*rval, key - '0');
+				return 1;
+				
 			case 0:
 				return 0;
 		}

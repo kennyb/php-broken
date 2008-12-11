@@ -494,6 +494,13 @@ static inline void php_var_binserialize_long(smart_str *buf, smart_str *map, lon
 	
 	if(val >= 0 && val <= 65535) {
 		if(val <= 255) {
+			if(val <= 9) {
+				char c = '0';
+				c += val;
+				smart_str_appendc(map, c);
+				return;
+			}
+			
 			smart_str_appendc(map, 'i');
 			size = 1;
 		} else {
@@ -590,7 +597,8 @@ static void php_var_binserialize_intern(smart_str *buf, smart_str *map, zval *st
 			return;
 		
 		case IS_ARRAY:
-			
+			//php_var_binserialize_array(buf, map, Z_STRVAL_P(struc), Z_STRLEN_P(struc));
+			return;
 			
 		default:
 			//smart_str_appendl(buf, "i:0;", 4);
