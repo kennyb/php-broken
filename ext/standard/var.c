@@ -480,6 +480,207 @@ PHP_FUNCTION(var_export)
 
 /* {{{ php_var_serialize */
 
+static void php_var_binserialize_intern(smart_str *buf, smart_str *map, zval *struc, HashTable *var_hash TSRMLS_DC);
+
+static inline void php_var_binserialize_bool(smart_str *buf, smart_str *map, long val)
+{
+	smart_str_appendc(map, val ? 'B' : 'b');
+}
+
+static inline void php_var_binserialize_long(smart_str *buf, smart_str *map, long val)
+{
+	size_t size;
+	register size_t newlen;
+	
+	if(val >= 0 && val <= 65535) {
+		if(val <= 255) {
+			smart_str_appendc(map, 'i');
+			size = 1;
+		} else {
+			smart_str_appendc(map, 'I');
+			size = 2;
+		}
+	} else {
+		smart_str_appendc(map, 'd');
+		size = 4;
+	}
+	
+	smart_str_alloc4(buf, size, 0, newlen);
+	memcpy(buf->c + buf->len, &val, newlen);
+	buf->len = newlen;
+}
+
+static inline void php_var_binserialize_string(smart_str *buf, smart_str *map, char *str, int len)
+{
+	size_t size;
+	register size_t newlen;
+	
+	if(len >= 0 && len <= 65535) {
+		if(len <= 255) {
+			smart_str_appendc(map, 's');
+			size = 1;
+		} else {
+			smart_str_appendc(map, 'S');
+			size = 2;
+		}
+	} else {
+		smart_str_appendc(map, 'w');
+		size = 4;
+	}
+	
+	smart_str_alloc4(map, size, 0, newlen);
+	memcpy(map->c + map->len, &len, newlen);
+	map->len = newlen;
+	
+	smart_str_appendl(buf, str, len);
+}
+
+static inline zend_bool php_var_binserialize_class_name(smart_str *buf, zval *struc TSRMLS_DC)
+{
+	PHP_CLASS_ATTRIBUTES;
+
+	PHP_SET_CLASS_ATTRIBUTES(struc);
+	smart_str_appendl(buf, "O:", 2);
+	smart_str_append_long(buf, name_len);
+	smart_str_appendl(buf, ":\"", 2);
+	smart_str_appendl(buf, class_name, name_len);
+	smart_str_appendl(buf, "\":", 2);
+	PHP_CLEANUP_CLASS_ATTRIBUTES();
+	return incomplete_class;
+}
+
+static void php_var_binserialize_intern(smart_str *buf, smart_str *map, zval *struc, HashTable *var_hash TSRMLS_DC)
+{
+	int i;
+	ulong *var_already;
+	HashTable *myht;
+
+	/*
+	if (var_hash 
+	    && php_add_var_hash(var_hash, struc, (void *) &var_already TSRMLS_CC) == FAILURE) {
+		if(struc->is_ref) {
+			smart_str_appendl(buf, "R:", 2);
+			smart_str_append_long(buf, *var_already);
+			smart_str_appendc(buf, ';');
+			return;
+		} else if(Z_TYPE_P(struc) == IS_OBJECT) {
+			smart_str_appendl(buf, "r:", 2);
+			smart_str_append_long(buf, *var_already);
+			smart_str_appendc(buf, ';');
+			return;
+		}
+	}
+	*/
+
+	switch (Z_TYPE_P(struc)) {
+		case IS_BOOL:
+			php_var_binserialize_bool(buf, map, Z_LVAL_P(struc));
+			return;
+
+		case IS_NULL:
+			smart_str_appendc(map, 'N');
+			return;
+
+		case IS_LONG:
+			php_var_binserialize_long(buf, map, Z_LVAL_P(struc));
+			return;
+
+		case IS_STRING:
+			php_var_binserialize_string(buf, map, Z_STRVAL_P(struc), Z_STRLEN_P(struc));
+			return;
+		
+		case IS_ARRAY:
+			
+			
+		default:
+			//smart_str_appendl(buf, "i:0;", 4);
+			return;
+	} 
+}
+
+PHPAPI void php_var_binserialize(smart_str *buf, smart_str *map, zval **struc, HashTable *var_hash TSRMLS_DC)
+{
+	php_var_binserialize_intern(buf, map, *struc, var_hash TSRMLS_CC);
+	smart_str_0(buf);
+}
+	
+/* }}} */
+
+/* {{{ proto string serialize(mixed variable)
+   Returns a string representation of variable (which can later be unserialized) */
+PHP_FUNCTION(binserialize)
+{
+	zval **struc;
+	php_serialize_data_t var_hash;
+	smart_str buf = {0};
+	smart_str map = {0};
+
+	if (ZEND_NUM_ARGS() != 1 || zend_get_parameters_ex(1, &struc) == FAILURE) {
+		WRONG_PARAM_COUNT;
+	}
+
+	Z_TYPE_P(return_value) = IS_STRING;
+	Z_STRVAL_P(return_value) = NULL;
+	Z_STRLEN_P(return_value) = 0;
+
+	PHP_VAR_SERIALIZE_INIT(var_hash);
+	php_var_binserialize(&buf, &map, struc, &var_hash TSRMLS_CC);
+	PHP_VAR_SERIALIZE_DESTROY(var_hash);
+
+	if (map.c) {
+		smart_str_appendc(&map, 0);
+		smart_str_appendl(&map, buf.c, buf.len);
+		RETURN_STRINGL(map.c, map.len, 0);
+	} else {
+		RETURN_NULL();
+	}
+}
+
+/* }}} */
+
+/* {{{ proto mixed unserialize(string variable_representation)
+   Takes a string representation of variable and recreates it */
+
+
+PHP_FUNCTION(binunserialize)
+{
+	char *buf;
+	int buf_len;
+	const unsigned char *p;
+	php_unserialize_data_t var_hash;
+	
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &buf, &buf_len) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (buf_len == 0) {
+		RETURN_FALSE;
+	}
+
+	p = (const unsigned char*)buf;
+	PHP_VAR_UNSERIALIZE_INIT(var_hash);
+	if (!php_var_binunserialize(&return_value, &p, p + buf_len,  &var_hash TSRMLS_CC)) {
+		PHP_VAR_UNSERIALIZE_DESTROY(var_hash);
+		zval_dtor(return_value);
+		php_error_docref(NULL TSRMLS_CC, E_NOTICE, "Error at offset %ld of %d bytes", (long)((char*)p - buf), buf_len);
+		RETURN_FALSE;
+	}
+	PHP_VAR_UNSERIALIZE_DESTROY(var_hash);
+}
+
+/* }}} */
+
+/*
+==================================================
+==================================================
+==================================================
+==================================================
+==================================================
+==================================================
+*/
+
+/* {{{ php_var_serialize */
+
 static void php_var_serialize_intern(smart_str *buf, zval *struc, HashTable *var_hash TSRMLS_DC);
 
 static inline int php_add_var_hash(HashTable *var_hash, zval *var, void *var_old TSRMLS_DC)
@@ -842,6 +1043,7 @@ PHPAPI void php_var_serialize(smart_str *buf, zval **struc, HashTable *var_hash 
 }
 	
 /* }}} */
+
 
 /* {{{ proto string serialize(mixed variable)
    Returns a string representation of variable (which can later be unserialized) */

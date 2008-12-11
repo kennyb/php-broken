@@ -380,6 +380,102 @@ static inline int object_common2(UNSERIALIZE_PARAMETER, long elements)
 
 }
 
+/*
+b - boolean FALSE (yes)
+B - boolean TRUE (yes)
+i - byte (no)
+I - word (no)
+d - doubleword (yes)
+D - quadword (no)
+s* - < 2^8 byte long string (no)
+S** - < 2^16 byte long string (no)
+w**** - < 2^32 byte long string (yes)
+W******** - < 2^64 byte long string (no)
+a* - array with < 2^8 byte size map (no)
+A** - array with < 2^16 byte size map (no)
+m**** - array with < 2^32 byte size map (yes)
+M******** - array with < 2^64 byte size map (no)
+o - object (not implemented)
+O - custom object serialization (yes)
+
+later, we can optimize size with:
+'1' '2' '3' '4' '5' ... literals as well
+character, double char
+*/
+
+PHPAPI int php_var_binunserialize(UNSERIALIZE_PARAMETER)
+{
+	const unsigned char *map, *data, *start;
+	zval **rval_ref;
+
+	data = map = start = *p;
+	
+	while(*data != 0) {
+		switch(*data) {
+			case 'w':
+			case 'm':
+				data += 2;
+				
+			case 'S':
+			case 'A':
+				data++;
+				
+			case 's':
+			case 'a':
+				data++;
+				
+			default:
+				data++;
+		}
+	}
+	
+	/* skip over the 0 */
+	data++;
+
+	int intval;
+	INIT_PZVAL(*rval);
+	do {
+		unsigned char key = *map;
+		switch(key) {
+			default:
+			case 'N':
+				map++;
+				ZVAL_NULL(*rval);
+				return 1;
+			
+			case 'b':
+			case 'B':
+				ZVAL_BOOL(*rval, key == 'B' ? 1 : 0);
+				map++;
+				return 1;
+				
+			case 'i':
+			case 'I':
+			case 'd':
+				map++;
+				intval = 0;
+				memcpy(&intval, data, key == 'i' ? 1 : key == 'I' ? 2 : 4);
+				ZVAL_LONG(*rval, intval);
+				return 1;
+			
+			case 's':
+			case 'S':
+			case 'w':
+				map++;
+				intval = 0;
+				memcpy(&intval, map, key == 's' ? 1 : key == 'S' ? 2 : 4);
+				
+				ZVAL_STRINGL(*rval, data, intval, 1);
+				return 1;
+			
+			case 0:
+				return 0;
+		}
+	} while(1);
+	
+	return 0;
+}
+
 PHPAPI int php_var_unserialize(UNSERIALIZE_PARAMETER)
 {
 	const unsigned char *cursor, *limit, *marker, *start;

@@ -3073,6 +3073,16 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_var_export, 0, 0, 1)
 ZEND_END_ARG_INFO()
 
 static
+ZEND_BEGIN_ARG_INFO(arginfo_binserialize, 0)
+	ZEND_ARG_INFO(0, var)
+ZEND_END_ARG_INFO()
+
+static
+ZEND_BEGIN_ARG_INFO(arginfo_binunserialize, 0)
+	ZEND_ARG_INFO(0, variable_representation)
+ZEND_END_ARG_INFO()
+
+static
 ZEND_BEGIN_ARG_INFO(arginfo_serialize, 0)
 	ZEND_ARG_INFO(0, var)
 ZEND_END_ARG_INFO()
@@ -3397,6 +3407,8 @@ zend_function_entry basic_functions[] = {
 	PHP_FE(call_user_func_array,											arginfo_call_user_func_array)
 	PHP_DEP_FE(call_user_method,											arginfo_call_user_method)
 	PHP_DEP_FE(call_user_method_array,										arginfo_call_user_method_array)
+	PHP_FE(binserialize,														arginfo_serialize)
+	PHP_FE(binunserialize,														arginfo_unserialize)
 	PHP_FE(serialize,														arginfo_serialize)
 	PHP_FE(unserialize,														arginfo_unserialize)
 
