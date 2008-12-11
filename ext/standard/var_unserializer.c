@@ -250,6 +250,8 @@ static inline size_t parse_uiv(const unsigned char *p)
 
 #define UNSERIALIZE_PARAMETER zval **rval, const unsigned char **p, const unsigned char *max, php_unserialize_data_t *var_hash TSRMLS_DC
 #define UNSERIALIZE_PASSTHRU rval, p, max, var_hash TSRMLS_CC
+#define BINUNSERIALIZE_PARAMETER zval **rval, const unsigned char **p_map, const unsigned char **p_data, const unsigned char *max, php_unserialize_data_t *var_hash TSRMLS_DC
+#define BINUNSERIALIZE_PASSTHRU rval, p_map, p_data, max, var_hash TSRMLS_CC
 
 static inline int process_nested_data(UNSERIALIZE_PARAMETER, HashTable *ht, long elements)
 {
@@ -400,63 +402,137 @@ M******** - array with < 2^64 byte size map (---)
 o - object (not implemented)
 O - custom object serialization (no)
 
-later, we can optimize size with:
-'1' '2' '3' '4' '5' ... literals as well
-character, double char
+I was thinking, perhaps the numbers 127-255 can be reserved for the low value numbers, instead of just '0'-'9'
+
 */
 
-PHPAPI int php_var_binunserialize(UNSERIALIZE_PARAMETER)
+static inline int process_nested_bindata(BINUNSERIALIZE_PARAMETER, HashTable *ht, long elements)
 {
-	const unsigned char *map, *data, *start;
-	zval **rval_ref;
+	while (elements-- > 0) {
+		zval *key, *data, **old_data;
 
-	data = map = start = *p;
-	
-	while(*data != 0) {
-		switch(*data) {
+		ALLOC_INIT_ZVAL(key);
+
+		if(!php_var_binunserialize(&key, p_map, p_data, max, NULL TSRMLS_CC) || (Z_TYPE_P(key) != IS_LONG && Z_TYPE_P(key) != IS_STRING)) {
+			zval_dtor(key);
+			FREE_ZVAL(key);
+			return 0;
+		}
+
+		ALLOC_INIT_ZVAL(data);
+
+		if(!php_var_binunserialize(&data, p_map, p_data, max, var_hash TSRMLS_CC)) {
+			zval_dtor(key);
+			FREE_ZVAL(key);
+			zval_dtor(data);
+			FREE_ZVAL(data);
+			return 0;
+		}
+
+		switch(Z_TYPE_P(key)) {
+			case IS_LONG:
+				if(zend_hash_index_find(ht, Z_LVAL_P(key), (void **)&old_data)==SUCCESS) {
+					var_push_dtor(var_hash, old_data);
+				}
+				
+				zend_hash_index_update(ht, Z_LVAL_P(key), &data, sizeof(data), NULL);
+				break;
+			case IS_STRING:
+				if(zend_symtable_find(ht, Z_STRVAL_P(key), Z_STRLEN_P(key) + 1, (void **)&old_data)==SUCCESS) {
+					var_push_dtor(var_hash, old_data);
+				}
+				
+				zend_symtable_update(ht, Z_STRVAL_P(key), Z_STRLEN_P(key) + 1, &data, sizeof(data), NULL);
+				break;
+		}
+		
+		zval_dtor(key);
+		FREE_ZVAL(key);
+
+		/*if (elements && *(*p-1) != ';' && *(*p-1) != '}') {
+			(*p)--;
+			return 0;
+		}*/
+	}
+
+	return 1;
+}
+
+int num_elements(char* data, int len) {
+	char* start = data;
+	unsigned int array_len;
+	int elements = 0;
+	while(data - start < len) {
+		elements++;
+		
+		char key = *data;
+		switch(key) {
+			case 'a':
+			case 'A':
+			case 'w':
+				memcpy(&array_len, data, key == 'a' ? 1 : key == 'A' ? 2 : 4);
+				data += array_len;
+		}
+		
+		switch(key) {
 			case 'w':
 			case 'm':
 				data += 2;
-				
+
 			case 'S':
 			case 'A':
 				data++;
-				
+
 			case 's':
 			case 'a':
 				data++;
-				
+
 			default:
 				data++;
 		}
 	}
 	
-	/* skip over the 0 */
-	data++;
+	return elements;
+}
 
+PHPAPI int php_var_binunserialize(BINUNSERIALIZE_PARAMETER)
+{
+	const unsigned char *map, *data;
+	zval **rval_ref;
+
+	data = *p_data;
+	map = *p_map;
+	
+	
+	size_t bite_size;
 	int intval;
+	unsigned int len;
+	
 	INIT_PZVAL(*rval);
 	do {
 		unsigned char key = *map;
 		switch(key) {
 			default:
 			case 'N':
-				map++;
+				*p_map++;
 				ZVAL_NULL(*rval);
 				return 1;
 			
 			case 'b':
 			case 'B':
+				*p_map++;
 				ZVAL_BOOL(*rval, key == 'B' ? 1 : 0);
-				map++;
 				return 1;
 				
 			case 'i':
 			case 'I':
 			case 'd':
-				map++;
+				*p_map++;
+				bite_size = key == 'i' ? 1 : key == 'I' ? 2 : 4;
+				
+				/* get value */
 				intval = 0;
-				memcpy(&intval, data, key == 'i' ? 1 : key == 'I' ? 2 : 4);
+				memcpy(&intval, data, bite_size);
 				ZVAL_LONG(*rval, intval);
 				return 1;
 			
@@ -464,10 +540,14 @@ PHPAPI int php_var_binunserialize(UNSERIALIZE_PARAMETER)
 			case 'S':
 			case 'w':
 				map++;
-				intval = 0;
-				memcpy(&intval, map, key == 's' ? 1 : key == 'S' ? 2 : 4);
+				*p_map++;
+				bite_size = key == 's' ? 1 : key == 'S' ? 2 : 4;
 				
-				ZVAL_STRINGL(*rval, data, intval, 1);
+				len = 0;
+				memcpy(&len, map, bite_size);
+				
+				*p_map += bite_size;
+				ZVAL_STRINGL(*rval, data, len, 1);
 				return 1;
 			
 			case '0':
@@ -480,8 +560,37 @@ PHPAPI int php_var_binunserialize(UNSERIALIZE_PARAMETER)
 			case '7':
 			case '8':
 			case '9':
+				*p_map++;
 				ZVAL_LONG(*rval, key - '0');
 				return 1;
+				
+			case 'a':
+			case 'A':
+			case 'm':
+				map++;
+				bite_size = key == 'a' ? 1 : key == 'A' ? 2 : 4;
+				
+				/* avoid junk data */
+				len = 0;
+				/* this is the size of the array map */
+				memcpy(&len, map, bite_size);
+				/* increase the map pointer so it's pointing to the array map */
+				map += bite_size;
+				int elements = num_elements(map, len);
+				*p_map = map;
+				
+				
+				INIT_PZVAL(*rval);
+				Z_TYPE_PP(rval) = IS_ARRAY;
+				ALLOC_HASHTABLE(Z_ARRVAL_PP(rval));
+
+				zend_hash_init(Z_ARRVAL_PP(rval), elements + 1, NULL, ZVAL_PTR_DTOR, 0);
+
+				if(!process_nested_bindata(BINUNSERIALIZE_PASSTHRU, Z_ARRVAL_PP(rval), elements)) {
+					return 0;
+				}
+
+				return 1;/*finish_nested_bindata(UNSERIALIZE_PASSTHRU);*/
 				
 			case 0:
 				return 0;

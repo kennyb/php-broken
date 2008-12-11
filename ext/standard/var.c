@@ -542,6 +542,83 @@ static inline void php_var_binserialize_string(smart_str *buf, smart_str *map, c
 	smart_str_appendl(buf, str, len);
 }
 
+static inline void php_var_binserialize_array(smart_str *buf, smart_str *map, zval *struc, HashTable *myht)
+{
+	size_t size;
+	register size_t newlen;
+	
+	smart_str new_map = {0};
+	
+	// stuff
+	int i = zend_hash_num_elements(myht);
+	if(i > 0) {
+		char *key;
+		zval **data;
+		ulong index;
+		uint key_len;
+		HashPosition pos;
+		
+		zend_hash_internal_pointer_reset_ex(myht, &pos);
+		for (;; zend_hash_move_forward_ex(myht, &pos)) {
+			i = zend_hash_get_current_key_ex(myht, &key, &key_len, &index, 0, &pos);
+			
+			if(i == HASH_KEY_NON_EXISTANT) {
+				break;
+			}
+			
+			switch (i) {
+				case HASH_KEY_IS_LONG:
+					//php_var_binserialize_long(buf, map, Z_LVAL_P(struc));
+					php_var_binserialize_long(buf, &new_map, index);
+					break;
+				case HASH_KEY_IS_STRING:
+					//php_var_binserialize_string(buf, map, Z_STRVAL_P(struc), Z_STRLEN_P(struc));
+					php_var_binserialize_string(buf, &new_map, key, key_len - 1);
+					break;
+			}
+			
+			if (zend_hash_get_current_data_ex(myht, (void **) &data, &pos) != SUCCESS 
+				|| !data 
+				|| data == &struc
+				|| (Z_TYPE_PP(data) == IS_ARRAY && Z_ARRVAL_PP(data)->nApplyCount > 1)
+			) {
+				smart_str_appendc(&new_map, 'N');
+			} else {
+				if (Z_TYPE_PP(data) == IS_ARRAY) {
+					Z_ARRVAL_PP(data)->nApplyCount++;
+				}
+				php_var_binserialize_intern(buf, &new_map, *data, NULL);
+				if (Z_TYPE_PP(data) == IS_ARRAY) {
+					Z_ARRVAL_PP(data)->nApplyCount--;
+				}
+			}
+		}
+	}
+	
+	size_t len = new_map.len;
+	if(len <= 65535) {
+		if(len <= 255) {
+			smart_str_appendc(map, 'a');
+			size = 1;
+		} else {
+			smart_str_appendc(map, 'A');
+			size = 2;
+		}
+	} else {
+		smart_str_appendc(map, 'm');
+		size = 4;
+	}
+	
+	smart_str_alloc4(map, size, 0, newlen);
+	memcpy(map->c + map->len, &len, newlen);
+	map->len = newlen;
+	
+	// OPTIMIZE!! - do this in one alloc operation, and two memcpy operations
+	smart_str_alloc4(map, len, 0, newlen);
+	memcpy(map->c + map->len, new_map.c, newlen);
+	map->len = newlen;
+}
+
 static inline zend_bool php_var_binserialize_class_name(smart_str *buf, zval *struc TSRMLS_DC)
 {
 	PHP_CLASS_ATTRIBUTES;
@@ -598,6 +675,14 @@ static void php_var_binserialize_intern(smart_str *buf, smart_str *map, zval *st
 		
 		case IS_ARRAY:
 			//php_var_binserialize_array(buf, map, Z_STRVAL_P(struc), Z_STRLEN_P(struc));
+			// map = array(length)key::value,key::value
+			// for keys, output string or integer
+			// for values, use the recursive function to output the value
+			myht = HASH_OF(struc);
+			// make new map
+			php_var_binserialize_array(buf, map, struc, myht);
+			
+			
 			return;
 			
 		default:
@@ -654,6 +739,8 @@ PHP_FUNCTION(binunserialize)
 {
 	char *buf;
 	int buf_len;
+	const unsigned char *map;
+	const unsigned char *data;
 	const unsigned char *p;
 	php_unserialize_data_t var_hash;
 	
@@ -665,14 +752,46 @@ PHP_FUNCTION(binunserialize)
 		RETURN_FALSE;
 	}
 
-	p = (const unsigned char*)buf;
+	p = map = data = (const unsigned char*)buf;
 	PHP_VAR_UNSERIALIZE_INIT(var_hash);
-	if (!php_var_binunserialize(&return_value, &p, p + buf_len,  &var_hash TSRMLS_CC)) {
+	
+	/* find the offset of the data */
+	/* if we're an array, we need to jump the array map as well */
+	char key = *data++;
+	int array_len;
+	switch(key) {
+		case 'a':
+		case 'A':
+		case 'w':
+			array_len = 0;
+			memcpy(&array_len, data, key == 'a' ? 1 : key == 'A' ? 2 : 4);
+			data += array_len;
+	}
+	
+	switch(key) {
+		case 'w':
+		case 'm':
+			data += 2;
+		
+		case 'S':
+		case 'A':
+			data++;
+		
+		case 's':
+		case 'a':
+			data++;
+	}
+	
+	/* TODO!!! kill me! */
+	data++;
+	
+	if (!php_var_binunserialize(&return_value, &map, &data, p + buf_len,  &var_hash TSRMLS_CC)) {
 		PHP_VAR_UNSERIALIZE_DESTROY(var_hash);
 		zval_dtor(return_value);
 		php_error_docref(NULL TSRMLS_CC, E_NOTICE, "Error at offset %ld of %d bytes", (long)((char*)p - buf), buf_len);
 		RETURN_FALSE;
 	}
+	
 	PHP_VAR_UNSERIALIZE_DESTROY(var_hash);
 }
 
