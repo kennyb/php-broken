@@ -3038,7 +3038,7 @@ echo "$ac_t""$ext_output" 1>&6
 
 
 
-php_enable_rpath=yes
+php_enable_rpath=no
 
 echo $ac_n "checking whether to enable runpaths""... $ac_c" 1>&6
 echo "configure:3045: checking whether to enable runpaths" >&5
@@ -3048,7 +3048,7 @@ if test "${enable_rpath+set}" = set; then
   PHP_RPATH=$enableval
 else
   
-  PHP_RPATH=yes
+  PHP_RPATH=no
 
   if test "$PHP_ENABLE_ALL" && test "no" = "yes"; then
     PHP_RPATH=$PHP_ENABLE_ALL
@@ -12335,7 +12335,7 @@ ext_output=$PHP_DISCARD_PATH
 
 
 
-php_enable_path_info_check=yes
+php_enable_path_info_check=no
 
 
 # Check whether --enable-path-info-check or --disable-path-info-check was given.
@@ -12344,7 +12344,7 @@ if test "${enable_path_info_check+set}" = set; then
   PHP_PATH_INFO_CHECK=$enableval
 else
   
-  PHP_PATH_INFO_CHECK=yes
+  PHP_PATH_INFO_CHECK=no
 
   if test "$PHP_ENABLE_ALL" && test "no" = "yes"; then
     PHP_PATH_INFO_CHECK=$PHP_ENABLE_ALL
@@ -19786,7 +19786,7 @@ fi
 # reading config stubs
 
 
-php_enable_libxml=yes
+php_enable_libxml=no
 
 echo $ac_n "checking whether to enable LIBXML support""... $ac_c" 1>&6
 echo "configure:19793: checking whether to enable LIBXML support" >&5
@@ -19796,7 +19796,7 @@ if test "${enable_libxml+set}" = set; then
   PHP_LIBXML=$enableval
 else
   
-  PHP_LIBXML=yes
+  PHP_LIBXML=no
 
   if test "$PHP_ENABLE_ALL" && test "yes" = "yes"; then
     PHP_LIBXML=$PHP_ENABLE_ALL
@@ -24670,7 +24670,7 @@ fi
 
 
 
-php_enable_ctype=yes
+php_enable_ctype=no
 
 echo $ac_n "checking whether to enable ctype functions""... $ac_c" 1>&6
 echo "configure:24677: checking whether to enable ctype functions" >&5
@@ -24680,7 +24680,7 @@ if test "${enable_ctype+set}" = set; then
   PHP_CTYPE=$enableval
 else
   
-  PHP_CTYPE=yes
+  PHP_CTYPE=no
 
   if test "$PHP_ENABLE_ALL" && test "yes" = "yes"; then
     PHP_CTYPE=$PHP_ENABLE_ALL
@@ -31067,7 +31067,7 @@ fi
 
 
 
-php_enable_dom=yes
+php_enable_dom=no
 
 echo $ac_n "checking whether to enable DOM support""... $ac_c" 1>&6
 echo "configure:31074: checking whether to enable DOM support" >&5
@@ -31077,7 +31077,7 @@ if test "${enable_dom+set}" = set; then
   PHP_DOM=$enableval
 else
   
-  PHP_DOM=yes
+  PHP_DOM=no
 
   if test "$PHP_ENABLE_ALL" && test "yes" = "yes"; then
     PHP_DOM=$PHP_ENABLE_ALL
@@ -33395,7 +33395,7 @@ fi
 
 
 
-php_enable_filter=yes
+php_enable_filter=no
 
 echo $ac_n "checking whether to enable input filter support""... $ac_c" 1>&6
 echo "configure:33402: checking whether to enable input filter support" >&5
@@ -33405,7 +33405,7 @@ if test "${enable_filter+set}" = set; then
   PHP_FILTER=$enableval
 else
   
-  PHP_FILTER=yes
+  PHP_FILTER=no
 
   if test "$PHP_ENABLE_ALL" && test "yes" = "yes"; then
     PHP_FILTER=$PHP_ENABLE_ALL
@@ -45038,7 +45038,7 @@ fi
 
 
 
-php_enable_hash=yes
+php_enable_hash=no
 
 echo $ac_n "checking whether to enable hash support""... $ac_c" 1>&6
 echo "configure:45045: checking whether to enable hash support" >&5
@@ -45048,7 +45048,7 @@ if test "${enable_hash+set}" = set; then
   PHP_HASH=$enableval
 else
   
-  PHP_HASH=yes
+  PHP_HASH=no
 
   if test "$PHP_ENABLE_ALL" && test "yes" = "yes"; then
     PHP_HASH=$PHP_ENABLE_ALL
@@ -45612,7 +45612,7 @@ fi
 
 
 
-php_with_iconv=yes
+php_with_iconv=no
 
 echo $ac_n "checking for iconv support""... $ac_c" 1>&6
 echo "configure:45619: checking for iconv support" >&5
@@ -45622,7 +45622,7 @@ if test "${with_iconv+set}" = set; then
   PHP_ICONV=$withval
 else
   
-  PHP_ICONV=yes
+  PHP_ICONV=no
 
   if test "$PHP_ENABLE_ALL" && test "yes" = "yes"; then
     PHP_ICONV=$PHP_ENABLE_ALL
@@ -50226,7 +50226,7 @@ fi
 
 
 
-php_enable_json=yes
+php_enable_json=no
 
 echo $ac_n "checking whether to enable JavaScript Object Serialization support""... $ac_c" 1>&6
 echo "configure:50233: checking whether to enable JavaScript Object Serialization support" >&5
@@ -50236,7 +50236,7 @@ if test "${enable_json+set}" = set; then
   PHP_JSON=$enableval
 else
   
-  PHP_JSON=yes
+  PHP_JSON=no
 
   if test "$PHP_ENABLE_ALL" && test "yes" = "yes"; then
     PHP_JSON=$PHP_ENABLE_ALL
@@ -53547,7 +53547,7 @@ fi
 
 
 
-php_enable_mbstring=no
+php_enable_mbstring=yes
 
 echo $ac_n "checking whether to enable multibyte string support""... $ac_c" 1>&6
 echo "configure:53554: checking whether to enable multibyte string support" >&5
@@ -53557,7 +53557,7 @@ if test "${enable_mbstring+set}" = set; then
   PHP_MBSTRING=$enableval
 else
   
-  PHP_MBSTRING=no
+  PHP_MBSTRING=yes
 
   if test "$PHP_ENABLE_ALL" && test "yes" = "yes"; then
     PHP_MBSTRING=$PHP_ENABLE_ALL
@@ -53620,7 +53620,7 @@ echo "$ac_t""$ext_output" 1>&6
 
 
 
-php_enable_mbregex_backtrack=yes
+php_enable_mbregex_backtrack=no
 
 echo $ac_n "checking whether to check multibyte regex backtrack""... $ac_c" 1>&6
 echo "configure:53627: checking whether to check multibyte regex backtrack" >&5
@@ -53630,7 +53630,7 @@ if test "${enable_mbregex_backtrack+set}" = set; then
   PHP_MBREGEX_BACKTRACK=$enableval
 else
   
-  PHP_MBREGEX_BACKTRACK=yes
+  PHP_MBREGEX_BACKTRACK=no
 
   if test "$PHP_ENABLE_ALL" && test "no" = "yes"; then
     PHP_MBREGEX_BACKTRACK=$PHP_ENABLE_ALL
@@ -69257,7 +69257,7 @@ fi
 
 
 
-php_enable_pdo=yes
+php_enable_pdo=no
 
 echo $ac_n "checking whether to enable PDO support""... $ac_c" 1>&6
 echo "configure:69264: checking whether to enable PDO support" >&5
@@ -69267,7 +69267,7 @@ if test "${enable_pdo+set}" = set; then
   PHP_PDO=$enableval
 else
   
-  PHP_PDO=yes
+  PHP_PDO=no
 
   if test "$PHP_ENABLE_ALL" && test "yes" = "yes"; then
     PHP_PDO=$PHP_ENABLE_ALL
@@ -77879,7 +77879,7 @@ fi
 if test "$PHP_PDO" != "no"; then
 
 
-php_with_pdo_sqlite=yes
+php_with_pdo_sqlite=no
 
 echo $ac_n "checking for sqlite 3 support for PDO""... $ac_c" 1>&6
 echo "configure:77886: checking for sqlite 3 support for PDO" >&5
@@ -77889,7 +77889,7 @@ if test "${with_pdo_sqlite+set}" = set; then
   PHP_PDO_SQLITE=$withval
 else
   
-  PHP_PDO_SQLITE=yes
+  PHP_PDO_SQLITE=no
 
   if test "$PHP_ENABLE_ALL" && test "yes" = "yes"; then
     PHP_PDO_SQLITE=$PHP_ENABLE_ALL
@@ -80990,7 +80990,7 @@ fi
 
 
 
-php_enable_posix=yes
+php_enable_posix=no
 
 echo $ac_n "checking whether to enable POSIX-like functions""... $ac_c" 1>&6
 echo "configure:80997: checking whether to enable POSIX-like functions" >&5
@@ -81000,7 +81000,7 @@ if test "${enable_posix+set}" = set; then
   PHP_POSIX=$enableval
 else
   
-  PHP_POSIX=yes
+  PHP_POSIX=no
 
   if test "$PHP_ENABLE_ALL" && test "yes" = "yes"; then
     PHP_POSIX=$PHP_ENABLE_ALL
@@ -84709,7 +84709,7 @@ fi
 
 
 
-php_enable_reflection=yes
+php_enable_reflection=no
 
 echo $ac_n "checking whether to enable reflection support""... $ac_c" 1>&6
 echo "configure:84716: checking whether to enable reflection support" >&5
@@ -84719,7 +84719,7 @@ if test "${enable_reflection+set}" = set; then
   PHP_REFLECTION=$enableval
 else
   
-  PHP_REFLECTION=yes
+  PHP_REFLECTION=no
 
   if test "$PHP_ENABLE_ALL" && test "no" = "yes"; then
     PHP_REFLECTION=$PHP_ENABLE_ALL
@@ -85024,7 +85024,7 @@ fi
 
 
 
-php_enable_session=yes
+php_enable_session=no
 
 echo $ac_n "checking whether to enable PHP sessions""... $ac_c" 1>&6
 echo "configure:85031: checking whether to enable PHP sessions" >&5
@@ -85034,7 +85034,7 @@ if test "${enable_session+set}" = set; then
   PHP_SESSION=$enableval
 else
   
-  PHP_SESSION=yes
+  PHP_SESSION=no
 
   if test "$PHP_ENABLE_ALL" && test "yes" = "yes"; then
     PHP_SESSION=$PHP_ENABLE_ALL
@@ -86147,7 +86147,7 @@ fi
 
 
 
-php_enable_simplexml=yes
+php_enable_simplexml=no
 
 echo $ac_n "checking whether to enable SimpleXML support""... $ac_c" 1>&6
 echo "configure:86154: checking whether to enable SimpleXML support" >&5
@@ -86157,7 +86157,7 @@ if test "${enable_simplexml+set}" = set; then
   PHP_SIMPLEXML=$enableval
 else
   
-  PHP_SIMPLEXML=yes
+  PHP_SIMPLEXML=no
 
   if test "$PHP_ENABLE_ALL" && test "yes" = "yes"; then
     PHP_SIMPLEXML=$PHP_ENABLE_ALL
@@ -89750,7 +89750,7 @@ fi
 
 
 
-php_enable_spl=yes
+php_enable_spl=no
 
 echo $ac_n "checking enable SPL suppport""... $ac_c" 1>&6
 echo "configure:89757: checking enable SPL suppport" >&5
@@ -89760,7 +89760,7 @@ if test "${enable_spl+set}" = set; then
   PHP_SPL=$enableval
 else
   
-  PHP_SPL=yes
+  PHP_SPL=no
 
   if test "$PHP_ENABLE_ALL" && test "yes" = "yes"; then
     PHP_SPL=$PHP_ENABLE_ALL
@@ -90168,7 +90168,7 @@ fi
 
 
 
-php_with_sqlite=yes
+php_with_sqlite=no
 
 echo $ac_n "checking for sqlite support""... $ac_c" 1>&6
 echo "configure:90175: checking for sqlite support" >&5
@@ -90178,7 +90178,7 @@ if test "${with_sqlite+set}" = set; then
   PHP_SQLITE=$withval
 else
   
-  PHP_SQLITE=yes
+  PHP_SQLITE=no
 
   if test "$PHP_ENABLE_ALL" && test "yes" = "yes"; then
     PHP_SQLITE=$PHP_ENABLE_ALL
@@ -97899,7 +97899,7 @@ fi
 
 
 
-php_enable_tokenizer=yes
+php_enable_tokenizer=no
 
 echo $ac_n "checking whether to enable tokenizer support""... $ac_c" 1>&6
 echo "configure:97906: checking whether to enable tokenizer support" >&5
@@ -97909,7 +97909,7 @@ if test "${enable_tokenizer+set}" = set; then
   PHP_TOKENIZER=$enableval
 else
   
-  PHP_TOKENIZER=yes
+  PHP_TOKENIZER=no
 
   if test "$PHP_ENABLE_ALL" && test "yes" = "yes"; then
     PHP_TOKENIZER=$PHP_ENABLE_ALL
@@ -99084,7 +99084,7 @@ fi
 
 
 
-php_enable_xml=yes
+php_enable_xml=no
 
 echo $ac_n "checking whether to enable XML support""... $ac_c" 1>&6
 echo "configure:99091: checking whether to enable XML support" >&5
@@ -99094,7 +99094,7 @@ if test "${enable_xml+set}" = set; then
   PHP_XML=$enableval
 else
   
-  PHP_XML=yes
+  PHP_XML=no
 
   if test "$PHP_ENABLE_ALL" && test "yes" = "yes"; then
     PHP_XML=$PHP_ENABLE_ALL
@@ -99901,7 +99901,7 @@ fi
 
 
 
-php_enable_xmlreader=yes
+php_enable_xmlreader=no
 
 echo $ac_n "checking whether to enable XMLReader support""... $ac_c" 1>&6
 echo "configure:99908: checking whether to enable XMLReader support" >&5
@@ -99911,7 +99911,7 @@ if test "${enable_xmlreader+set}" = set; then
   PHP_XMLREADER=$enableval
 else
   
-  PHP_XMLREADER=yes
+  PHP_XMLREADER=no
 
   if test "$PHP_ENABLE_ALL" && test "yes" = "yes"; then
     PHP_XMLREADER=$PHP_ENABLE_ALL
@@ -103042,7 +103042,7 @@ fi
 
 
 
-php_enable_xmlwriter=yes
+php_enable_xmlwriter=no
 
 echo $ac_n "checking whether to enable XMLWriter support""... $ac_c" 1>&6
 echo "configure:103049: checking whether to enable XMLWriter support" >&5
@@ -103052,7 +103052,7 @@ if test "${enable_xmlwriter+set}" = set; then
   PHP_XMLWRITER=$enableval
 else
   
-  PHP_XMLWRITER=yes
+  PHP_XMLWRITER=no
 
   if test "$PHP_ENABLE_ALL" && test "yes" = "yes"; then
     PHP_XMLWRITER=$PHP_ENABLE_ALL
@@ -104955,7 +104955,7 @@ if test "$PHP_CLI" = "no"; then
 fi
 
 
-php_with_pear=DEFAULT
+php_with_pear=no
 
 echo $ac_n "checking whether to install PEAR""... $ac_c" 1>&6
 echo "configure:104962: checking whether to install PEAR" >&5
@@ -104965,7 +104965,7 @@ if test "${with_pear+set}" = set; then
   PHP_PEAR=$withval
 else
   
-  PHP_PEAR=DEFAULT
+  PHP_PEAR=no
 
   if test "$PHP_ENABLE_ALL" && test "yes" = "yes"; then
     PHP_PEAR=$PHP_ENABLE_ALL
