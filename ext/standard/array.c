@@ -72,9 +72,6 @@
 #define CASE_LOWER				0
 #define CASE_UPPER				1
 
-#define COUNT_NORMAL			0
-#define COUNT_RECURSIVE			1
-
 #define DIFF_NORMAL			1
 #define DIFF_KEY			2
 #define DIFF_ASSOC			6
@@ -129,9 +126,6 @@ PHP_MINIT_FUNCTION(array) /* {{{ */
 
 	REGISTER_LONG_CONSTANT("CASE_LOWER", CASE_LOWER, CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("CASE_UPPER", CASE_UPPER, CONST_CS | CONST_PERSISTENT);
-
-	REGISTER_LONG_CONSTANT("COUNT_NORMAL", COUNT_NORMAL, CONST_CS | CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("COUNT_RECURSIVE", COUNT_RECURSIVE, CONST_CS | CONST_PERSISTENT);
 	
 	return SUCCESS;
 }
@@ -277,7 +271,7 @@ PHP_FUNCTION(ksort)
 }
 /* }}} */
 
-static int php_count_recursive(zval *array, long mode TSRMLS_DC) /* {{{ */
+static int php_count_recursive(zval *array) /* {{{ */
 {
 	long cnt = 0;
 	zval **element;
@@ -289,16 +283,14 @@ static int php_count_recursive(zval *array, long mode TSRMLS_DC) /* {{{ */
 		}
 
 		cnt = zend_hash_num_elements(Z_ARRVAL_P(array));
-		if (mode == COUNT_RECURSIVE) {
-			HashPosition pos;
+		HashPosition pos;
 
-			for (zend_hash_internal_pointer_reset_ex(Z_ARRVAL_P(array), &pos);
-				 zend_hash_get_current_data_ex(Z_ARRVAL_P(array), (void **) &element, &pos) == SUCCESS;
-				 zend_hash_move_forward_ex(Z_ARRVAL_P(array), &pos)) {
-				Z_ARRVAL_P(array)->nApplyCount++;
-				cnt += php_count_recursive(*element, COUNT_RECURSIVE TSRMLS_CC);
-				Z_ARRVAL_P(array)->nApplyCount--;
-			}
+		for (zend_hash_internal_pointer_reset_ex(Z_ARRVAL_P(array), &pos);
+			 zend_hash_get_current_data_ex(Z_ARRVAL_P(array), (void **) &element, &pos) == SUCCESS;
+			 zend_hash_move_forward_ex(Z_ARRVAL_P(array), &pos)) {
+			Z_ARRVAL_P(array)->nApplyCount++;
+			cnt += php_count_recursive(*element);
+			Z_ARRVAL_P(array)->nApplyCount--;
 		}
 	}
 
@@ -310,46 +302,51 @@ static int php_count_recursive(zval *array, long mode TSRMLS_DC) /* {{{ */
    Count the number of elements in a variable (usually an array) */
 PHP_FUNCTION(count)
 {
-	zval *array;
-	long mode = COUNT_NORMAL;
+	zval **array;
+	long cnt;
 	
-	if (zend_parse_parameters (ZEND_NUM_ARGS() TSRMLS_CC, "z|l", &array, &mode) == FAILURE)
-		return;
+	if (ZEND_NUM_ARGS() != 1 || zend_get_parameters_ex(1, &array) == FAILURE) {
+		WRONG_PARAM_COUNT;
+	}
 	
-	switch (Z_TYPE_P(array)) {
+	switch (Z_TYPE_P(*array)) {
 		case IS_NULL:
-			RETURN_LONG(0);
+			cnt = 0;
+			break;
+		default:
+			cnt = 1;
 			break;
 		case IS_ARRAY:
-			RETURN_LONG (php_count_recursive (array, mode TSRMLS_CC));
-			break;
-		case IS_OBJECT: {
-#ifdef HAVE_SPL
-			/* it the object implements Countable we call its count() method */
-			zval *retval;
-
-			if (Z_OBJ_HT_P(array)->get_class_entry && instanceof_function(Z_OBJCE_P(array), spl_ce_Countable TSRMLS_CC)) {
-				zend_call_method_with_0_params(&array, NULL, NULL, "count", &retval);
-				if (retval) {
-					convert_to_long_ex(&retval);
-					RETVAL_LONG(Z_LVAL_P(retval));
-					zval_ptr_dtor(&retval);
-				}
-				return;
-			}
-#endif
-			/* if not we return the number of properties (not taking visibility into account) */
-			if (Z_OBJ_HT_P(array)->count_elements) {
-				RETVAL_LONG(1);
-				if (SUCCESS == Z_OBJ_HT(*array)->count_elements(array, &Z_LVAL_P(return_value) TSRMLS_CC)) {
-					return;
-				}
-			}
-		}
-		default:
-			RETURN_LONG(1);
-			break;
+			cnt = zend_hash_num_elements(Z_ARRVAL_P(*array));
 	}
+
+	RETURN_LONG(cnt);
+}
+/* }}} */
+
+/* {{{ proto int count(mixed var [, int mode])
+   Count the number of elements in a variable (usually an array) */
+PHP_FUNCTION(count_recursive)
+{
+	zval **array;
+	long count;
+	
+	if (ZEND_NUM_ARGS() != 1 || zend_get_parameters_ex(1, &array) == FAILURE) {
+		WRONG_PARAM_COUNT;
+	}
+	
+	switch (Z_TYPE_P(*array)) {
+		case IS_NULL:
+			count = 0;
+			break;
+		default:
+			count = 1;
+			break;
+		case IS_ARRAY:
+			count = php_count_recursive(*array);
+	}
+
+	RETURN_LONG(count);
 }
 /* }}} */
 

@@ -41,6 +41,7 @@ PHP_FUNCTION(uksort);
 PHP_FUNCTION(array_walk);
 PHP_FUNCTION(array_walk_recursive);
 PHP_FUNCTION(count);
+PHP_FUNCTION(count_recursive);
 PHP_FUNCTION(end);
 PHP_FUNCTION(prev);
 PHP_FUNCTION(next);
