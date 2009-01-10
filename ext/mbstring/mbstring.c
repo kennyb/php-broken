@@ -249,7 +249,11 @@ zend_module_entry mbstring_module_entry = {
 	PHP_MSHUTDOWN(mbstring),
 	PHP_RINIT(mbstring),
 	PHP_RSHUTDOWN(mbstring),
+#if WANT_INI
 	PHP_MINFO(mbstring),
+#else
+	NULL,
+#endif
     NO_VERSION_YET,
     PHP_MODULE_GLOBALS(mbstring),
     PHP_GINIT(mbstring),
@@ -1040,6 +1044,7 @@ PHP_RSHUTDOWN_FUNCTION(mbstring)
 }
 /* }}} */
 
+#if WANT_INI
 /* {{{ PHP_MINFO_FUNCTION(mbstring) */
 PHP_MINFO_FUNCTION(mbstring)
 {
@@ -1072,6 +1077,7 @@ PHP_MINFO_FUNCTION(mbstring)
 	DISPLAY_INI_ENTRIES();
 }
 /* }}} */
+#endif
 
 /* {{{ proto string mb_language([string language])
    Sets the current language or Returns the current language as a string */

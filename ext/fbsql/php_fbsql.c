@@ -625,7 +625,11 @@ zend_module_entry fbsql_module_entry = {
 	PHP_MSHUTDOWN(fbsql),
 	PHP_RINIT(fbsql),
 	PHP_RSHUTDOWN(fbsql),
+#if WANT_INI
 	PHP_MINFO(fbsql),
+#else
+	NULL,
+#endif
 	NO_VERSION_YET,
 	PHP_MODULE_GLOBALS(fbsql),
 	PHP_GINIT(fbsql),
@@ -832,6 +836,7 @@ PHP_RSHUTDOWN_FUNCTION(fbsql)
 	return SUCCESS;
 }
 
+#if WANT_INI
 PHP_MINFO_FUNCTION(fbsql)
 {
 	char buf[32];
@@ -859,6 +864,7 @@ PHP_MINFO_FUNCTION(fbsql)
 
 	DISPLAY_INI_ENTRIES();
 }
+#endif
 
 static void php_fbsql_do_connect(INTERNAL_FUNCTION_PARAMETERS, int persistent)
 {

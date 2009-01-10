@@ -20,6 +20,8 @@
 
 /* $Id: info.c,v 1.249.2.10.2.17 2008/03/05 21:09:29 pajoye Exp $ */
 
+
+
 #include "php.h"
 #include "php_ini.h"
 #include "php_globals.h"
@@ -37,6 +39,8 @@
 #ifdef HAVE_SYS_UTSNAME_H
 #include <sys/utsname.h>
 #endif
+
+#if WANT_INI
 
 #if HAVE_MBSTRING
 #include "ext/mbstring/mbstring.h"
@@ -375,7 +379,6 @@ PHPAPI char *php_get_uname(char mode)
 	return estrdup(php_uname);
 }
 /* }}} */
-
 
 /* {{{ php_print_info_htmlhead
  */
@@ -1206,6 +1209,8 @@ PHP_FUNCTION(php_ini_loaded_file)
 	}
 }
 /* }}} */
+
+#endif
 
 /*
  * Local variables:

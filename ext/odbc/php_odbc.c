@@ -143,7 +143,11 @@ zend_module_entry odbc_module_entry = {
 	PHP_MSHUTDOWN(odbc),
 	PHP_RINIT(odbc), 
 	PHP_RSHUTDOWN(odbc), 
+#if WANT_INI
 	PHP_MINFO(odbc), 
+#else
+	NULL,
+#endif
 	"1.0",
 	PHP_MODULE_GLOBALS(odbc),
 	PHP_GINIT(odbc),
@@ -537,6 +541,7 @@ PHP_MSHUTDOWN_FUNCTION(odbc)
 }
 /* }}} */
 
+#if WANT_INI
 /* {{{ PHP_MINFO_FUNCTION */
 PHP_MINFO_FUNCTION(odbc)
 {
@@ -560,6 +565,7 @@ PHP_MINFO_FUNCTION(odbc)
 
 }	 
 /* }}} */
+#endif
 
 /* {{{ odbc_sql_error */
 void odbc_sql_error(ODBC_SQL_ERROR_PARAMS)

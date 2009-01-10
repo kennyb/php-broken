@@ -74,7 +74,9 @@ PHP_MINIT_FUNCTION(continuity);
 PHP_MSHUTDOWN_FUNCTION(continuity);
 PHP_RINIT_FUNCTION(continuity);
 PHP_RSHUTDOWN_FUNCTION(continuity);
+#if WANT_INI
 PHP_MINFO_FUNCTION(continuity);
+#endif
         
 PHP_FUNCTION(continuity_virtual);
 PHP_FUNCTION(continuity_request_headers);
@@ -92,7 +94,11 @@ zend_module_entry continuity_module_entry = {
         PHP_MSHUTDOWN(continuity),
         NULL,
         NULL,
+#if WANT_INI
         PHP_MINFO(continuity),
+#else
+	NULL,
+#endif
         NO_VERSION_YET,
         STANDARD_MODULE_PROPERTIES
 };

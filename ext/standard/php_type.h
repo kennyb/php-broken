@@ -21,10 +21,13 @@
 #ifndef PHP_TYPE_H
 #define PHP_TYPE_H
 
+#if WANT_SHIT
 PHP_FUNCTION(intval);
 PHP_FUNCTION(floatval);
 PHP_FUNCTION(strval);
+#endif
 PHP_FUNCTION(gettype);
+#if WANT_SHIT
 PHP_FUNCTION(settype);
 PHP_FUNCTION(is_null);
 PHP_FUNCTION(is_resource);
@@ -37,5 +40,6 @@ PHP_FUNCTION(is_array);
 PHP_FUNCTION(is_object);
 PHP_FUNCTION(is_scalar);
 PHP_FUNCTION(is_callable);
+#endif
 
 #endif

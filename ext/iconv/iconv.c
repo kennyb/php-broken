@@ -170,7 +170,11 @@ zend_module_entry iconv_module_entry = {
 	PHP_MSHUTDOWN(miconv),
 	NULL,
 	NULL,
+#if WANT_INI
 	PHP_MINFO(miconv),
+#else
+	NULL,
+#endif
 	NO_VERSION_YET,
 	PHP_MODULE_GLOBALS(iconv),
 	PHP_GINIT(iconv),
@@ -302,6 +306,7 @@ PHP_MSHUTDOWN_FUNCTION(miconv)
 }
 /* }}} */
 
+#if WANT_INI
 /* {{{ PHP_MINFO_FUNCTION */
 PHP_MINFO_FUNCTION(miconv)
 {
@@ -322,6 +327,7 @@ PHP_MINFO_FUNCTION(miconv)
 	zval_dtor(&iconv_ver);
 }
 /* }}} */
+#endif
 
 /* {{{ _php_iconv_appendl() */
 static php_iconv_err_t _php_iconv_appendl(smart_str *d, const char *s, size_t l, iconv_t cd)

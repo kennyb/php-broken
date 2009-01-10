@@ -374,6 +374,7 @@ PHP_FUNCTION(apache_get_modules)
 }
 /* }}} */
 
+#if WANT_INI
 PHP_MINFO_FUNCTION(apache)
 {
 	char *apv = php_apache_get_version();
@@ -477,6 +478,7 @@ PHP_MINFO_FUNCTION(apache)
 		php_info_print_table_end();
 	}
 }
+#endif
 
 static zend_function_entry apache_functions[] = {
 	PHP_FE(apache_lookup_uri, NULL)
@@ -521,7 +523,11 @@ zend_module_entry php_apache_module = {
 	PHP_MSHUTDOWN(apache),
 	NULL,
 	NULL, 
+#if WANT_INI
 	PHP_MINFO(apache),
+#else
+	NULL,
+#endif
 	NULL,
 	STANDARD_MODULE_PROPERTIES
 };

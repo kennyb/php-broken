@@ -127,6 +127,7 @@ PHP_MSHUTDOWN_FUNCTION(regex)
 	return SUCCESS;
 }
 
+#if WANT_INI
 PHP_MINFO_FUNCTION(regex)
 {
 #if HSREGEX
@@ -135,6 +136,7 @@ PHP_MINFO_FUNCTION(regex)
 	php_info_print_table_row(2, "Regex Library", "System library enabled");
 #endif
 }
+#endif
 
 
 /* {{{ php_reg_eprint

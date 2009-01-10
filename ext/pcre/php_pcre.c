@@ -115,6 +115,7 @@ PHP_INI_BEGIN()
 PHP_INI_END()
 
 
+#if WANT_INI
 /* {{{ PHP_MINFO_FUNCTION(pcre) */
 static PHP_MINFO_FUNCTION(pcre)
 {
@@ -126,6 +127,7 @@ static PHP_MINFO_FUNCTION(pcre)
 	DISPLAY_INI_ENTRIES();
 }
 /* }}} */
+#endif
 
 /* {{{ PHP_MINIT_FUNCTION(pcre) */
 static PHP_MINIT_FUNCTION(pcre)
@@ -1784,7 +1786,11 @@ zend_module_entry pcre_module_entry = {
 	PHP_MSHUTDOWN(pcre),
 	NULL,
 	NULL,
+#if WANT_INI
 	PHP_MINFO(pcre),
+#else
+	NULL,
+#endif
 	NO_VERSION_YET,
 	PHP_MODULE_GLOBALS(pcre),
 	PHP_GINIT(pcre),

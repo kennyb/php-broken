@@ -276,6 +276,7 @@ PHPAPI int php_mail(char *to, char *subject, char *message, char *headers, char 
 }
 /* }}} */
 
+#if WANT_INI
 /* {{{ PHP_MINFO_FUNCTION
  */
 PHP_MINFO_FUNCTION(mail)
@@ -293,6 +294,7 @@ PHP_MINFO_FUNCTION(mail)
 #endif
 }
 /* }}} */
+#endif
 
 /*
  * Local variables:

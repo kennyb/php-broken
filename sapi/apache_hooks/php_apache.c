@@ -57,7 +57,9 @@ PHP_FUNCTION(apache_setenv);
 PHP_FUNCTION(apache_get_version);
 PHP_FUNCTION(apache_get_modules);
 
+#if WANT_INI
 PHP_MINFO_FUNCTION(apache);
+#endif
 
 
 zend_function_entry apache_functions[] = {
@@ -1517,7 +1519,11 @@ zend_module_entry apache_module_entry = {
 	PHP_MSHUTDOWN(apache), 
 	NULL, 
 	NULL, 
+#if WANT_INI
 	PHP_MINFO(apache), 
+#else
+	NULL,
+#endif
 	NO_VERSION_YET,
 	STANDARD_MODULE_PROPERTIES
 };
@@ -1570,6 +1576,7 @@ PHP_FUNCTION(apache_note)
 }
 /* }}} */
 
+#if WANT_INI
 /* {{{ PHP_MINFO_FUNCTION
  */
 PHP_MINFO_FUNCTION(apache)
@@ -1698,6 +1705,7 @@ PHP_MINFO_FUNCTION(apache)
 	}
 }
 /* }}} */
+#endif
 
 /* {{{ proto bool virtual(string filename)
    Perform an Apache sub-request */

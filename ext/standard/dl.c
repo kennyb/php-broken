@@ -250,10 +250,12 @@ void php_dl(zval *file, int type, zval *return_value, int start_now TSRMLS_DC)
 }
 /* }}} */
 
+#if WANT_INI
 PHP_MINFO_FUNCTION(dl)
 {
 	php_info_print_table_row(2, "Dynamic Library Support", "enabled");
 }
+#endif
 
 #else
 
@@ -263,10 +265,12 @@ void php_dl(zval *file, int type, zval *return_value, int start_now TSRMLS_DC)
 	RETURN_FALSE;
 }
 
+#if WANT_INI
 PHP_MINFO_FUNCTION(dl)
 {
 	PUTS("Dynamic Library support not available<br />.\n");
 }
+#endif
 
 #endif
 

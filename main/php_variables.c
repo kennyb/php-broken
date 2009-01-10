@@ -532,6 +532,7 @@ static void php_build_argv(char *s, zval *track_vars_array TSRMLS_DC)
 }
 /* }}} */
 
+#if WANT_SHIT
 /* {{{ php_handle_special_queries
  */
 PHPAPI int php_handle_special_queries(TSRMLS_D)
@@ -547,6 +548,7 @@ PHPAPI int php_handle_special_queries(TSRMLS_D)
 	return 0;
 }
 /* }}} */
+#endif
 
 /* {{{ php_register_server_variables
  */

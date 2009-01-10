@@ -24,6 +24,7 @@
 #include "SAPI.h"
 
 #define CREDIT_LINE(module, authors) php_info_print_table_row(2, module, authors)
+#if WANT_SHIT
 
 /* {{{ php_print_credits
  */
@@ -124,6 +125,7 @@ PHPAPI void php_print_credits(int flag TSRMLS_DC)
 }
 /* }}} */
 
+#endif
 /*
  * Local variables:
  * tab-width: 4

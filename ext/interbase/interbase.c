@@ -179,7 +179,11 @@ zend_module_entry ibase_module_entry = {
 	PHP_MSHUTDOWN(ibase),
 	NULL,
 	PHP_RSHUTDOWN(ibase),
+#if WANT_INI
 	PHP_MINFO(ibase),
+#else
+	NULL,
+#endif
 	NO_VERSION_YET,
 	PHP_MODULE_GLOBALS(ibase),
 	PHP_GINIT(ibase),
@@ -529,6 +533,7 @@ PHP_RSHUTDOWN_FUNCTION(ibase)
 	return SUCCESS;
 } 
  
+#if WANT_INI
 PHP_MINFO_FUNCTION(ibase)
 {
 	char tmp[64], *s;
@@ -579,6 +584,7 @@ PHP_MINFO_FUNCTION(ibase)
 
 }
 /* }}} */
+#endif
 
 enum connect_args { DB = 0, USER = 1, PASS = 2, CSET = 3, ROLE = 4, BUF = 0, DLECT = 1, SYNC = 2 };
 	

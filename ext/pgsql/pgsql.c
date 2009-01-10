@@ -255,7 +255,11 @@ zend_module_entry pgsql_module_entry = {
 	PHP_MSHUTDOWN(pgsql),
 	PHP_RINIT(pgsql),
 	PHP_RSHUTDOWN(pgsql),
+#if WANT_INI
 	PHP_MINFO(pgsql),
+#else
+	NULL,
+#endif
 	NO_VERSION_YET,
 	PHP_MODULE_GLOBALS(pgsql),
 	PHP_GINIT(pgsql),
@@ -582,6 +586,7 @@ PHP_RSHUTDOWN_FUNCTION(pgsql)
 }
 /* }}} */
 
+#if WANT_INI
 /* {{{ PHP_MINFO_FUNCTION
  */
 PHP_MINFO_FUNCTION(pgsql)
@@ -612,6 +617,7 @@ PHP_MINFO_FUNCTION(pgsql)
 	DISPLAY_INI_ENTRIES();
 }
 /* }}} */
+#endif
 
 
 /* {{{ php_pgsql_do_connect

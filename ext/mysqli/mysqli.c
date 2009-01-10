@@ -435,7 +435,11 @@ zend_module_entry mysqli_module_entry = {
 	PHP_MSHUTDOWN(mysqli),
 	PHP_RINIT(mysqli),
 	PHP_RSHUTDOWN(mysqli),
+#if WANT_INI
 	PHP_MINFO(mysqli),
+#else
+	NULL,
+#endif
 	"0.1", /* Replace with version number for your extension */
 	PHP_MODULE_GLOBALS(mysqli),
 	PHP_GINIT(mysqli),
@@ -719,6 +723,7 @@ PHP_RSHUTDOWN_FUNCTION(mysqli)
 }
 /* }}} */
 
+#if WANT_INI
 /* {{{ PHP_MINFO_FUNCTION
  */
 PHP_MINFO_FUNCTION(mysqli)
@@ -735,6 +740,7 @@ PHP_MINFO_FUNCTION(mysqli)
 	DISPLAY_INI_ENTRIES();
 }
 /* }}} */
+#endif
 
 /* {{{ mixed mysqli_stmt_construct() 
 constructor for statement object.

@@ -42,7 +42,9 @@ PHP_MINIT_FUNCTION(basic);
 PHP_MSHUTDOWN_FUNCTION(basic);
 PHP_RINIT_FUNCTION(basic);
 PHP_RSHUTDOWN_FUNCTION(basic);
+#if WANT_INI
 PHP_MINFO_FUNCTION(basic);
+#endif
 
 PHP_FUNCTION(constant);
 PHP_FUNCTION(sleep);
@@ -91,6 +93,7 @@ PHP_FUNCTION(highlight_string);
 PHP_FUNCTION(php_strip_whitespace);
 ZEND_API void php_get_highlight_struct(zend_syntax_highlighter_ini *syntax_highlighter_ini);
 
+#if WANT_SHIT
 PHP_FUNCTION(ini_get);
 PHP_FUNCTION(ini_get_all);
 PHP_FUNCTION(ini_set);
@@ -98,6 +101,7 @@ PHP_FUNCTION(ini_restore);
 PHP_FUNCTION(get_include_path);
 PHP_FUNCTION(set_include_path);
 PHP_FUNCTION(restore_include_path);
+#endif
 
 PHP_FUNCTION(print_r);
 PHP_FUNCTION(fprintf);

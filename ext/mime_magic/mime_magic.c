@@ -236,7 +236,11 @@ zend_module_entry mime_magic_module_entry = {
 	PHP_MSHUTDOWN(mime_magic),
 	NULL,
 	NULL,
+#if WANT_INI
 	PHP_MINFO(mime_magic),
+#else
+	NULL,
+#endif
 #if ZEND_MODULE_API_NO >= 20010901
 	"0.1", 
 #endif
@@ -311,6 +315,7 @@ PHP_MSHUTDOWN_FUNCTION(mime_magic)
 }
 /* }}} */
 
+#if WANT_INI
 /* {{{ PHP_MINFO_FUNCTION
  */
 PHP_MINFO_FUNCTION(mime_magic)
@@ -322,6 +327,7 @@ PHP_MINFO_FUNCTION(mime_magic)
 	DISPLAY_INI_ENTRIES();
 }
 /* }}} */
+#endif
 
 
 /* {{{ proto string mime_content_type(string filename|resource stream)

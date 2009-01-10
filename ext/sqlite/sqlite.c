@@ -297,7 +297,11 @@ zend_module_entry sqlite_module_entry = {
 	PHP_MSHUTDOWN(sqlite),
 	NULL,
 	PHP_RSHUTDOWN(sqlite),
+#if WANT_INI
 	PHP_MINFO(sqlite),
+#else
+	NULL,
+#endif
 #if ZEND_MODULE_API_NO >= 20010901
 	PHP_SQLITE_MODULE_VERSION,
 #endif
@@ -1124,6 +1128,7 @@ PHP_MSHUTDOWN_FUNCTION(sqlite)
 	return SUCCESS;
 }
 
+#if WANT_INI
 PHP_MINFO_FUNCTION(sqlite)
 {
 	php_info_print_table_start();
@@ -1135,6 +1140,7 @@ PHP_MINFO_FUNCTION(sqlite)
 
 	DISPLAY_INI_ENTRIES();
 }
+#endif
 
 static struct php_sqlite_db *php_sqlite_open(char *filename, int mode, char *persistent_id, zval *return_value, zval *errmsg, zval *object TSRMLS_DC)
 {

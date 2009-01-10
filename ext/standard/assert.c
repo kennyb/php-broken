@@ -124,10 +124,12 @@ PHP_RSHUTDOWN_FUNCTION(assert)
 	return SUCCESS;
 }
 
+#if WANT_INI
 PHP_MINFO_FUNCTION(assert)
 {
 	DISPLAY_INI_ENTRIES();
 }
+#endif
 
 /* }}} */
 /* {{{ internal functions */

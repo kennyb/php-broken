@@ -226,7 +226,11 @@ zend_module_entry mysql_module_entry = {
 	PHP_MSHUTDOWN(mysql),
 	PHP_RINIT(mysql),
 	PHP_RSHUTDOWN(mysql),
+#if WANT_INI
 	PHP_MINFO(mysql),
+#else
+	NULL,
+#endif
 	"1.0",
 	PHP_MODULE_GLOBALS(mysql),
 	PHP_GINIT(mysql),
@@ -473,6 +477,7 @@ PHP_RSHUTDOWN_FUNCTION(mysql)
 }
 /* }}} */
 
+#if WANT_INI
 /* {{{ PHP_MINFO_FUNCTION
  */
 PHP_MINFO_FUNCTION(mysql)
@@ -499,6 +504,7 @@ PHP_MINFO_FUNCTION(mysql)
 
 }
 /* }}} */
+#endif
 
 /* {{{ php_mysql_do_connect
  */

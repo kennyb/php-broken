@@ -24,6 +24,7 @@
 #include "ext/standard/info.h"
 #include "SAPI.h"
 
+#if WANT_SHIT
 typedef struct _php_info_logo { 
 	const char *mimetype;
 	int mimelen;
@@ -88,6 +89,7 @@ int php_info_logos(const char *logo_string TSRMLS_DC)
 	PHPWRITE(logo_image->data, logo_image->size);
 	return 1;
 }
+#endif
 
 /*
  * Local variables:

@@ -223,7 +223,9 @@ static void _php_tidy_register_tags(INIT_FUNC_ARGS);
 static PHP_MINIT_FUNCTION(tidy);
 static PHP_MSHUTDOWN_FUNCTION(tidy);
 static PHP_RINIT_FUNCTION(tidy);
+#if WANT_INI
 static PHP_MINFO_FUNCTION(tidy);
+#endif
 
 static PHP_FUNCTION(tidy_getopt);
 static PHP_FUNCTION(tidy_parse_string);
@@ -359,7 +361,11 @@ zend_module_entry tidy_module_entry = {
 	PHP_MSHUTDOWN(tidy),
 	PHP_RINIT(tidy),
 	NULL,
+#if WANT_INI
 	PHP_MINFO(tidy),
+#else
+	NULL,
+#endif
 	PHP_TIDY_MODULE_VERSION,
 	PHP_MODULE_GLOBALS(tidy),
 	NULL,

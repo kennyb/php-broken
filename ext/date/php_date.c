@@ -329,7 +329,11 @@ zend_module_entry date_module_entry = {
 	PHP_MSHUTDOWN(date),        /* process shutdown */
 	PHP_RINIT(date),            /* request startup */
 	PHP_RSHUTDOWN(date),        /* request shutdown */
+#if WANT_INI
 	PHP_MINFO(date),            /* extension info */
+#else
+	NULL,
+#endif
 	PHP_VERSION,                /* extension version */
 	PHP_MODULE_GLOBALS(date),   /* globals descriptor */
 	PHP_GINIT(date),            /* globals ctor */
@@ -533,6 +537,7 @@ PHP_MSHUTDOWN_FUNCTION(date)
 }
 /* }}} */
 
+#if WANT_INI
 /* {{{ PHP_MINFO_FUNCTION */
 PHP_MINFO_FUNCTION(date)
 {
@@ -548,6 +553,7 @@ PHP_MINFO_FUNCTION(date)
 	DISPLAY_INI_ENTRIES();
 }
 /* }}} */
+#endif
 
 /* {{{ Timezone Cache functions */
 static timelib_tzinfo *php_date_parse_tzfile(char *formal_tzname, const timelib_tzdb *tzdb TSRMLS_DC)

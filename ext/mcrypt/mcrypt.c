@@ -91,7 +91,9 @@ zend_function_entry mcrypt_functions[] = { /* {{{ */
 };
 /* }}} */
 
+#if WANT_INI
 static PHP_MINFO_FUNCTION(mcrypt);
+#endif
 static PHP_MINIT_FUNCTION(mcrypt);
 static PHP_MSHUTDOWN_FUNCTION(mcrypt);
 
@@ -103,7 +105,11 @@ zend_module_entry mcrypt_module_entry = {
 	mcrypt_functions,
 	PHP_MINIT(mcrypt), PHP_MSHUTDOWN(mcrypt),
 	NULL, NULL,
+#if WANT_INI
 	PHP_MINFO(mcrypt),
+#else
+	NULL,
+#endif
 	NO_VERSION_YET,
 	PHP_MODULE_GLOBALS(mcrypt),
 	NULL,
@@ -314,7 +320,7 @@ static PHP_MSHUTDOWN_FUNCTION(mcrypt) /* {{{ */
 /* }}} */
 
 #include "ext/standard/php_smart_str.h"
-
+#if WANT_INI
 PHP_MINFO_FUNCTION(mcrypt) /* {{{ */
 {
 	char **modules;
@@ -360,6 +366,7 @@ PHP_MINFO_FUNCTION(mcrypt) /* {{{ */
 	DISPLAY_INI_ENTRIES();
 }
 /* }}} */
+#endif
 
 typedef enum {
 	RANDOM = 0,

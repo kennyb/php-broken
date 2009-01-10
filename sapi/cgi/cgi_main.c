@@ -1222,6 +1222,7 @@ static PHP_MSHUTDOWN_FUNCTION(cgi)
 }
 /* }}} */
 
+#if WANT_INI
 /* {{{ PHP_MINFO_FUNCTION
  */
 static PHP_MINFO_FUNCTION(cgi)
@@ -1229,6 +1230,7 @@ static PHP_MINFO_FUNCTION(cgi)
 	DISPLAY_INI_ENTRIES();
 }
 /* }}} */
+#endif
 
 static zend_module_entry cgi_module_entry = {
 	STANDARD_MODULE_HEADER,
@@ -1242,7 +1244,11 @@ static zend_module_entry cgi_module_entry = {
 	PHP_MSHUTDOWN(cgi), 
 	NULL, 
 	NULL, 
-	PHP_MINFO(cgi), 
+#if WANT_INI
+	PHP_MINFO(cgi),
+#else
+	NULL,
+#endif
 	NO_VERSION_YET,
 	STANDARD_MODULE_PROPERTIES
 };
@@ -1676,7 +1682,9 @@ consult the installation file that came with this distribution, or visit \n\
 							SG(headers_sent) = 1;
 							SG(request_info).no_headers = 1;
 						}
+#if WANT_INI
 						php_print_info(0xFFFFFFFF TSRMLS_CC);
+#endif
 						php_request_shutdown((void *) 0);
 						exit_status = 0;
 						goto out;

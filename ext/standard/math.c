@@ -377,6 +377,7 @@ PHP_FUNCTION(pi)
 }
 /* }}} */
 
+#if WANT_SHIT
 /* {{{ proto bool is_finite(float val)
    Returns whether argument is finite */
 PHP_FUNCTION(is_finite)
@@ -416,6 +417,7 @@ PHP_FUNCTION(is_nan)
 	RETURN_BOOL(zend_isnan(dval));
 }
 /* }}} */
+#endif
 
 /* {{{ proto number pow(number base, number exponent)
    Returns base raised to the power of exponent. Returns integer result when possible */

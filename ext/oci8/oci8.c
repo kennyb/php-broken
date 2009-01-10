@@ -376,7 +376,11 @@ zend_module_entry oci8_module_entry = {
 	PHP_MSHUTDOWN(oci),   /* extension-wide shutdown function */
 	PHP_RINIT(oci),       /* per-request startup function */
 	PHP_RSHUTDOWN(oci),   /* per-request shutdown function */
+#if WANT_INI
 	PHP_MINFO(oci),       /* information function */
+#else
+	NULL,
+#endif
 	"1.2.5",
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION > 1) || (PHP_MAJOR_VERSION > 5)
 	PHP_MODULE_GLOBALS(oci),  /* globals descriptor */
@@ -667,6 +671,7 @@ PHP_RSHUTDOWN_FUNCTION(oci)
 	return SUCCESS;
 }
 
+#if WANT_INI
 PHP_MINFO_FUNCTION(oci)
 {
 	char buf[32];
@@ -709,6 +714,7 @@ PHP_MINFO_FUNCTION(oci)
 	DISPLAY_INI_ENTRIES();
 }
 /* }}} */
+#endif
 
 /* list destructors {{{ */
 

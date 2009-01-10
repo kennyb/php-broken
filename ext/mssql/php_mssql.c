@@ -93,7 +93,11 @@ zend_module_entry mssql_module_entry =
 	PHP_MSHUTDOWN(mssql), 
 	PHP_RINIT(mssql), 
 	PHP_RSHUTDOWN(mssql), 
+#if WANT_INI
 	PHP_MINFO(mssql), 
+#else
+	NULL,
+#endif
 	NO_VERSION_YET,
 	PHP_MODULE_GLOBALS(mssql),
 	PHP_GINIT(mssql),

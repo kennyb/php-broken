@@ -39,7 +39,11 @@ zend_module_entry extname_module_entry = {
 	PHP_MSHUTDOWN(extname),
 	PHP_RINIT(extname),		/* Replace with NULL if there's nothing to do at request start */
 	PHP_RSHUTDOWN(extname),	/* Replace with NULL if there's nothing to do at request end */
+#if WANT_INI
 	PHP_MINFO(extname),
+#else
+	NULL,
+#endif
 #if ZEND_MODULE_API_NO >= 20010901
 	"0.1", /* Replace with version number for your extension */
 #endif
@@ -112,6 +116,7 @@ PHP_RSHUTDOWN_FUNCTION(extname)
 }
 /* }}} */
 
+#if WANT_INI
 /* {{{ PHP_MINFO_FUNCTION
  */
 PHP_MINFO_FUNCTION(extname)
@@ -125,6 +130,7 @@ PHP_MINFO_FUNCTION(extname)
 	*/
 }
 /* }}} */
+#endif
 
 
 /* Remove the following function when you have succesfully modified config.m4

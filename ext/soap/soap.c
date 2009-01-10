@@ -206,7 +206,9 @@ static void (*old_error_handler)(int, const char *, const uint, const char*, va_
 PHP_RINIT_FUNCTION(soap);
 PHP_MINIT_FUNCTION(soap);
 PHP_MSHUTDOWN_FUNCTION(soap);
+#if WANT_INI
 PHP_MINFO_FUNCTION(soap);
+#endif
 
 #ifndef ZEND_ENGINE_2
 # ifndef PHP_METHOD
@@ -367,7 +369,11 @@ zend_module_entry soap_module_entry = {
   PHP_MSHUTDOWN(soap),
   PHP_RINIT(soap),
   NULL,
+#if WANT_INI
   PHP_MINFO(soap),
+#else
+  NULL,
+#endif
 #ifdef STANDARD_MODULE_HEADER
   NO_VERSION_YET,
 #endif
@@ -684,6 +690,7 @@ PHP_MINIT_FUNCTION(soap)
 	return SUCCESS;
 }
 
+#if WANT_INI
 PHP_MINFO_FUNCTION(soap)
 {
 	php_info_print_table_start();
@@ -692,6 +699,7 @@ PHP_MINFO_FUNCTION(soap)
 	php_info_print_table_end();
 	DISPLAY_INI_ENTRIES();
 }
+#endif
 
 
 /* {{{ proto object SoapParam::SoapParam ( mixed data, string name)

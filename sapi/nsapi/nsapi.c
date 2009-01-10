@@ -154,7 +154,9 @@ PHP_MINIT_FUNCTION(nsapi);
 PHP_MSHUTDOWN_FUNCTION(nsapi);
 PHP_RINIT_FUNCTION(nsapi);
 PHP_RSHUTDOWN_FUNCTION(nsapi);
+#if WANT_INI
 PHP_MINFO_FUNCTION(nsapi);
+#endif
 
 PHP_FUNCTION(nsapi_virtual);
 PHP_FUNCTION(nsapi_request_headers);
@@ -194,7 +196,11 @@ zend_module_entry nsapi_module_entry = {
 	PHP_MSHUTDOWN(nsapi),
 	NULL,
 	NULL,
+#if WANT_INI
 	PHP_MINFO(nsapi),
+#else
+	NULL,
+#endif
 	NO_VERSION_YET,
 	STANDARD_MODULE_PROPERTIES
 };

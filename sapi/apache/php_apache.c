@@ -54,7 +54,9 @@ PHP_FUNCTION(apache_get_version);
 PHP_FUNCTION(apache_get_modules);
 PHP_FUNCTION(apache_reset_timeout);
 
+#if WANT_INI
 PHP_MINFO_FUNCTION(apache);
+#endif
 
 zend_function_entry apache_functions[] = {
 	PHP_FE(virtual,									NULL)
@@ -113,7 +115,11 @@ zend_module_entry apache_module_entry = {
 	PHP_MSHUTDOWN(apache), 
 	NULL, 
 	NULL, 
+#if WANT_INI
 	PHP_MINFO(apache), 
+#else
+	NULL,
+#endif
 	NO_VERSION_YET,
 	STANDARD_MODULE_PROPERTIES
 };

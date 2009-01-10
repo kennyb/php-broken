@@ -86,6 +86,7 @@ PHP_FUNCTION(gettype)
 }
 /* }}} */
 
+#if WANT_SHIT
 /* {{{ proto bool settype(mixed var, string type)
    Set the type of the variable */
 PHP_FUNCTION(settype)
@@ -130,6 +131,7 @@ PHP_FUNCTION(settype)
 	RETVAL_TRUE;
 }
 /* }}} */
+#endif
 
 /* {{{ proto int intval(mixed var [, int base])
    Get the integer value of a variable using the optional base for the conversion */
@@ -199,6 +201,8 @@ PHP_FUNCTION(strval)
 	}
 }
 /* }}} */
+
+#ifdef WANT_SHIT
 
 static void php_is_type(INTERNAL_FUNCTION_PARAMETERS, int type)
 {
@@ -385,6 +389,8 @@ PHP_FUNCTION(is_callable)
 	RETURN_BOOL(retval);
 }
 /* }}} */
+
+#endif
 
 /*
  * Local variables:

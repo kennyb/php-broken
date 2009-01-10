@@ -89,7 +89,9 @@ static int php_enable_output_compression(int buffer_size TSRMLS_DC);
 static PHP_MINIT_FUNCTION(zlib);
 static PHP_MSHUTDOWN_FUNCTION(zlib);
 static PHP_RINIT_FUNCTION(zlib);
+#if WANT_INI
 static PHP_MINFO_FUNCTION(zlib);
+#endif
 static PHP_FUNCTION(gzopen);
 static PHP_FUNCTION(readgzfile);
 static PHP_FUNCTION(gzfile);
@@ -142,7 +144,11 @@ zend_module_entry php_zlib_module_entry = {
 	PHP_MSHUTDOWN(zlib),
 	PHP_RINIT(zlib),
 	NULL,
+#if WANT_INI
 	PHP_MINFO(zlib),
+#else
+	NULL,
+#endif
 	"1.1",
 	PHP_MODULE_GLOBALS(zlib),
 	NULL,
@@ -268,6 +274,7 @@ static PHP_MSHUTDOWN_FUNCTION(zlib)
 }
 /* }}} */
 
+#if WANT_INI
 /* {{{ PHP_MINFO_FUNCTION
  */
 static PHP_MINFO_FUNCTION(zlib)
@@ -283,6 +290,7 @@ static PHP_MINFO_FUNCTION(zlib)
 	DISPLAY_INI_ENTRIES();
 }
 /* }}} */
+#endif
 
 /* {{{ proto array gzfile(string filename [, int use_include_path])
    Read und uncompress entire .gz-file into an array */

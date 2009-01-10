@@ -59,7 +59,11 @@ zend_module_entry pdo_odbc_module_entry = {
 	PHP_MSHUTDOWN(pdo_odbc),
 	NULL,
 	NULL,
+#if WANT_INI
 	PHP_MINFO(pdo_odbc),
+#else
+	NULL,
+#endif
 	"1.0.1",
 	STANDARD_MODULE_PROPERTIES
 };
@@ -154,6 +158,7 @@ PHP_MSHUTDOWN_FUNCTION(pdo_odbc)
 }
 /* }}} */
 
+#if WANT_INI
 /* {{{ PHP_MINFO_FUNCTION
  */
 PHP_MINFO_FUNCTION(pdo_odbc)
@@ -173,6 +178,7 @@ PHP_MINFO_FUNCTION(pdo_odbc)
 #endif
 }
 /* }}} */
+#endif
 
 /*
  * Local variables:

@@ -749,6 +749,7 @@ int main(int argc, char *argv[])
 				exit_status=0;
 				goto out;
 
+#if WANT_INI
 			case 'i': /* php info & quit */
 				if (php_request_startup(TSRMLS_C)==FAILURE) {
 					goto err;
@@ -758,6 +759,7 @@ int main(int argc, char *argv[])
 				php_end_ob_buffers(1 TSRMLS_CC);
 				exit_status=0;
 				goto out;
+#endif
 
 			case 'm': /* list compiled in modules */
 				if (php_request_startup(TSRMLS_C)==FAILURE) {
@@ -1284,6 +1286,7 @@ int main(int argc, char *argv[])
 					break;
 				}
 #endif /* reflection */
+#if WANT_SHIT
 			case PHP_MODE_REFLECTION_EXT_INFO:
 				{
 					int len = strlen(reflection_what);
@@ -1312,6 +1315,7 @@ int main(int argc, char *argv[])
 					zend_printf("Additional .ini files parsed:      %s\n", php_ini_scanned_files ? php_ini_scanned_files : "(none)");
 					break;
 				}
+#endif
 		}
 
 	} zend_end_try();

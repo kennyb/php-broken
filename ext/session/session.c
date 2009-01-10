@@ -273,7 +273,9 @@ PHP_MINIT_FUNCTION(session);
 PHP_RINIT_FUNCTION(session);
 PHP_MSHUTDOWN_FUNCTION(session);
 PHP_RSHUTDOWN_FUNCTION(session);
+#if WANT_INI
 PHP_MINFO_FUNCTION(session);
+#endif
 
 static void php_rinit_session_globals(TSRMLS_D);
 static void php_rshutdown_session_globals(TSRMLS_D);
@@ -1990,6 +1992,7 @@ PHP_MSHUTDOWN_FUNCTION(session)
 }
 
 
+#if WANT_INI
 PHP_MINFO_FUNCTION(session)
 {
 	ps_module **mod;
@@ -2037,6 +2040,7 @@ PHP_MINFO_FUNCTION(session)
 
 	DISPLAY_INI_ENTRIES();
 }
+#endif
 
 
 /*

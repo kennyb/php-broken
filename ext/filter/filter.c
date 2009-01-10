@@ -103,7 +103,11 @@ zend_module_entry filter_module_entry = {
 	PHP_MSHUTDOWN(filter),
 	NULL,
 	PHP_RSHUTDOWN(filter),
+#if WANT_INI
 	PHP_MINFO(filter),
+#else
+	NULL,
+#endif
 	"0.11.0",
 	STANDARD_MODULE_PROPERTIES
 };
@@ -269,6 +273,7 @@ PHP_RSHUTDOWN_FUNCTION(filter)
 }
 /* }}} */
 
+#if WANT_INI
 /* {{{ PHP_MINFO_FUNCTION
  */
 PHP_MINFO_FUNCTION(filter)
@@ -281,6 +286,7 @@ PHP_MINFO_FUNCTION(filter)
 	DISPLAY_INI_ENTRIES();
 }
 /* }}} */
+#endif
 
 static filter_list_entry php_find_filter(long id) /* {{{ */
 {

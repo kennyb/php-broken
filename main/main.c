@@ -1761,6 +1761,7 @@ int php_module_startup(sapi_module_struct *sf, zend_module_entry *additional_mod
 		return FAILURE;
 	}
 
+#if WANT_SHIT
 	/* initialize registry for images to be used in phpinfo() 
 	   (this uses configuration parameters from php.ini)
 	 */
@@ -1768,6 +1769,7 @@ int php_module_startup(sapi_module_struct *sf, zend_module_entry *additional_mod
 		php_printf("PHP:  Unable to initialize info phpinfo logos.\n");
 		return FAILURE;
 	}
+#endif
 
 	zuv.html_errors = 1;
 	zuv.import_use_extension = ".php";
@@ -1890,7 +1892,9 @@ void php_module_shutdown(TSRMLS_D)
 	/* Destroys filter & transport registries too */
 	php_shutdown_stream_wrappers(module_number TSRMLS_CC);
 
+#if WANT_SHIT
 	php_shutdown_info_logos();
+#endif
 	UNREGISTER_INI_ENTRIES();
 
 	/* close down the ini config */
@@ -1931,10 +1935,12 @@ PHPAPI int php_execute_script(zend_file_handle *primary_file TSRMLS_DC)
 	int retval = 0;
 
 	EG(exit_status) = 0;
+#if WANT_SHIT
 	if (php_handle_special_queries(TSRMLS_C)) {
 		zend_file_handle_dtor(primary_file);
 		return 0;
 	}
+#endif
 #ifndef HAVE_BROKEN_GETCWD
 # define OLD_CWD_SIZE 4096
 	old_cwd = do_alloca(OLD_CWD_SIZE);

@@ -39,9 +39,11 @@ PHP_FUNCTION(pi);
 PHP_FUNCTION(exp);
 PHP_FUNCTION(log);
 PHP_FUNCTION(log10);
+#if WANT_SHIT
 PHP_FUNCTION(is_finite);
 PHP_FUNCTION(is_infinite);
 PHP_FUNCTION(is_nan);
+#endif
 PHP_FUNCTION(pow);
 PHP_FUNCTION(sqrt);
 PHP_FUNCTION(srand);

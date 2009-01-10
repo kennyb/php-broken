@@ -103,7 +103,11 @@ zend_module_entry sybase_module_entry = {
 	PHP_MSHUTDOWN(sybase),
 	PHP_RINIT(sybase),
 	PHP_RSHUTDOWN(sybase),
+#if WANT_INI
 	PHP_MINFO(sybase),
+#else
+	NULL,
+#endif
 	NO_VERSION_YET,
 	PHP_MODULE_GLOBALS(sybase),
 	PHP_GINIT(sybase),
@@ -2121,6 +2125,7 @@ PHP_FUNCTION(sybase_affected_rows)
 /* }}} */
 
 
+#if WANT_INI
 PHP_MINFO_FUNCTION(sybase)
 {
 	char buf[32];
@@ -2142,6 +2147,7 @@ PHP_MINFO_FUNCTION(sybase)
 
 	DISPLAY_INI_ENTRIES();
 }
+#endif
 
 
 /* {{{ proto void sybase_min_client_severity(int severity)

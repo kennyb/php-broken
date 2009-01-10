@@ -52,6 +52,7 @@ PHPAPI char *php_ini_opened_path=NULL;
 static php_extension_lists extension_lists;
 PHPAPI char *php_ini_scanned_files=NULL;
 
+#if WANT_INI
 /* {{{ php_ini_displayer_cb
  */
 static void php_ini_displayer_cb(zend_ini_entry *ini_entry, int type)
@@ -146,6 +147,7 @@ PHPAPI void display_ini_entries(zend_module_entry *module)
 	php_info_print_table_end();
 }
 /* }}} */
+#endif
 
 /* php.ini support */
 

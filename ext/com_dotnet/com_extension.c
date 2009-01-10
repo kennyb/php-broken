@@ -86,7 +86,11 @@ zend_module_entry com_dotnet_module_entry = {
 	PHP_MSHUTDOWN(com_dotnet),
 	PHP_RINIT(com_dotnet),
 	PHP_RSHUTDOWN(com_dotnet),
+#if WANT_INI
 	PHP_MINFO(com_dotnet),
+#else
+	NULL,
+#endif
 	"0.1",
 	PHP_MODULE_GLOBALS(com_dotnet),
 	PHP_GINIT(com_dotnet),
@@ -334,6 +338,7 @@ PHP_RSHUTDOWN_FUNCTION(com_dotnet)
 }
 /* }}} */
 
+#if WANT_INI
 /* {{{ PHP_MINFO_FUNCTION
  */
 PHP_MINFO_FUNCTION(com_dotnet)
@@ -354,6 +359,7 @@ PHP_MINFO_FUNCTION(com_dotnet)
 	DISPLAY_INI_ENTRIES();
 }
 /* }}} */
+#endif
 
 /*
  * Local variables:
