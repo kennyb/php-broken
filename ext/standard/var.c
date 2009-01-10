@@ -721,7 +721,7 @@ PHP_FUNCTION(binserialize)
 	PHP_VAR_SERIALIZE_DESTROY(var_hash);
 
 	if (map.c) {
-		smart_str_appendc(&map, 0);
+		/* smart_str_appendc(&map, 0); */
 		smart_str_appendl(&map, buf.c, buf.len);
 		RETURN_STRINGL(map.c, map.len, 0);
 	} else {
@@ -762,12 +762,13 @@ PHP_FUNCTION(binunserialize)
 	switch(key) {
 		case 'a':
 		case 'A':
-		case 'w':
+		case 'm':
 			array_len = 0;
 			memcpy(&array_len, data, key == 'a' ? 1 : key == 'A' ? 2 : 4);
 			data += array_len;
 	}
 	
+	/* these have a second parameter in the map -- the length */
 	switch(key) {
 		case 'w':
 		case 'm':
@@ -781,9 +782,6 @@ PHP_FUNCTION(binunserialize)
 		case 'a':
 			data++;
 	}
-	
-	/* TODO!!! kill me! */
-	data++;
 	
 	if (!php_var_binunserialize(&return_value, &map, &data, p + buf_len,  &var_hash TSRMLS_CC)) {
 		PHP_VAR_UNSERIALIZE_DESTROY(var_hash);
