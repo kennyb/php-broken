@@ -1538,86 +1538,140 @@ ZEND_API int is_not_identical_function(zval *result, zval *op1, zval *op2 TSRMLS
 
 ZEND_API int is_equal_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
 {
-	if (compare_function(result, op1, op2 TSRMLS_CC) == FAILURE) {
+	result->type = IS_BOOL;
+	result->value.lval = 0;
+	
+	if(op1->type == op2->type) {
+		switch(op1->type) {
+			case IS_LONG:
+				if(op1->value.lval == op2->value.lval) {
+					result->value.lval = 1;
+				}
+
+				return SUCCESS;
+		
+			case IS_DOUBLE:
+				if(op1->value.dval == op2->value.dval) {
+					result->value.lval = 1;
+				}
+
+				return SUCCESS;
+		}
+
+#if STRICT_DEBUG
+		zend_error(E_ERROR, "comparison operators less than / greater than must be of the type long or double");
 		return FAILURE;
+#endif
 	}
-	convert_to_boolean(result);
-	if (result->value.lval == 0) {
-		result->value.lval = 1;
-	} else {
-		result->value.lval = 0;
-	}
-	return SUCCESS;
+
+#if STRICT_DEBUG
+	zend_error(E_ERROR, "comparison operators must be of the same type");
+#endif
+	return FAILURE;
 }
 
 
 ZEND_API int is_not_equal_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
 {
-	if (compare_function(result, op1, op2 TSRMLS_CC) == FAILURE) {
+	result->type = IS_BOOL;
+	result->value.lval = 0;
+	
+	if(op1->type == op2->type) {
+		switch(op1->type) {
+			case IS_LONG:
+				if(op1->value.lval != op2->value.lval) {
+					result->value.lval = 1;
+				}
+
+				return SUCCESS;
+		
+			case IS_DOUBLE:
+				if(op1->value.dval != op2->value.dval) {
+					result->value.lval = 1;
+				}
+
+				return SUCCESS;
+		}
+
+#if STRICT_DEBUG
+		zend_error(E_ERROR, "comparison operators less than / greater than must be of the type long or double");
 		return FAILURE;
+#endif
 	}
-	convert_to_boolean(result);
-	if (result->value.lval) {
-		result->value.lval = 1;
-	} else {
-		result->value.lval = 0;
-	}
-	return SUCCESS;
+
+#if STRICT_DEBUG
+	zend_error(E_ERROR, "comparison operators must be of the same type");
+#endif
+	return FAILURE;
 }
 
 
 ZEND_API int is_smaller_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
 {
-	if (compare_function(result, op1, op2 TSRMLS_CC) == FAILURE) {
+	result->type = IS_BOOL;
+	result->value.lval = 0;
+	
+	if(op1->type == op2->type) {
+		switch(op1->type) {
+			case IS_LONG:
+				if(op1->value.lval < op2->value.lval) {
+					result->value.lval = 1;
+				}
+
+				return SUCCESS;
+		
+			case IS_DOUBLE:
+				if(op1->value.dval < op2->value.dval) {
+					result->value.lval = 1;
+				}
+
+				return SUCCESS;
+		}
+
+#if STRICT_DEBUG
+		zend_error(E_ERROR, "comparison operators less than / greater than must be of the type long or double");
 		return FAILURE;
+#endif
 	}
-	if (result->type == IS_LONG) {
-		result->type = IS_BOOL;
-		if (result->value.lval < 0) {
-			result->value.lval = 1;
-		} else {
-			result->value.lval = 0;
-		}
-		return SUCCESS;
-	}
-	if (result->type == IS_DOUBLE) {
-		result->type = IS_BOOL;
-		if (result->value.dval < 0) {
-			result->value.lval = 1;
-		} else {
-			result->value.lval = 0;
-		}
-		return SUCCESS;
-	}
-	zend_error(E_ERROR, "Unsupported operand types");
+
+#if STRICT_DEBUG
+	zend_error(E_ERROR, "comparison operators must be of the same type");
+#endif
 	return FAILURE;
 }
 
 
 ZEND_API int is_smaller_or_equal_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
 {
-	if (compare_function(result, op1, op2 TSRMLS_CC) == FAILURE) {
+	result->type = IS_BOOL;
+	result->value.lval = 0;
+	
+	if(op1->type == op2->type) {
+		switch(op1->type) {
+			case IS_LONG:
+				if(op1->value.lval <= op2->value.lval) {
+					result->value.lval = 1;
+				}
+
+				return SUCCESS;
+		
+			case IS_DOUBLE:
+				if(op1->value.dval <= op2->value.dval) {
+					result->value.lval = 1;
+				}
+
+				return SUCCESS;
+		}
+
+#if STRICT_DEBUG
+		zend_error(E_ERROR, "comparison operators less than / greater than must be of the type long or double");
 		return FAILURE;
+#endif
 	}
-	if (result->type == IS_LONG) {
-		result->type = IS_BOOL;
-		if (result->value.lval <= 0) {
-			result->value.lval = 1;
-		} else {
-			result->value.lval = 0;
-		}
-		return SUCCESS;
-	}
-	if (result->type == IS_DOUBLE) {
-		result->type = IS_BOOL;
-		if (result->value.dval <= 0) {
-			result->value.lval = 1;
-		} else {
-			result->value.lval = 0;
-		}
-		return SUCCESS;
-	}
-	zend_error(E_ERROR, "Unsupported operand types");
+
+#if STRICT_DEBUG
+	zend_error(E_ERROR, "comparison operators must be of the same type");
+#endif
 	return FAILURE;
 }
 
@@ -1652,7 +1706,7 @@ ZEND_API zend_bool instanceof_function(zend_class_entry *instance_ce, zend_class
 #define UPPER_CASE 2
 #define NUMERIC 3
 
-
+/* this should be a function, not an operator... move me */
 static void increment_string(zval *str)
 {
     int carry=0;
@@ -1734,104 +1788,43 @@ ZEND_API int increment_function(zval *op1)
 {
 	switch (op1->type) {
 		case IS_LONG:
-			if (op1->value.lval == LONG_MAX) {
-				/* switch to double */
-				double d = (double)op1->value.lval;
-				ZVAL_DOUBLE(op1, d+1);
-			} else {
 			op1->value.lval++;
-			} 
-			break;
+			return SUCCESS;
 		case IS_DOUBLE:
 			op1->value.dval = op1->value.dval + 1;
-			break;
+			return SUCCESS;
+#if STRICT_DEBUG
 		case IS_NULL:
-			op1->value.lval = 1;
-			op1->type = IS_LONG;
+			zend_error(E_WARNING,"You cannot increment a NULL values");
 			break;
-		case IS_STRING: {
-				long lval;
-				double dval;
-				char *strval = op1->value.str.val;
-
-				switch (is_numeric_string(strval, op1->value.str.len, &lval, &dval, 0)) {
-					case IS_LONG:
-						if (lval == LONG_MAX) {
-							/* switch to double */
-							double d = (double)lval;
-							ZVAL_DOUBLE(op1, d+1);
-						} else {
-						op1->value.lval = lval+1;
-						op1->type = IS_LONG;
-						}
-						efree(strval); /* should never be empty_string */
-						break;
-					case IS_DOUBLE:
-						op1->value.dval = dval+1;
-						op1->type = IS_DOUBLE;
-						efree(strval); /* should never be empty_string */
-						break;
-					default:
-						/* Perl style string increment */
-						increment_string(op1);
-						break;
-				}
-			}
+		case IS_STRING:
+			zend_error(E_WARNING,"You cannot increment a string. use the function str_inc");
 			break;
-		default:
-			return FAILURE;
+#endif
 	}
-	return SUCCESS;
+	return FAILURE;
 }
 
 
 ZEND_API int decrement_function(zval *op1)
 {
-	long lval;
-	double dval;
-	
 	switch (op1->type) {
 		case IS_LONG:
-			if (op1->value.lval == LONG_MIN) {
-				double d = (double)op1->value.lval;
-				ZVAL_DOUBLE(op1, d-1);
-			} else {
 			op1->value.lval--;
-			}
-			break;
+			return SUCCESS;
 		case IS_DOUBLE:
 			op1->value.dval = op1->value.dval - 1;
+			return SUCCESS;
+#if STRICT_DEBUG
+		case IS_NULL:
+			zend_error(E_WARNING,"You cannot decrement a NULL values");
 			break;
-		case IS_STRING:		/* Like perl we only support string increment */
-			if (op1->value.str.len == 0) { /* consider as 0 */
-				STR_FREE(op1->value.str.val);
-				op1->value.lval = -1;
-				op1->type = IS_LONG;
-				break;
-			}
-			switch (is_numeric_string(op1->value.str.val, op1->value.str.len, &lval, &dval, 0)) {
-				case IS_LONG:
-					STR_FREE(op1->value.str.val);
-					if (lval == LONG_MIN) {
-						double d = (double)lval;
-						ZVAL_DOUBLE(op1, d-1);
-					} else {
-						op1->value.lval = lval-1;
-						op1->type = IS_LONG;
-					}
-					break;
-				case IS_DOUBLE:
-					STR_FREE(op1->value.str.val);
-					op1->value.dval = dval - 1;
-					op1->type = IS_DOUBLE;
-					break;
-			}
+		case IS_STRING:
+			zend_error(E_WARNING,"You cannot decrement a string. use the function str_dec");
 			break;
-		default:
-			return FAILURE;
+#endif
 	}
-
-	return SUCCESS;
+	return FAILURE;
 }
 
 
