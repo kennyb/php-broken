@@ -754,191 +754,170 @@ ZEND_API void multi_convert_to_string_ex(int argc, ...)
 
 ZEND_API int add_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
 {
-	zval op1_copy, op2_copy;
-
-	if (op1->type == IS_ARRAY && op2->type == IS_ARRAY) {
-		zval *tmp;
-
-		if ((result == op1) && (result == op2)) {
-			/* $a += $a */
+	if(op1->type == op2->type) {
+		/* most common case.. punish the sloppy below */
+		switch(op1->type) {
+			case IS_LONG:
+				result->type = IS_LONG;
+				result->value.lval = op1->value.lval + op2->value.lval;
+				return SUCCESS;
+			case IS_DOUBLE:
+				result->type = IS_DOUBLE;
+				result->value.dval = op1->value.dval + op2->value.dval;
+				return SUCCESS;
+		}
+#if STRICT_DEBUG
+		zend_error(E_ERROR, "for now, only floats and integers can be added");
+#endif
+	} else {
+		result->type = IS_DOUBLE;
+		if(op1->type == IS_LONG && op2->type == IS_DOUBLE) {
+			result->value.dval = (double) op1->value.lval + op2->value.dval;
+			return SUCCESS;
+		} else if(op1->type == IS_DOUBLE && op2->type == IS_LONG) {
+			result->value.dval = op1->value.dval + (double) op2->value.lval;
 			return SUCCESS;
 		}
-		if (result != op1) {
-			*result = *op1;
-			zval_copy_ctor(result);
-		}
-		zend_hash_merge(result->value.ht, op2->value.ht, (void (*)(void *pData)) zval_add_ref, (void *) &tmp, sizeof(zval *), 0);
-		return SUCCESS;
+#if STRICT_DEBUG
+		zend_error(E_ERROR, "for now, only floats and integers can be added");
+#endif
 	}
-	zendi_convert_scalar_to_number(op1, op1_copy, result);
-	zendi_convert_scalar_to_number(op2, op2_copy, result);
-
-
-	if (op1->type == IS_LONG && op2->type == IS_LONG) {
-		long lval = op1->value.lval + op2->value.lval;
-		
-		/* check for overflow by comparing sign bits */
-		if ( (op1->value.lval & LONG_SIGN_MASK) == (op2->value.lval & LONG_SIGN_MASK) 
-			&& (op1->value.lval & LONG_SIGN_MASK) != (lval & LONG_SIGN_MASK)) {
-
-			result->value.dval = (double) op1->value.lval + (double) op2->value.lval;
-			result->type = IS_DOUBLE;
-		} else {
-			result->value.lval = lval;
-			result->type = IS_LONG;
-		}
-		return SUCCESS;
-	}
-	if ((op1->type == IS_DOUBLE && op2->type == IS_LONG)
-		|| (op1->type == IS_LONG && op2->type == IS_DOUBLE)) {
-		result->value.dval = (op1->type == IS_LONG ?
-						 (((double) op1->value.lval) + op2->value.dval) :
-						 (op1->value.dval + ((double) op2->value.lval)));
-		result->type = IS_DOUBLE;
-		return SUCCESS;
-	}
-	if (op1->type == IS_DOUBLE && op2->type == IS_DOUBLE) {
-		result->type = IS_DOUBLE;
-		result->value.dval = op1->value.dval + op2->value.dval;
-		return SUCCESS;
-	}
-	zend_error(E_ERROR, "Unsupported operand types");
+	
 	return FAILURE;				/* unknown datatype */
 }
 
 
 ZEND_API int sub_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
 {
-	zval op1_copy, op2_copy;
-	
-	zendi_convert_scalar_to_number(op1, op1_copy, result);
-	zendi_convert_scalar_to_number(op2, op2_copy, result);
-
-	if (op1->type == IS_LONG && op2->type == IS_LONG) {
-		long lval = op1->value.lval - op2->value.lval;
-		
-		/* check for overflow by comparing sign bits */
-		if ( (op1->value.lval & LONG_SIGN_MASK) != (op2->value.lval & LONG_SIGN_MASK) 
-			&& (op1->value.lval & LONG_SIGN_MASK) != (lval & LONG_SIGN_MASK)) {
-
-			result->value.dval = (double) op1->value.lval - (double) op2->value.lval;
-			result->type = IS_DOUBLE;
-		} else {
-			result->value.lval = lval;
-			result->type = IS_LONG;
+	if(op1->type == op2->type) {
+		/* most common case.. punish the sloppy below */
+		switch(op1->type) {
+			case IS_LONG:
+				result->type = IS_LONG;
+				result->value.lval = op1->value.lval - op2->value.lval;
+				return SUCCESS;
+			case IS_DOUBLE:
+				result->type = IS_DOUBLE;
+				result->value.dval = op1->value.dval - op2->value.dval;
+				return SUCCESS;
 		}
-		return SUCCESS;
-	}
-	if ((op1->type == IS_DOUBLE && op2->type == IS_LONG)
-		|| (op1->type == IS_LONG && op2->type == IS_DOUBLE)) {
-		result->value.dval = (op1->type == IS_LONG ?
-						 (((double) op1->value.lval) - op2->value.dval) :
-						 (op1->value.dval - ((double) op2->value.lval)));
+#if STRICT_DEBUG
+		zend_error(E_ERROR, "for now, only floats and integers can be added");
+#endif
+	} else {
 		result->type = IS_DOUBLE;
-		return SUCCESS;
+		if(op1->type == IS_LONG && op2->type == IS_DOUBLE) {
+			result->value.dval = (double) op1->value.lval - op2->value.dval;
+			return SUCCESS;
+		} else if(op1->type == IS_DOUBLE && op2->type == IS_LONG) {
+			result->value.dval = op1->value.dval - (double) op2->value.lval;
+			return SUCCESS;
+		}
+#if STRICT_DEBUG
+		zend_error(E_ERROR, "for now, only floats and integers can be added");
+#endif
 	}
-	if (op1->type == IS_DOUBLE && op2->type == IS_DOUBLE) {
-		result->type = IS_DOUBLE;
-		result->value.dval = op1->value.dval - op2->value.dval;
-		return SUCCESS;
-	}
-	zend_error(E_ERROR, "Unsupported operand types");
+	
 	return FAILURE;				/* unknown datatype */
 }
 
 
 ZEND_API int mul_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
 {
-	zval op1_copy, op2_copy;
+	if(op1->type == op2->type) {
+		/* most common case.. punish the sloppy below */
+		switch(op1->type) {
+			case IS_LONG:
+				result->type = IS_LONG;
+				result->value.lval = op1->value.lval * op2->value.lval;
+				return SUCCESS;
+			case IS_DOUBLE:
+				result->type = IS_DOUBLE;
+				result->value.dval = op1->value.dval * op2->value.dval;
+				return SUCCESS;
+		}
+#if STRICT_DEBUG
+		zend_error(E_ERROR, "for now, only floats and integers can be added");
+#endif
+	} else {
+		result->type = IS_DOUBLE;
+		if(op1->type == IS_LONG && op2->type == IS_DOUBLE) {
+			result->value.dval = (double) op1->value.lval * op2->value.dval;
+			return SUCCESS;
+		} else if(op1->type == IS_DOUBLE && op2->type == IS_LONG) {
+			result->value.dval = op1->value.dval * (double) op2->value.lval;
+			return SUCCESS;
+		}
+#if STRICT_DEBUG
+		zend_error(E_ERROR, "for now, only floats and integers can be added");
+#endif
+	}
 	
-	zendi_convert_scalar_to_number(op1, op1_copy, result);
-	zendi_convert_scalar_to_number(op2, op2_copy, result);
-
-	if (op1->type == IS_LONG && op2->type == IS_LONG) {
-		long overflow;
-
-		ZEND_SIGNED_MULTIPLY_LONG(op1->value.lval,op2->value.lval, result->value.lval,result->value.dval,overflow);
-		result->type = overflow ? IS_DOUBLE : IS_LONG;	
-		return SUCCESS;
-	}
-	if ((op1->type == IS_DOUBLE && op2->type == IS_LONG)
-		|| (op1->type == IS_LONG && op2->type == IS_DOUBLE)) {
-		result->value.dval = (op1->type == IS_LONG ?
-						 (((double) op1->value.lval) * op2->value.dval) :
-						 (op1->value.dval * ((double) op2->value.lval)));
-		result->type = IS_DOUBLE;
-		return SUCCESS;
-	}
-	if (op1->type == IS_DOUBLE && op2->type == IS_DOUBLE) {
-		result->type = IS_DOUBLE;
-		result->value.dval = op1->value.dval * op2->value.dval;
-		return SUCCESS;
-	}
-	zend_error(E_ERROR, "Unsupported operand types");
 	return FAILURE;				/* unknown datatype */
 }
 
 ZEND_API int div_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
 {
-	zval op1_copy, op2_copy;
-	
-	zendi_convert_scalar_to_number(op1, op1_copy, result);
-	zendi_convert_scalar_to_number(op2, op2_copy, result);
-
 	if ((op2->type == IS_LONG && op2->value.lval == 0) || (op2->type == IS_DOUBLE && op2->value.dval == 0.0)) {
 		zend_error(E_WARNING, "Division by zero");
 		ZVAL_BOOL(result, 0);
 		return FAILURE;			/* division by zero */
 	}
-	if (op1->type == IS_LONG && op2->type == IS_LONG) {
-		if (op1->value.lval % op2->value.lval == 0) { /* integer */
-			result->type = IS_LONG;
-			result->value.lval = op1->value.lval / op2->value.lval;
-		} else {
-			result->type = IS_DOUBLE;
-			result->value.dval = ((double) op1->value.lval) / op2->value.lval;
+	
+	result->type = IS_DOUBLE;
+	if(op1->type == op2->type) {
+		/* most common case.. punish the sloppy below */
+		switch(op1->type) {
+			case IS_LONG:
+				result->value.dval = (double) op1->value.lval / (double) op2->value.lval;
+				return SUCCESS;
+			case IS_DOUBLE:
+				result->value.dval = op1->value.dval / op2->value.dval;
+				return SUCCESS;
 		}
-		return SUCCESS;
+#if STRICT_DEBUG
+		zend_error(E_ERROR, "for now, only floats and integers can be added");
+#endif
+	} else {
+		if(op1->type == IS_LONG && op2->type == IS_DOUBLE) {
+			result->value.dval = (double) op1->value.lval / op2->value.dval;
+			return SUCCESS;
+		} else if(op1->type == IS_DOUBLE && op2->type == IS_LONG) {
+			result->value.dval = op1->value.dval / (double) op2->value.lval;
+			return SUCCESS;
+		}
+#if STRICT_DEBUG
+		zend_error(E_ERROR, "for now, only floats and integers can be added");
+#endif
 	}
-	if ((op1->type == IS_DOUBLE && op2->type == IS_LONG)
-		|| (op1->type == IS_LONG && op2->type == IS_DOUBLE)) {
-		result->value.dval = (op1->type == IS_LONG ?
-						 (((double) op1->value.lval) / op2->value.dval) :
-						 (op1->value.dval / ((double) op2->value.lval)));
-		result->type = IS_DOUBLE;
-		return SUCCESS;
-	}
-	if (op1->type == IS_DOUBLE && op2->type == IS_DOUBLE) {
-		result->type = IS_DOUBLE;
-		result->value.dval = op1->value.dval / op2->value.dval;
-		return SUCCESS;
-	}
-	zend_error(E_ERROR, "Unsupported operand types");
+	
 	return FAILURE;				/* unknown datatype */
 }
 
 
 ZEND_API int mod_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
 {
-	zval op1_copy, op2_copy;
-	
-	zendi_convert_to_long(op1, op1_copy, result);
-	zendi_convert_to_long(op2, op2_copy, result);
-
-	if (op2->value.lval == 0) {
+	if((op2->type == IS_LONG && op2->value.lval == 0) || (op2->type == IS_DOUBLE && op2->value.dval == 0.0)) {
 		zend_error(E_WARNING, "Division by zero");
 		ZVAL_BOOL(result, 0);
-		return FAILURE;			/* modulus by zero */
+		return FAILURE;			/* division by zero */
 	}
 
-	if (abs(op2->value.lval) == 1) {
-		ZVAL_LONG(result, 0);
-		return SUCCESS;
+	switch(op1->type) {
+		case IS_LONG:
+		case IS_DOUBLE:
+			switch(op2->type) {
+				case IS_LONG:
+				case IS_DOUBLE:
+					result->value.lval = op1->type == IS_DOUBLE ? (long) op1->value.dval : op1->value.lval % op2->type == IS_DOUBLE ? (long) op2->value.dval : op2->value.lval;
+					result->type = IS_LONG;
+					return SUCCESS;
+			}
 	}
 
-	result->type = IS_LONG;
-	result->value.lval = op1->value.lval % op2->value.lval;
-	return SUCCESS;
+	zend_error(E_WARNING, "mod can only be done with int or float values");
+	ZVAL_BOOL(result, 0);
+	return FAILURE;
 }
 
 
@@ -970,31 +949,24 @@ ZEND_API int boolean_not_function(zval *result, zval *op1 TSRMLS_DC)
 
 ZEND_API int bitwise_not_function(zval *result, zval *op1 TSRMLS_DC)
 {
-	zval op1_copy = *op1;
-	
-	op1 = &op1_copy;
-	
-	if (op1->type == IS_DOUBLE) {
-		op1->value.lval = (long) op1->value.dval;
-		op1->type = IS_LONG;
+	switch(op1->type) {
+		case IS_BOOL:
+			result->value.lval = !op1->value.lval;
+			result->type = IS_BOOL;
+			return SUCCESS;
+		
+		case IS_DOUBLE:
+			result->value.dval = -op1->value.dval;
+			result->type = IS_DOUBLE;
+			return SUCCESS;
+		
+		case IS_LONG:
+			result->value.lval = ~op1->value.lval;
+			result->type = IS_LONG;
+			return SUCCESS;
 	}
-	if (op1->type == IS_LONG) {
-		result->value.lval = ~op1->value.lval;
-		result->type = IS_LONG;
-		return SUCCESS;
-	}
-	if (op1->type == IS_STRING) {
-		int i;
 
-		result->type = IS_STRING;
-		result->value.str.val = estrndup(op1->value.str.val, op1->value.str.len);
-		result->value.str.len = op1->value.str.len;
-		for (i = 0; i < op1->value.str.len; i++) {
-			result->value.str.val[i] = ~op1->value.str.val[i];
-		}
-		return SUCCESS;
-	}
-	zend_error(E_ERROR, "Unsupported operand types");
+	zend_error(E_ERROR, "bitwise operations can only be performed on bools, ints, and floats");
 	return FAILURE;				/* unknown datatype */
 }
 
@@ -1003,32 +975,6 @@ ZEND_API int bitwise_or_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
 {
 	zval op1_copy, op2_copy;
 	
-	if (op1->type == IS_STRING && op2->type == IS_STRING) {
-		zval *longer, *shorter;
-		char *result_str;
-		int i, result_len;
-
-		if (op1->value.str.len >= op2->value.str.len) {
-			longer = op1;
-			shorter = op2;
-		} else {
-			longer = op2;
-			shorter = op1;
-		}
-
-		result->type = IS_STRING;
-		result_len = longer->value.str.len;
-		result_str = estrndup(longer->value.str.val, longer->value.str.len);
-		for (i = 0; i < shorter->value.str.len; i++) {
-			result_str[i] |= shorter->value.str.val[i];
-		}
-		if (result==op1) {
-			STR_FREE(result->value.str.val);
-		}
-		result->value.str.val = result_str;
-		result->value.str.len = result_len;
-		return SUCCESS;
-	}
 	zendi_convert_to_long(op1, op1_copy, result);
 	zendi_convert_to_long(op2, op2_copy, result);
 
@@ -1041,34 +987,6 @@ ZEND_API int bitwise_or_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
 ZEND_API int bitwise_and_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
 {
 	zval op1_copy, op2_copy;
-	
-	if (op1->type == IS_STRING && op2->type == IS_STRING) {
-		zval *longer, *shorter;
-		char *result_str;
-		int i, result_len;
-
-		if (op1->value.str.len >= op2->value.str.len) {
-			longer = op1;
-			shorter = op2;
-		} else {
-			longer = op2;
-			shorter = op1;
-		}
-
-		result->type = IS_STRING;
-		result_len = shorter->value.str.len;
-		result_str = estrndup(shorter->value.str.val, shorter->value.str.len);
-		for (i = 0; i < shorter->value.str.len; i++) {
-			result_str[i] &= longer->value.str.val[i];
-		}
-		if (result==op1) {
-			STR_FREE(result->value.str.val);
-		}
-		result->value.str.val = result_str;
-		result->value.str.len = result_len;
-		return SUCCESS;
-	}
-	
 
 	zendi_convert_to_long(op1, op1_copy, result);
 	zendi_convert_to_long(op2, op2_copy, result);
@@ -1082,33 +1000,6 @@ ZEND_API int bitwise_and_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
 ZEND_API int bitwise_xor_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
 {
 	zval op1_copy, op2_copy;
-	
-	if (op1->type == IS_STRING && op2->type == IS_STRING) {
-		zval *longer, *shorter;
-		char *result_str;
-		int i, result_len;
-
-		if (op1->value.str.len >= op2->value.str.len) {
-			longer = op1;
-			shorter = op2;
-		} else {
-			longer = op2;
-			shorter = op1;
-		}
-
-		result->type = IS_STRING;
-		result_len = shorter->value.str.len;
-		result_str = estrndup(shorter->value.str.val, shorter->value.str.len);
-		for (i = 0; i < shorter->value.str.len; i++) {
-			result_str[i] ^= longer->value.str.val[i];
-		}
-		if (result==op1) {
-			STR_FREE(result->value.str.val);
-		}
-		result->value.str.val = result_str;
-		result->value.str.len = result_len;
-		return SUCCESS;
-	}
 
 	zendi_convert_to_long(op1, op1_copy, result);
 	zendi_convert_to_long(op2, op2_copy, result);	
@@ -1121,25 +1012,33 @@ ZEND_API int bitwise_xor_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
 
 ZEND_API int shift_left_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
 {
-	zval op1_copy, op2_copy;
-	
-	zendi_convert_to_long(op1, op1_copy, result);
-	zendi_convert_to_long(op2, op2_copy, result);
-	result->value.lval = op1->value.lval << op2->value.lval;
-	result->type = IS_LONG;
-	return SUCCESS;
+	if(op1->type == IS_LONG && op1->type == op2->type) {
+		result->type = IS_LONG;
+		result->value.lval = op1->value.lval << op2->value.lval;
+		return SUCCESS;
+	}
+
+#if DEBUG_STRICT
+	result->type = IS_NULL;
+	zend_error(E_ERROR, "shifting can only be done on integers");
+	return FAILURE;
+#endif
 }
 
 
 ZEND_API int shift_right_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
 {
-	zval op1_copy, op2_copy;
-	
-	zendi_convert_to_long(op1, op1_copy, result);
-	zendi_convert_to_long(op2, op2_copy, result);
-	result->value.lval = op1->value.lval >> op2->value.lval;
-	result->type = IS_LONG;
-	return SUCCESS;
+	if(op1->type == IS_LONG && op1->type == op2->type) {
+		result->type = IS_LONG;
+		result->value.lval = op1->value.lval >> op2->value.lval;
+		return SUCCESS;
+	}
+
+#if DEBUG_STRICT
+	result->type = IS_NULL;
+	zend_error(E_ERROR, "shifting can only be done on integers");
+	return FAILURE;
+#endif
 }
 
 
@@ -1549,6 +1448,10 @@ ZEND_API int is_equal_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
 				}
 
 				return SUCCESS;
+			
+			case IS_STRING:
+				result->value.lval = !zend_binary_zval_strcmp(op1, op2);
+				return SUCCESS;
 		
 			case IS_DOUBLE:
 				if(op1->value.dval == op2->value.dval) {
@@ -1583,6 +1486,10 @@ ZEND_API int is_not_equal_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
 					result->value.lval = 1;
 				}
 
+				return SUCCESS;
+			
+			case IS_STRING:
+				result->value.lval = zend_binary_zval_strcmp(op1, op2);
 				return SUCCESS;
 		
 			case IS_DOUBLE:

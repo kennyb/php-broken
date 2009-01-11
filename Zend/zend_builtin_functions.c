@@ -29,7 +29,9 @@
 
 #undef ZEND_TEST_EXCEPTIONS
 
+#if WANT_SHIT
 static ZEND_FUNCTION(zend_version);
+#endif
 static ZEND_FUNCTION(func_num_args);
 static ZEND_FUNCTION(func_get_arg);
 static ZEND_FUNCTION(func_get_args);
@@ -89,7 +91,9 @@ static ZEND_FUNCTION(zend_thread_id);
 
 
 static zend_function_entry builtin_functions[] = {
+#if WANT_SHIT
 	ZEND_FE(zend_version,		NULL)
+#endif
 	ZEND_FE(func_num_args,		NULL)
 	ZEND_FE(func_get_arg,		NULL)
 	ZEND_FE(func_get_args,		NULL)
@@ -155,7 +159,7 @@ int zend_startup_builtin_functions(TSRMLS_D)
 	return zend_register_functions(NULL, builtin_functions, NULL, MODULE_PERSISTENT TSRMLS_CC);
 }
 
-
+#if WANT_SHIT
 /* {{{ proto string zend_version(void)
    Get the version of the Zend Engine */
 ZEND_FUNCTION(zend_version)
@@ -163,6 +167,7 @@ ZEND_FUNCTION(zend_version)
 	RETURN_STRINGL(ZEND_VERSION, sizeof(ZEND_VERSION)-1, 1);
 }
 /* }}} */
+#endif
 
 
 /* {{{ proto int func_num_args(void)
