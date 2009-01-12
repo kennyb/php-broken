@@ -40,7 +40,9 @@ static ZEND_FUNCTION(strcmp);
 static ZEND_FUNCTION(strncmp);
 static ZEND_FUNCTION(strcasecmp);
 static ZEND_FUNCTION(strncasecmp);
+#if WANT_SHIT
 static ZEND_FUNCTION(each);
+#endif
 static ZEND_FUNCTION(error_reporting);
 static ZEND_FUNCTION(define);
 static ZEND_FUNCTION(defined);
@@ -102,7 +104,9 @@ static zend_function_entry builtin_functions[] = {
 	ZEND_FE(strncmp,			NULL)
 	ZEND_FE(strcasecmp,			NULL)
 	ZEND_FE(strncasecmp,		NULL)
+#if WANT_SHIT
 	ZEND_FE(each,				first_arg_force_ref)
+#endif
 	ZEND_FE(error_reporting,	NULL)
 	ZEND_FE(define,				NULL)
 	ZEND_FE(defined,			NULL)
@@ -371,6 +375,7 @@ ZEND_FUNCTION(strncasecmp)
 /* }}} */
 
 
+#if WANT_SHIT
 /* {{{ proto array each(array arr)
    Return the currently pointed key..value pair in the passed array, and advance the pointer to the next element */
 ZEND_FUNCTION(each)
@@ -425,7 +430,7 @@ ZEND_FUNCTION(each)
 	zend_hash_move_forward(target_hash);
 }
 /* }}} */
-
+#endif
 
 /* {{{ proto int error_reporting(int new_error_level=null)
    Return the current error_reporting level, and if an argument was passed - change to the new level */

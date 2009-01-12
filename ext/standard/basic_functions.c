@@ -308,6 +308,7 @@ ZEND_BEGIN_ARG_INFO(arginfo_uksort, 0)
 	ZEND_ARG_INFO(0, cmp_function)
 ZEND_END_ARG_INFO()
 
+#if WANT_SHIT
 static
 ZEND_BEGIN_ARG_INFO(arginfo_end, 0)
 	ZEND_ARG_INFO(1, arg)
@@ -337,6 +338,7 @@ static
 ZEND_BEGIN_ARG_INFO(arginfo_key, ZEND_SEND_PREFER_REF)
 	ZEND_ARG_INFO(ZEND_SEND_PREFER_REF, arg)
 ZEND_END_ARG_INFO()
+#endif
 
 static
 ZEND_BEGIN_ARG_INFO_EX(arginfo_min, 0, 0, 1)
@@ -3775,12 +3777,14 @@ zend_function_entry basic_functions[] = {
 	PHP_FE(array_walk_recursive,											arginfo_array_walk_recursive)
 	PHP_FE(count,															arginfo_count)
 	PHP_FE(count_recursive,														arginfo_count_recursive)
+#if WANT_SHIT
 	PHP_FE(end,																arginfo_end)
 	PHP_FE(prev,															arginfo_prev)
 	PHP_FE(next,															arginfo_next)
 	PHP_FE(reset,															arginfo_reset)
 	PHP_FE(current,															arginfo_current)
 	PHP_FE(key,																arginfo_key)
+#endif
 	PHP_FE(min,																arginfo_min)
 	PHP_FE(max,																arginfo_max)
 	PHP_FE(in_array,														arginfo_in_array)

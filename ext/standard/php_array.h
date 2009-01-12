@@ -42,12 +42,14 @@ PHP_FUNCTION(array_walk);
 PHP_FUNCTION(array_walk_recursive);
 PHP_FUNCTION(count);
 PHP_FUNCTION(count_recursive);
+#if WANT_SHIT
 PHP_FUNCTION(end);
 PHP_FUNCTION(prev);
 PHP_FUNCTION(next);
 PHP_FUNCTION(reset);
 PHP_FUNCTION(current);
 PHP_FUNCTION(key);
+#endif
 PHP_FUNCTION(min);
 PHP_FUNCTION(max);
 PHP_FUNCTION(in_array);

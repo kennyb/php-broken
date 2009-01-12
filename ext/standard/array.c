@@ -329,7 +329,7 @@ PHP_FUNCTION(count)
 PHP_FUNCTION(count_recursive)
 {
 	zval **array;
-	long count;
+	long cnt;
 	
 	if (ZEND_NUM_ARGS() != 1 || zend_get_parameters_ex(1, &array) == FAILURE) {
 		WRONG_PARAM_COUNT;
@@ -337,16 +337,16 @@ PHP_FUNCTION(count_recursive)
 	
 	switch (Z_TYPE_P(*array)) {
 		case IS_NULL:
-			count = 0;
+			cnt = 0;
 			break;
 		default:
-			count = 1;
+			cnt = 1;
 			break;
 		case IS_ARRAY:
-			count = php_count_recursive(*array);
+			cnt = php_count_recursive(*array TSRMLS_CC);
 	}
 
-	RETURN_LONG(count);
+	RETURN_LONG(cnt);
 }
 /* }}} */
 
@@ -799,6 +799,7 @@ PHP_FUNCTION(uksort)
 }
 /* }}} */
 
+#if WANT_SHIT
 /* {{{ proto mixed end(array array_arg)
    Advances array argument's internal pointer to the last element and return it */
 PHP_FUNCTION(end)
@@ -959,6 +960,7 @@ PHP_FUNCTION(key)
 	}
 }
 /* }}} */
+#endif
 
 /* {{{ proto mixed min(mixed arg1 [, mixed arg2 [, mixed ...]])
    Return the lowest value in an array or a series of arguments */
