@@ -100,6 +100,7 @@ struct _zend_compiler_globals {
 	zend_bool in_compilation;
 	zend_bool short_tags;
 	zend_bool asp_tags;
+	zend_bool opcode_optimize;
 	zend_bool allow_call_time_pass_reference;
 
 	zend_declarables declarables;

@@ -749,17 +749,17 @@ int main(int argc, char *argv[])
 				exit_status=0;
 				goto out;
 
-#if WANT_INI
 			case 'i': /* php info & quit */
 				if (php_request_startup(TSRMLS_C)==FAILURE) {
 					goto err;
 				}
+#if WANT_INI
 				request_started = 1;
 				php_print_info(0xFFFFFFFF TSRMLS_CC);
 				php_end_ob_buffers(1 TSRMLS_CC);
+#endif
 				exit_status=0;
 				goto out;
-#endif
 
 			case 'm': /* list compiled in modules */
 				if (php_request_startup(TSRMLS_C)==FAILURE) {

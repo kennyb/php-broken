@@ -44,6 +44,7 @@ ZEND_API void execute(zend_op_array *op_array TSRMLS_DC)
 	EX(fbc) = NULL;
 	EX(object) = NULL;
 	EX(old_error_reporting) = NULL;
+	printf("allocating: %d\n", op_array->T);
 	if (op_array->T < TEMP_VAR_STACK_LIMIT) {
 		EX(Ts) = (temp_variable *) do_alloca(sizeof(temp_variable) * op_array->T);
 	} else {
@@ -526,6 +527,7 @@ static int ZEND_ADD_INTERFACE_SPEC_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 
 static int ZEND_HANDLE_EXCEPTION_SPEC_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 {
+	printf("FUCK");
 	zend_uint op_num = EG(opline_before_exception)-EG(active_op_array)->opcodes;
 	int i;
 	zend_uint catch_op_num;
@@ -19188,6 +19190,7 @@ static int ZEND_PRE_INC_SPEC_CV_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	}
 	if (*var_ptr == EG(error_zval_ptr)) {
 		if (!RETURN_VALUE_UNUSED(&opline->result)) {
+			printf("OMG!!!!!!!!!!!!\n");
 			EX_T(opline->result.u.var).var.ptr_ptr = &EG(uninitialized_zval_ptr);
 			PZVAL_LOCK(*EX_T(opline->result.u.var).var.ptr_ptr);
 			AI_USE_PTR(EX_T(opline->result.u.var).var);

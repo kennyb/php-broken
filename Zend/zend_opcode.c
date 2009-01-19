@@ -357,9 +357,121 @@ static void zend_extension_op_array_handler(zend_extension *extension, zend_op_a
 	}
 }
 
+inline void delete_znode(znode *node)
+{
+	if(node->u.var) {
+		/* printf("DELETE ZNODE var: %d type: %d e_type: %d const: %d\n", node->u.var, node->op_type, node->u.EA.type, node->u.constant); */
+		zval_dtor(&node->u.constant);
+		node->u.var = 0;
+		node->op_type = IS_UNUSED;
+	}
+}
+
+void delete_op(zend_op_array *op_array, zend_uint op_num TSRMLS_DC)
+{
+	zend_op *opline, *opline_src, *opline_dest, *end;
+	/* printf("DELETING OP: %d last: %d\n", op_num, op_array->last); */
+	if(op_array->last == op_num) {
+		op_array->last--;
+	} else if(op_num < op_array->last) {
+		opline = op_array->opcodes;
+		end = opline + op_array->last;
+		
+		opline_dest = opline + op_num++;
+		opline_src = opline + op_num;
+		
+		delete_znode(&opline_dest->result);
+		delete_znode(&opline_dest->op1);
+		delete_znode(&opline_dest->op2);
+	
+		//FREE_OP_IF_VAR(opline_dest->result.u.var);
+		//FREE_OP_IF_VAR(opline_dest->op1.u.var);
+		//FREE_OP_IF_VAR(opline_dest->op2.u.var);
+		/*
+		if(opline_dest->result.u.var) {
+			printf("result type: %d\n", opline_dest->result.u.EA.type);
+			zval_dtor(&opline_dest->result.u.constant);
+		}
+	
+		if(opline_dest->op1.u.var) {
+			zval_dtor(&opline_dest->op1.u.constant);
+			printf("op1 type: %d %d\n", opline_dest->op1.u.EA.type, opline_dest->op1.op_type);
+		}
+	
+		if(opline_dest->op2.u.var) {
+			printf("op2 type: %d\n", opline_dest->op2.u.EA.type);
+			zval_dtor(&opline_dest->op2.u.constant);
+		}
+	
+		/*
+		zval_dtor(&opline_dest->op1.u.constant);
+		zval_dtor(&opline_dest->op2.u.constant);
+		/*SET_UNUSED(opline_dest->result);
+		SET_UNUSED(opline_dest->op1);
+		SET_UNUSED(opline_dest->op2);*/
+	
+		while(opline < end) {
+			switch(opline->opcode) {
+				/* just op1 */
+				case ZEND_JMP:
+				case ZEND_BRK:
+				case ZEND_CONT:
+					if(opline->op1.u.opline_num > op_num) {
+						opline->op1.u.opline_num--;
+					}
+				
+				break;
+				
+				/* extended + op2 values */
+				case ZEND_JMPZNZ:
+				case ZEND_CATCH:
+					if(opline->extended_value > op_num) {
+						opline->extended_value--;
+					}
+				
+				/* just op2 */
+				case ZEND_JMPZ:
+				case ZEND_JMPNZ:
+				case ZEND_JMPZ_EX:
+				case ZEND_JMPNZ_EX:
+				case ZEND_NEW:
+				case ZEND_FE_RESET:
+				case ZEND_FE_FETCH:
+					if(opline->op2.u.opline_num > op_num) {
+						opline->op2.u.opline_num--;
+					}
+				
+				break;
+			}
+		
+			
+		
+			if(opline >= opline_src) {
+				memcpy(opline_dest++, opline_src++, sizeof(zend_op));
+			}
+		
+			opline++;
+		}
+	
+		op_array->last--;
+	}
+}
+
+void helper_remove_ret(zend_op_array *op_array, zend_uint op_num TSRMLS_DC)
+{
+	zend_op* opline = op_array->opcodes + op_num;
+	opline->result.op_type = IS_VAR;
+	opline->result.u.EA.type = ZEND_FETCH_LOCAL; /* I think this should be 0, but it tells me I'm leaking memory, so something is wrong */
+	delete_znode(&opline->result);
+	delete_op(op_array, ++op_num TSRMLS_CC);
+	//zval_dtor(&opline->result.u.constant);
+	//SET_UNUSED(opline->result);
+}
+
 int pass_two(zend_op_array *op_array TSRMLS_DC)
 {
 	zend_op *opline, *end;
+	zend_uint cur;
 
 	if (op_array->type!=ZEND_USER_FUNCTION && op_array->type!=ZEND_EVAL_CODE) {
 		return 0;
@@ -370,7 +482,150 @@ int pass_two(zend_op_array *op_array TSRMLS_DC)
 	if (CG(handle_op_arrays)) {
 		zend_llist_apply_with_argument(&zend_extensions, (llist_apply_with_arg_func_t) zend_extension_op_array_handler, op_array TSRMLS_CC);
 	}
+	
+	if(!CG(opcode_optimize)) {
+		goto no_optimize;
+	}
+	
+	if (!(op_array->fn_flags & ZEND_ACC_INTERACTIVE) && op_array->size != op_array->last) {
+		op_array->opcodes = (zend_op *) erealloc(op_array->opcodes, sizeof(zend_op)*op_array->last);
+		op_array->size = op_array->last;
+	}
+	
+	/* optimization pass 1 - delete unnecessary ops */
+	optimize: {
+		opline = op_array->opcodes;
+		end = opline + op_array->last;
+		for(cur = 0; opline < end; cur++, opline++) {
+			switch (opline->opcode) {
+				case ZEND_NOP:
+					/* I *hope* these are useless! */
+					delete_op(op_array, cur TSRMLS_CC);
+					goto optimize;
+				
+				case ZEND_JMP:
+					/* delete ops that jump to the next line */
+					/* !!delete ops that jump right after a jmp */
+					if(/*(opline-1)->opcode == ZEND_JMP ||*/ opline->op1.u.opline_num == cur + 1) {
+						delete_op(op_array, cur TSRMLS_CC);
+						goto optimize;
+					}
+					
+					break;
+				
+				case ZEND_JMPZ:
+				case ZEND_JMPNZ:
+				case ZEND_JMPZ_EX:
+				case ZEND_JMPNZ_EX:
+					/* delete ops that jump to the next line */
+					if(opline->op2.u.opline_num == cur + 1) {
+						delete_op(op_array, cur TSRMLS_CC);
+						goto optimize;
+					}
+					
+					break;
+				/*
+				case ZEND_PRE_INC:
+					printf("PRE_INC-- op_type: %d, u.var %d, EA.type %d\n", opline->result.op_type, opline->result.u.var, opline->result.u.EA.type);
+					break;
+				*/
+				
+				case ZEND_POST_DEC:
+					if((opline+1)->op1.u.var == opline->result.u.var) {
+						opline->opcode = ZEND_PRE_DEC;
+						helper_remove_ret(op_array, cur TSRMLS_CC);
+						goto optimize;
+					}
+					break;
+					
+				case ZEND_POST_INC:
+					if((opline+1)->op1.u.var == opline->result.u.var) {
+						/* printf("POST_INC-- op_type: %d, u.var %d, EA.type %d\n", opline->result.op_type, opline->result.u.var, opline->result.u.EA.type); */
+						opline->opcode = ZEND_PRE_INC;
+						helper_remove_ret(op_array, cur TSRMLS_CC);
+						goto optimize;
+					}
+					break;
+				
+				/*
+				case ZEND_ADD:
+					if(opline->op1.op_type == IS_CONST && opline->op2.op_type == IS_CONST) {
+					
+					}
+					break;
+				*/
+					
+				case ZEND_PRINT:
+					/* convert all prints without the return value used into echos */
+					if((opline+1)->op1.u.var == opline->result.u.var && (opline+1)->opcode == ZEND_FREE) {
+						opline->opcode = ZEND_ECHO;
+						helper_remove_ret(op_array, cur TSRMLS_CC);
+						goto optimize;
+					}
+					break;
+			}
+		}
+	}
 
+	/* optimization pass 2 - shift all unused tmp variables down and free their memory */
+	printf("num tmp vars (before): %d\n", op_array->T);
+	optimize2: {
+		
+		for(cur = op_array->T; cur > 0; cur--) { 
+			opline = op_array->opcodes;
+			end = opline + op_array->last;
+			int is_used = 0;
+			int size = cur * sizeof(temp_variable);
+			for(; opline < end; opline++) {
+				zend_uint type = opline->result.op_type == IS_TMP_VAR;
+				
+				if(((opline->result.op_type == IS_TMP_VAR || opline->result.op_type == IS_VAR) && opline->result.u.var == size) ||
+					((opline->op1.op_type == IS_TMP_VAR || opline->op1.op_type == IS_VAR) && opline->op1.u.var == size) ||
+					((opline->op2.op_type == IS_TMP_VAR || opline->op2.op_type == IS_VAR) && opline->op2.u.var == size)) {
+					is_used = 1;
+					break;
+				}
+				
+				/*printf("%d:: result.op_type: %d result.u.var %d \n", size, opline->result.op_type, opline->result.u.var);
+				printf("%d:: op1.op_type: %d op1.u.var %d \n", size, opline->op1.op_type, opline->op1.u.var);
+				printf("%d:: op2.op_type: %d op2.u.var %d \n", size, opline->op2.op_type, opline->op2.u.var);*/
+			}
+			
+			/*printf("IS_USED: %d\n", is_used);*/
+		
+			if(is_used == 0) {
+				/*printf("DELEING TMP: %d size: %d total: %d\n", cur, size, op_array->T);*/
+				if(cur == op_array->T) {
+					(op_array->T)--;
+				} else if(cur < op_array->T) {
+					/* shift everything above downward */
+					(op_array->T)--;
+					opline = op_array->opcodes;
+					for(; opline < end; opline++) {
+						if(opline->result.op_type == IS_TMP_VAR && opline->result.u.var >= size) {
+							opline->result.u.var -= sizeof(temp_variable);
+						}
+					
+						/*printf("size: %d op1: %d op1.type: %d\n", size, opline->op1.u.var, opline->op1.op_type);*/
+						if(opline->op1.op_type == IS_TMP_VAR && opline->op1.u.var >= size) {
+							opline->op1.u.var -= sizeof(temp_variable);
+						}
+					
+						if(opline->op2.op_type == IS_TMP_VAR && opline->op2.u.var >= size) {
+							opline->op2.u.var -= sizeof(temp_variable);
+						}
+					}
+				}
+			}
+		}
+		
+		op_array->T++;
+	}
+
+	printf("num tmp vars (after): %d\n", op_array->T);
+	printf("optimization complete!\n");
+	
+no_optimize:
 	if (!(op_array->fn_flags & ZEND_ACC_INTERACTIVE) && op_array->size != op_array->last) {
 		op_array->opcodes = (zend_op *) erealloc(op_array->opcodes, sizeof(zend_op)*op_array->last);
 		op_array->size = op_array->last;
@@ -401,7 +656,7 @@ int pass_two(zend_op_array *op_array TSRMLS_DC)
 		ZEND_VM_SET_OPCODE_HANDLER(opline);
 		opline++;
 	}
-	
+
 	op_array->done_pass_two = 1;
 	return 0;
 }
