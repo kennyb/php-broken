@@ -270,13 +270,13 @@ ZEND_API void zend_make_printable_zval(zval *expr, zval *expr_copy, int *use_cop
 }
 
 
-ZEND_API int zend_print_zval(zval *expr, int indent)
+ZEND_API int zend_print_zval(zval *expr)
 {
-	return zend_print_zval_ex(zend_write, expr, indent);
+	return zend_print_zval_ex(zend_write, expr);
 }
 
 
-ZEND_API int zend_print_zval_ex(zend_write_func_t write_func, zval *expr, int indent)
+ZEND_API int zend_print_zval_ex(zend_write_func_t write_func, zval *expr)
 {
 	zval expr_copy;
 	int use_copy;
@@ -285,13 +285,11 @@ ZEND_API int zend_print_zval_ex(zend_write_func_t write_func, zval *expr, int in
 	if (use_copy) {
 		expr = &expr_copy;
 	}
-	if (expr->value.str.len==0) { /* optimize away empty strings */
-		if (use_copy) {
-			zval_dtor(expr);
-		}
-		return 0;
+	
+	if (expr->value.str.len!=0) { /* optimize away empty strings */
+		write_func(expr->value.str.val, expr->value.str.len);
 	}
-	write_func(expr->value.str.val, expr->value.str.len);
+	
 	if (use_copy) {
 		zval_dtor(expr);
 	}
@@ -398,7 +396,7 @@ ZEND_API void zend_print_zval_r_ex(zend_write_func_t write_func, zval *expr, int
 				break;
 			}
 		default:
-			zend_print_zval_ex(write_func, expr, indent);
+			zend_print_zval_ex(write_func, expr);
 			break;
 	}
 }
