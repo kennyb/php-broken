@@ -695,14 +695,43 @@ function gen_null_handler($f) {
 
 // Generates all opcode handlers and helpers (specialized or unspecilaized)
 function gen_executor_code($f, $spec, $kind, $prolog) {
-	global $list, $opcodes, $helpers, $op_types;
+	global $list, $opcodes, $helpers, $op_types, $typecode;
 
 	if ($spec) {
-		// Produce specialized executor
 		$op1t = $op_types;
+		$op2t = $op_types;
+		
+		// build the spec defines...
+		foreach ($list as $lineno => $dsc) {
+			if (isset($dsc["handler"])) {
+				$num = $dsc["handler"];
+				$val = 0;
+				foreach($opcodes[$num]["op1"] as $t => $bleh) {
+					foreach($typecode as $tt => $v) {
+						if($t === "ANY" || $t === $tt) {
+							$val += (1 << $v);
+						}
+					}
+				}
+				
+				out($f, "#define {$opcodes[$num]['op']}_TYPES_OP1 $val\n");
+				
+				$val = 0;
+				foreach($opcodes[$num]["op2"] as $t => $bleh) {
+					foreach($typecode as $tt => $v) {
+						if($t === "ANY" || $t === $tt) {
+							$val += (1 << $v);
+						}
+					}
+				}
+				
+				out($f, "#define {$opcodes[$num]['op']}_TYPES_OP2 $val\n");
+			}
+		}
+	
+		// Produce specialized executor
 		// for each op1.op_type
 		foreach($op1t as $op1) {
-			$op2t = $op_types;
 			// for each op2.op_type
 			foreach($op2t as $op2) {
 				// for each handlers in helpers in original order
