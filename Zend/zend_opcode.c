@@ -439,7 +439,7 @@ int var_used_again(zend_op_array *op_array, zend_uint op_num, znode* zn TSRMLS_D
 	zend_op *opline, *end;
 	opline = op_array->opcodes + (++op_num);
 	end = op_array->opcodes + op_array->last;
-	printf("searching for next use of var: %d with type: %d\n", zn->u.var, zn->op_type);
+	/* printf("searching for next use of var: %d with type: %d\n", zn->u.var, zn->op_type); */
 	
 	for(; opline < end; opline++, op_num++) {
 		if((opline->result.u.var == zn->u.var && opline->result.op_type == zn->op_type) ||
@@ -581,31 +581,113 @@ int pass_two(zend_op_array *op_array TSRMLS_DC)
 					}
 					break;
 				
-				/*
-				case ZEND_ADD:
-					if(opline->op1.op_type == IS_CONST && opline->op2.op_type == IS_CONST) {
-					
-					}
-					break;
-				*/
-				case ZEND_DO_FCALL:
-					break;
 				case ZEND_ASSIGN:
-					printf("%d:: result.op_type: %d result.u.var %d constant.type %d\n", cur, opline->result.op_type, opline->result.u.var, opline->result.u.constant.type);
-					printf("%d:: op1.op_type: %d op1.u.var %d constant.type %d\n", cur, opline->op1.op_type, opline->op1.u.var, opline->op1.u.constant.type);
-					printf("%d:: op2.op_type: %d op2.u.var %d constant.type %d\n", cur, opline->op2.op_type, opline->op2.u.var, opline->op2.u.constant.type);//*/
-					/*if(!var_used_again(op_array, cur, &opline->op1)) {
-						printf("op1 NOT used again!\n");
-					}*/
-					
-					if(opline->op2.op_type == IS_VAR) {
+					/* this breaks functioning php code and causes a segfault. until I have the full globals change implemented, best to keep this commented */
+					/*if(opline->op2.op_type == IS_VAR) {
 						zend_uint next_use = var_used_again(op_array, cur, &opline->op1);
-						printf("next_use: %d\n", next_use);
 						if(next_use == 0 || (op_array->opcodes[next_use].opcode == ZEND_ASSIGN && op_array->opcodes[next_use].op1.u.var == opline->op1.u.var)) {
-							printf("result NOT used again!\n");
 							delete_op(op_array, cur TSRMLS_CC);
 							changes++;
 							break;
+						}
+					}*/
+					break;
+				
+				case ZEND_ADD:
+				case ZEND_SUB:
+				case ZEND_MUL:
+				case ZEND_DIV:
+				case ZEND_MOD:
+				case ZEND_SL:
+				case ZEND_SR:
+				case ZEND_CONCAT:
+				case ZEND_IS_IDENTICAL:
+				case ZEND_IS_NOT_IDENTICAL:
+				case ZEND_IS_EQUAL:
+				case ZEND_IS_NOT_EQUAL:
+				case ZEND_IS_SMALLER:
+				case ZEND_IS_SMALLER_OR_EQUAL:
+				case ZEND_BW_OR:
+				case ZEND_BW_AND:
+				case ZEND_BW_XOR:
+				case ZEND_BOOL_XOR:
+					if(opline->op1.op_type == IS_CONST && opline->op2.op_type == IS_CONST) {
+						/*printf("%d:: result.op_type: %d result.u.var %d constant.type %d\n", cur, opline->result.op_type, opline->result.u.var, opline->result.u.constant.type);
+						printf("%d:: op1.op_type: %d op1.u.var %d constant.type %d\n", cur, opline->op1.op_type, opline->op1.u.var, opline->op1.u.constant.type);
+						printf("%d:: op2.op_type: %d op2.u.var %d constant.type %d\n", cur, opline->op2.op_type, opline->op2.u.var, opline->op2.u.constant.type);//*/
+						
+						zend_uint next_use = var_used_again(op_array, cur, &opline->result);
+						for(; next_use > 0; next_use = var_used_again(op_array, next_use, &opline->result)) {
+							znode* zn;
+							if(op_array->opcodes[next_use].op1.u.var == opline->result.u.var) {
+								zn = &op_array->opcodes[next_use].op1;
+							} else if(op_array->opcodes[next_use].op2.u.var == opline->result.u.var) {
+								zn = &op_array->opcodes[next_use].op2;
+							} else if(op_array->opcodes[next_use].result.u.var == opline->result.u.var) {
+								zn = &op_array->opcodes[next_use].result;
+							}
+							
+							switch(opline->opcode) {
+								case ZEND_ADD:
+									add_function(&opline->op1.u.constant, &opline->op1.u.constant, &opline->op2.u.constant TSRMLS_CC);
+									break;
+								case ZEND_SUB:
+									sub_function(&opline->op1.u.constant, &opline->op1.u.constant, &opline->op2.u.constant TSRMLS_CC);
+									break;
+								case ZEND_MUL:
+									mul_function(&opline->op1.u.constant, &opline->op1.u.constant, &opline->op2.u.constant TSRMLS_CC);
+									break;
+								case ZEND_DIV:
+									div_function(&opline->op1.u.constant, &opline->op1.u.constant, &opline->op2.u.constant TSRMLS_CC);
+									break;
+								case ZEND_MOD:
+									mod_function(&opline->op1.u.constant, &opline->op1.u.constant, &opline->op2.u.constant TSRMLS_CC);
+									break;
+								case ZEND_SL:
+									shift_left_function(&opline->op1.u.constant, &opline->op1.u.constant, &opline->op2.u.constant TSRMLS_CC);
+									break;
+								case ZEND_SR:
+									shift_right_function(&opline->op1.u.constant, &opline->op1.u.constant, &opline->op2.u.constant TSRMLS_CC);
+									break;
+								case ZEND_CONCAT:
+									concat_function(&opline->op1.u.constant, &opline->op1.u.constant, &opline->op2.u.constant TSRMLS_CC);
+									break;
+								case ZEND_IS_IDENTICAL:
+									is_identical_function(&opline->op1.u.constant, &opline->op1.u.constant, &opline->op2.u.constant TSRMLS_CC);
+									break;
+								case ZEND_IS_NOT_IDENTICAL:
+									is_not_identical_function(&opline->op1.u.constant, &opline->op1.u.constant, &opline->op2.u.constant TSRMLS_CC);
+									break;
+								case ZEND_IS_EQUAL:
+									is_equal_function(&opline->op1.u.constant, &opline->op1.u.constant, &opline->op2.u.constant TSRMLS_CC);
+									break;
+								case ZEND_IS_NOT_EQUAL:
+									is_not_equal_function(&opline->op1.u.constant, &opline->op1.u.constant, &opline->op2.u.constant TSRMLS_CC);
+									break;
+								case ZEND_IS_SMALLER:
+									is_smaller_function(&opline->op1.u.constant, &opline->op1.u.constant, &opline->op2.u.constant TSRMLS_CC);
+									break;
+								case ZEND_IS_SMALLER_OR_EQUAL:
+									is_smaller_or_equal_function(&opline->op1.u.constant, &opline->op1.u.constant, &opline->op2.u.constant TSRMLS_CC);
+									break;
+								case ZEND_BW_OR:
+									bitwise_or_function(&opline->op1.u.constant, &opline->op1.u.constant, &opline->op2.u.constant TSRMLS_CC);
+									break;
+								case ZEND_BW_AND:
+									bitwise_and_function(&opline->op1.u.constant, &opline->op1.u.constant, &opline->op2.u.constant TSRMLS_CC);
+									break;
+								case ZEND_BW_XOR:
+									bitwise_xor_function(&opline->op1.u.constant, &opline->op1.u.constant, &opline->op2.u.constant TSRMLS_CC);
+									break;
+								case ZEND_BOOL_XOR:
+									boolean_xor_function(&opline->op1.u.constant, &opline->op1.u.constant, &opline->op2.u.constant TSRMLS_CC);
+									break;
+								EMPTY_SWITCH_DEFAULT_CASE()
+							}
+							
+							*zn = opline->op1;
+							delete_op(op_array, cur TSRMLS_CC);
+							changes++;
 						}
 					}
 					break;
