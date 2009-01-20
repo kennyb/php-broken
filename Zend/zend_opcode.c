@@ -512,6 +512,7 @@ int pass_two(zend_op_array *op_array TSRMLS_DC)
 	/* optimization pass 1 - delete unnecessary ops */
 	optimize: {
 		int changes = 0;
+		zend_uint next_use;
 		
 		opline = op_array->opcodes;
 		end = opline + op_array->last;
@@ -525,9 +526,10 @@ int pass_two(zend_op_array *op_array TSRMLS_DC)
 				
 				case ZEND_JMP:
 					/* delete ops that jump to the next line */
-					/* !!delete ops that jump right after a jmp */
+					/* TODO delete ops that jump right after a jmp */
 					if(/*(opline-1)->opcode == ZEND_JMP ||*/ opline->op1.u.opline_num == cur + 1) {
 						delete_op(op_array, cur TSRMLS_CC);
+						end--;
 						changes++;
 						break;
 					}
@@ -547,6 +549,7 @@ int pass_two(zend_op_array *op_array TSRMLS_DC)
 					/* delete ops that jump to the next line */
 					if(opline->op2.u.opline_num == cur + 1) {
 						delete_op(op_array, cur TSRMLS_CC);
+						end--;
 						changes++;
 						break;
 					}
@@ -557,26 +560,26 @@ int pass_two(zend_op_array *op_array TSRMLS_DC)
 						changes++;
 					}
 					
+					/* TODO if the following statement is a return, then simply reverse the logic of the jump, and place all the returns at the bottom of the function */
+					
 					break;
-				/*
-				case ZEND_PRE_INC:
-					printf("PRE_INC-- op_type: %d, u.var %d, EA.type %d\n", opline->result.op_type, opline->result.u.var, opline->result.u.EA.type);
-					break;
-				*/
 				
+				case ZEND_POST_INC:
 				case ZEND_POST_DEC:
 					if((opline+1)->op1.u.var == opline->result.u.var) {
-						opline->opcode = ZEND_PRE_DEC;
+						/* printf("POST_INC-- op_type: %d, u.var %d, EA.type %d\n", opline->result.op_type, opline->result.u.var, opline->result.u.EA.type); */
+						opline->opcode = opline->opcode == ZEND_POST_INC ? ZEND_PRE_INC : ZEND_PRE_DEC;
 						helper_remove_ret(op_array, cur TSRMLS_CC);
+						end--;
 						changes++;
 					}
 					break;
 					
-				case ZEND_POST_INC:
-					if((opline+1)->op1.u.var == opline->result.u.var) {
-						/* printf("POST_INC-- op_type: %d, u.var %d, EA.type %d\n", opline->result.op_type, opline->result.u.var, opline->result.u.EA.type); */
-						opline->opcode = ZEND_PRE_INC;
-						helper_remove_ret(op_array, cur TSRMLS_CC);
+				case ZEND_ECHO:
+					if(opline->op1.op_type == IS_CONST && (opline+1)->opcode == ZEND_ECHO && (opline+1)->op1.op_type == IS_CONST) {
+						concat_function(&opline->op1.u.constant, &opline->op1.u.constant, &(opline+1)->op1.u.constant TSRMLS_CC);
+						delete_op(op_array, cur+1 TSRMLS_CC);
+						end--;
 						changes++;
 					}
 					break;
@@ -588,11 +591,22 @@ int pass_two(zend_op_array *op_array TSRMLS_DC)
 						if(next_use == 0 || (op_array->opcodes[next_use].opcode == ZEND_ASSIGN && op_array->opcodes[next_use].op1.u.var == opline->op1.u.var)) {
 							delete_op(op_array, cur TSRMLS_CC);
 							changes++;
+							end--;
 							break;
 						}
 					}*/
 					break;
 				
+				case ZEND_CONCAT:
+					next_use = var_used_again(op_array, cur, &opline->result);
+					if(next_use && op_array->opcodes[next_use].opcode == ZEND_ECHO) {
+						/* ECHO does not use op2, so it's definitely op1 */
+						opline->opcode = ZEND_ECHO;
+						delete_znode(&opline->result);
+						op_array->opcodes[next_use].op1 = opline->op2;
+						changes++;
+						break;
+					}
 				case ZEND_ADD:
 				case ZEND_SUB:
 				case ZEND_MUL:
@@ -600,7 +614,6 @@ int pass_two(zend_op_array *op_array TSRMLS_DC)
 				case ZEND_MOD:
 				case ZEND_SL:
 				case ZEND_SR:
-				case ZEND_CONCAT:
 				case ZEND_IS_IDENTICAL:
 				case ZEND_IS_NOT_IDENTICAL:
 				case ZEND_IS_EQUAL:
@@ -616,7 +629,7 @@ int pass_two(zend_op_array *op_array TSRMLS_DC)
 						printf("%d:: op1.op_type: %d op1.u.var %d constant.type %d\n", cur, opline->op1.op_type, opline->op1.u.var, opline->op1.u.constant.type);
 						printf("%d:: op2.op_type: %d op2.u.var %d constant.type %d\n", cur, opline->op2.op_type, opline->op2.u.var, opline->op2.u.constant.type);//*/
 						
-						zend_uint next_use = var_used_again(op_array, cur, &opline->result);
+						next_use = var_used_again(op_array, cur, &opline->result);
 						for(; next_use > 0; next_use = var_used_again(op_array, next_use, &opline->result)) {
 							znode* zn;
 							if(op_array->opcodes[next_use].op1.u.var == opline->result.u.var) {
@@ -687,7 +700,10 @@ int pass_two(zend_op_array *op_array TSRMLS_DC)
 							
 							*zn = opline->op1;
 							delete_op(op_array, cur TSRMLS_CC);
+							end--;
 							changes++;
+							next_use++;
+							break;
 						}
 					}
 					break;
@@ -697,6 +713,14 @@ int pass_two(zend_op_array *op_array TSRMLS_DC)
 					if((opline+1)->op1.u.var == opline->result.u.var && (opline+1)->opcode == ZEND_FREE) {
 						opline->opcode = ZEND_ECHO;
 						helper_remove_ret(op_array, cur TSRMLS_CC);
+						changes++;
+					}
+					break;
+					
+				case ZEND_RETURN:
+					if((opline+1)->opcode == ZEND_RETURN) {
+						delete_op(op_array, cur+1 TSRMLS_CC);
+						end--;
 						changes++;
 					}
 					break;
@@ -718,8 +742,6 @@ int pass_two(zend_op_array *op_array TSRMLS_DC)
 			int is_used = 0;
 			int size = cur * sizeof(temp_variable);
 			for(; opline < end; opline++) {
-				zend_uint type = opline->result.op_type == IS_TMP_VAR;
-				
 				if(((opline->result.op_type == IS_TMP_VAR || opline->result.op_type == IS_VAR) && opline->result.u.var == size) ||
 					((opline->op1.op_type == IS_TMP_VAR || opline->op1.op_type == IS_VAR) && opline->op1.u.var == size) ||
 					((opline->op2.op_type == IS_TMP_VAR || opline->op2.op_type == IS_VAR) && opline->op2.u.var == size)) {
