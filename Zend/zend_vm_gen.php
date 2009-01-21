@@ -701,31 +701,33 @@ function gen_executor_code($f, $spec, $kind, $prolog) {
 		$op1t = $op_types;
 		$op2t = $op_types;
 		
-		// build the spec defines...
-		foreach ($list as $lineno => $dsc) {
-			if (isset($dsc["handler"])) {
-				$num = $dsc["handler"];
-				$val = 0;
-				foreach($opcodes[$num]["op1"] as $t => $bleh) {
-					foreach($typecode as $tt => $v) {
-						if($t === "ANY" || $t === $tt) {
-							$val += (1 << $v);
+		if(ZEND_OP_TYPE_DEFINES) {
+			// build the spec defines...
+			foreach ($list as $lineno => $dsc) {
+				if (isset($dsc["handler"])) {
+					$num = $dsc["handler"];
+					$val = 0;
+					foreach($opcodes[$num]["op1"] as $t => $bleh) {
+						foreach($typecode as $tt => $v) {
+							if($t === "ANY" || $t === $tt) {
+								$val += (1 << $v);
+							}
 						}
 					}
-				}
-				
-				out($f, "#define {$opcodes[$num]['op']}_TYPES_OP1 $val\n");
-				
-				$val = 0;
-				foreach($opcodes[$num]["op2"] as $t => $bleh) {
-					foreach($typecode as $tt => $v) {
-						if($t === "ANY" || $t === $tt) {
-							$val += (1 << $v);
+					
+					out($f, "#define {$opcodes[$num]['op']}_TYPES_OP1 $val\n");
+					
+					$val = 0;
+					foreach($opcodes[$num]["op2"] as $t => $bleh) {
+						foreach($typecode as $tt => $v) {
+							if($t === "ANY" || $t === $tt) {
+								$val += (1 << $v);
+							}
 						}
 					}
+					
+					out($f, "#define {$opcodes[$num]['op']}_TYPES_OP2 $val\n");
 				}
-				
-				out($f, "#define {$opcodes[$num]['op']}_TYPES_OP2 $val\n");
 			}
 		}
 	
@@ -822,27 +824,27 @@ function gen_executor($f, $skl, $spec, $kind, $executor_name, $initializer_name,
 					if (ZEND_VM_OLD_EXECUTOR) {
 						out($f,"static int zend_vm_old_executor = 0;\n\n");
 					}
-					out($f,"static opcode_handler_t zend_vm_get_opcode_handler(zend_uchar opcode, zend_op* op);\n\n");
+					out($f,"static opcode_handler_t zend_vm_get_opcode_handler(zend_uchar opcode, int op1_type, int op2_type);\n\n");
 					switch ($kind) {
 						case ZEND_VM_KIND_CALL:
 							out($f,"\n");
 							out($f,"#define ZEND_VM_CONTINUE()   return 0\n");
 							out($f,"#define ZEND_VM_RETURN()     return 1\n");
-							out($f,"#define ZEND_VM_DISPATCH(opcode, opline) return zend_vm_get_opcode_handler(opcode, opline)(ZEND_OPCODE_HANDLER_ARGS_PASSTHRU);\n\n");
+							out($f,"#define ZEND_VM_DISPATCH(opcode, opline) return zend_vm_get_opcode_handler(opcode, opline->op1.op_type, opline->op2.op_type)(ZEND_OPCODE_HANDLER_ARGS_PASSTHRU);\n\n");
 							out($f,"#define ZEND_OPCODE_HANDLER_ARGS_PASSTHRU_INTERNAL execute_data TSRMLS_CC\n");
 							break;
 						case ZEND_VM_KIND_SWITCH:
 							out($f,"\n");
 							out($f,"#define ZEND_VM_CONTINUE() goto zend_vm_continue\n");
 							out($f,"#define ZEND_VM_RETURN()   return\n");
-							out($f,"#define ZEND_VM_DISPATCH(opcode, opline) dispatch_handler = zend_vm_get_opcode_handler(opcode, opline); goto zend_vm_dispatch;\n\n");
+							out($f,"#define ZEND_VM_DISPATCH(opcode, opline) dispatch_handler = zend_vm_get_opcode_handler(opcode, opline->op1.op_type, opline->op2.op_type); goto zend_vm_dispatch;\n\n");
 							out($f,"#define ZEND_OPCODE_HANDLER_ARGS_PASSTHRU_INTERNAL &execute_data TSRMLS_CC\n");
 							break;
 						case ZEND_VM_KIND_GOTO:
 							out($f,"\n");
 							out($f,"#define ZEND_VM_CONTINUE() goto *(void**)(EX(opline)->handler)\n");
 							out($f,"#define ZEND_VM_RETURN()   return\n");
-							out($f,"#define ZEND_VM_DISPATCH(opcode, opline) goto *(void**)(zend_vm_get_opcode_handler(opcode, opline));\n\n");
+							out($f,"#define ZEND_VM_DISPATCH(opcode, opline) goto *(void**)(zend_vm_get_opcode_handler(opcode, opline->op1.op_type, opline->op2.op_type));\n\n");
 							out($f,"#define ZEND_OPCODE_HANDLER_ARGS_PASSTHRU_INTERNAL &execute_data TSRMLS_CC\n");
 							break;
 					}
@@ -1155,7 +1157,7 @@ function gen_vm($def, $skel) {
 	}
 
 	// Generate zend_vm_get_opcode_handler() function
-	out($f, "static opcode_handler_t zend_vm_get_opcode_handler(zend_uchar opcode, zend_op* op)\n");
+	out($f, "static opcode_handler_t zend_vm_get_opcode_handler(zend_uchar opcode, int op1_type, int op2_type)\n");
 	out($f, "{\n");
 	if (!ZEND_VM_SPEC) {
 		out($f, "\treturn zend_opcode_handlers[opcode];\n");
@@ -1184,7 +1186,44 @@ function gen_vm($def, $skel) {
 		out($f, "\t\t\t_UNUSED_CODE, /* 15             */\n");
 		out($f, "\t\t\t_CV_CODE      /* 16 = IS_CV     */\n");
 		out($f, "\t\t};\n");
-		out($f, "\t\treturn zend_opcode_handlers[opcode * 25 + zend_vm_decode[op->op1.op_type] * 5 + zend_vm_decode[op->op2.op_type]];\n");
+		out($f, "\t\treturn zend_opcode_handlers[opcode * 25 + zend_vm_decode[op1_type] * 5 + zend_vm_decode[op2_type]];\n");
+		if (ZEND_VM_OLD_EXECUTOR) {
+			out($f, "\t}\n");
+		}
+	}
+	out($f, "}\n\n");
+	
+	// Generate zend_is_valid_opcode() function
+	out($f, "ZEND_API int zend_is_valid_opcode(zend_uchar opcode, int op1_type, int op2_type)\n");
+	out($f, "{\n");
+	if (!ZEND_VM_SPEC) {
+		out($f, "\treturn zend_opcode_handlers[opcode] != ZEND_NULL_HANDLER;\n");
+	} else {
+		if (ZEND_VM_OLD_EXECUTOR) {
+			out($f, "\tif (zend_vm_old_executor) {\n");
+			out($f, "\t\treturn zend_opcode_handlers[opcode];\n");
+			out($f, "\t} else {\n");
+		}
+		out($f, "\t\tstatic const int zend_vm_decode[] = {\n");
+		out($f, "\t\t\t_UNUSED_CODE, /* 0              */\n");
+		out($f, "\t\t\t_CONST_CODE,  /* 1 = IS_CONST   */\n");
+		out($f, "\t\t\t_TMP_CODE,    /* 2 = IS_TMP_VAR */\n");
+		out($f, "\t\t\t_UNUSED_CODE, /* 3              */\n");
+		out($f, "\t\t\t_VAR_CODE,    /* 4 = IS_VAR     */\n");
+		out($f, "\t\t\t_UNUSED_CODE, /* 5              */\n");
+		out($f, "\t\t\t_UNUSED_CODE, /* 6              */\n");
+		out($f, "\t\t\t_UNUSED_CODE, /* 7              */\n");
+		out($f, "\t\t\t_UNUSED_CODE, /* 8 = IS_UNUSED  */\n");
+		out($f, "\t\t\t_UNUSED_CODE, /* 9              */\n");
+		out($f, "\t\t\t_UNUSED_CODE, /* 10             */\n");
+		out($f, "\t\t\t_UNUSED_CODE, /* 11             */\n");
+		out($f, "\t\t\t_UNUSED_CODE, /* 12             */\n");
+		out($f, "\t\t\t_UNUSED_CODE, /* 13             */\n");
+		out($f, "\t\t\t_UNUSED_CODE, /* 14             */\n");
+		out($f, "\t\t\t_UNUSED_CODE, /* 15             */\n");
+		out($f, "\t\t\t_CV_CODE      /* 16 = IS_CV     */\n");
+		out($f, "\t\t};\n");
+		out($f, "\t\treturn zend_opcode_handlers[opcode * 25 + zend_vm_decode[op1_type] * 5 + zend_vm_decode[op2_type]] != ZEND_NULL_HANDLER;\n");
 		if (ZEND_VM_OLD_EXECUTOR) {
 			out($f, "\t}\n");
 		}
@@ -1194,7 +1233,7 @@ function gen_vm($def, $skel) {
 	// Generate zend_vm_get_opcode_handler() function
 	out($f, "ZEND_API void zend_vm_set_opcode_handler(zend_op* op)\n");
 	out($f, "{\n");
-	out($f, "\top->handler = zend_vm_get_opcode_handler(zend_user_opcodes[op->opcode], op);\n");
+	out($f, "\top->handler = zend_vm_get_opcode_handler(zend_user_opcodes[op->opcode], op->op1.op_type, op->op2.op_type);\n");
 	out($f, "}\n\n");
 
 	// Export handlers and helpers
@@ -1267,6 +1306,7 @@ function usage() {
 	     "\n  --without-specializer           - disable executor specialization".
 	     "\n  --with-old-executor             - enable old executor".
 	     "\n  --with-lines                    - enable #line directives".
+	     "\n  --with-op-type-defines          - enable op type #defines".
 	     "\n\n");
 }
 
@@ -1298,6 +1338,9 @@ for ($i = 1;  $i < $argc; $i++) {
 	} else if ($argv[$i] == "--with-lines") {
 		// Enabling debuging using original zend_vm_def.h
 		define("ZEND_VM_LINES", 1);
+	} else if ($argv[$i] == "--with-op-type-defines") {
+		// Enabling debuging using original zend_vm_def.h
+		define("ZEND_OP_TYPE_DEFINES", 1);
 	} else if ($argv[$i] == "--help") {
 		usage();
 		exit();
@@ -1324,6 +1367,10 @@ if (!defined("ZEND_VM_OLD_EXECUTOR")) {
 if (!defined("ZEND_VM_LINES")) {
   // Disabling #line directives
 	define("ZEND_VM_LINES", 0);
+}
+if (!defined("ZEND_OP_TYPE_DEFINES")) {
+  // Disabling op type #defines
+	define("ZEND_OP_TYPE_DEFINES", 0);
 }
 
 gen_vm("zend_vm_def.h", "zend_vm_execute.skl");

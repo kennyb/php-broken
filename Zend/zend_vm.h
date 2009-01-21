@@ -23,6 +23,7 @@
 
 ZEND_API void zend_vm_use_old_executor(void);
 ZEND_API void zend_vm_set_opcode_handler(zend_op* opcode);
+ZEND_API int zend_is_valid_opcode(zend_uchar opcode, int op1_type, int op2_type);
 
 #define ZEND_VM_SET_OPCODE_HANDLER(opline) zend_vm_set_opcode_handler(opline)
 
