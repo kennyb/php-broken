@@ -70,6 +70,12 @@ typedef struct _znode {
 
 typedef struct _zend_execute_data zend_execute_data;
 
+#ifndef ZEND_OPCODE_HANDLER_ARGS
+# define ZEND_OPCODE_HANDLER_ARGS zend_execute_data *execute_data TSRMLS_DC
+# define ZEND_OPCODE_HANDLER_ARGS_PASSTHRU execute_data TSRMLS_CC
+#endif
+
+
 typedef int (*opcode_handler_t) (ZEND_OPCODE_HANDLER_ARGS);
 
 extern ZEND_API opcode_handler_t *zend_opcode_handlers;
@@ -567,8 +573,14 @@ int zendlex(znode *zendlval TSRMLS_DC);
 
 /* END: OPCODES */
 
+#ifndef ZEND_OPCODE_HANDLER_ARGS
+# define ZEND_OPCODE_HANDLER_ARGS zend_execute_data *execute_data TSRMLS_DC
+# define ZEND_OPCODE_HANDLER_ARGS_PASSTHRU execute_data TSRMLS_CC
+#endif
 
-
+#ifndef EX
+# define EX(element) execute_data.element
+#endif
 
 /* global/local fetches */
 #define ZEND_FETCH_GLOBAL			0

@@ -30,6 +30,7 @@ static opcode_handler_t zend_vm_get_opcode_handler(zend_uchar opcode, int op1_ty
 #define ZEND_VM_DISPATCH(opcode, opline) return zend_vm_get_opcode_handler(opcode, opline->op1.op_type, opline->op2.op_type)(ZEND_OPCODE_HANDLER_ARGS_PASSTHRU);
 
 #define ZEND_OPCODE_HANDLER_ARGS_PASSTHRU_INTERNAL execute_data TSRMLS_CC
+#undef EX
 #define EX(element) execute_data.element
 #define ZEND_OPCODE_HANDLER_ARGS zend_execute_data *execute_data TSRMLS_DC
 #define ZEND_OPCODE_HANDLER_ARGS_PASSTHRU execute_data TSRMLS_CC

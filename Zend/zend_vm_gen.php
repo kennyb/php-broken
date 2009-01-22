@@ -892,10 +892,11 @@ function gen_executor($f, $skl, $spec, $kind, $executor_name, $initializer_name,
 							//out($f,"#define ZEND_VM_RETURN()   return\n");
 							out($f,"#define ZEND_VM_RETURN()   goto ZEND_RETURN_HANDLER\n");
 							out($f,"#define ZEND_VM_DISPATCH(opcode, opline) goto *(void**)(zend_vm_get_opcode_handler(opcode, opline->op1.op_type, opline->op2.op_type));\n\n");
-							out($f,"#define ZEND_OPCODE_HANDLER_ARGS_PASSTHRU_INTERNAL TSRMLS_CC\n");
+							out($f,"#define ZEND_OPCODE_HANDLER_ARGS_PASSTHRU_INTERNAL execute_data TSRMLS_CC\n");
 							break;
 					}
 					
+					out($f,"#undef EX\n");
 					if($kind == ZEND_VM_KIND_GOTO2) {
 						out($f,"#define EX(element) execute_data->element\n");
 					} else {
