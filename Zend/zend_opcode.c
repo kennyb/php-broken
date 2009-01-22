@@ -367,6 +367,7 @@ inline void delete_znode(znode *node)
 		
 		node->u.var = 0;
 		node->op_type = IS_UNUSED;
+		node->u.EA.type = ZEND_FETCH_LOCAL; /* I think this should be 0, but it tells me I'm leaking memory, so something is wrong */
 	}
 }
 
@@ -416,6 +417,8 @@ int jumps_here(zend_op_array *op_array, zend_uint op_num TSRMLS_DC)
 	return 0;
 }
 
+#define DELETE_OP() delete_op(op_array, cur TSRMLS_CC); end--; changes++; break;
+#define DELETE_ZNODE() delete_znode(&opline->result); changes++; break;
 void delete_op(zend_op_array *op_array, zend_uint op_num TSRMLS_DC)
 {
 	zend_op *opline, *opline_src, *opline_dest, *end;
@@ -439,7 +442,7 @@ void delete_op(zend_op_array *op_array, zend_uint op_num TSRMLS_DC)
 				case ZEND_JMP:
 				case ZEND_BRK:
 				case ZEND_CONT:
-					if(opline->op1.u.opline_num > op_num) {
+					if(opline->op1.u.opline_num >= op_num) {
 						opline->op1.u.opline_num--;
 					}
 				
@@ -448,7 +451,7 @@ void delete_op(zend_op_array *op_array, zend_uint op_num TSRMLS_DC)
 				/* extended + op2 values */
 				case ZEND_JMPZNZ:
 				case ZEND_CATCH:
-					if(opline->extended_value > op_num) {
+					if(opline->extended_value >= op_num) {
 						opline->extended_value--;
 					}
 				
@@ -460,7 +463,7 @@ void delete_op(zend_op_array *op_array, zend_uint op_num TSRMLS_DC)
 				case ZEND_NEW:
 				case ZEND_FE_RESET:
 				case ZEND_FE_FETCH:
-					if(opline->op2.u.opline_num > op_num) {
+					if(opline->op2.u.opline_num >= op_num) {
 						opline->op2.u.opline_num--;
 					}
 				
@@ -520,15 +523,6 @@ int var_change(zend_op_array *op_array, zend_uint old_var, zend_uint new_var, ze
 	}
 }
 
-void helper_remove_ret(zend_op_array *op_array, zend_uint op_num TSRMLS_DC)
-{
-	zend_op* opline = op_array->opcodes + op_num;
-	opline->result.op_type = IS_VAR;
-	opline->result.u.EA.type = ZEND_FETCH_LOCAL; /* I think this should be 0, but it tells me I'm leaking memory, so something is wrong */
-	delete_znode(&opline->result);
-	delete_op(op_array, ++op_num TSRMLS_CC);
-}
-
 int pass_two(zend_op_array *op_array TSRMLS_DC)
 {
 	zend_op *opline, *end;
@@ -566,17 +560,13 @@ int pass_two(zend_op_array *op_array TSRMLS_DC)
 			switch (opline->opcode) {
 				case ZEND_NOP:
 					/* I *hope* these are useless! */
-					delete_op(op_array, cur TSRMLS_CC);
-					changes++;
+					DELETE_OP();
 					break;
 				
 				case ZEND_JMP:
 					/* delete ops that jump to the next line */
 					if(opline->op1.u.opline_num == cur + 1) {
-						delete_op(op_array, cur TSRMLS_CC);
-						end--;
-						changes++;
-						break;
+						DELETE_OP();
 					}
 					
 					/* if we're jumping to a jump, it's silly */
@@ -595,30 +585,38 @@ int pass_two(zend_op_array *op_array TSRMLS_DC)
 #endif
 						next_use = jumps_here(op_array, cur+1 TSRMLS_CC);
 						if(next_use == 0) {
-							delete_op(op_array, cur+1 TSRMLS_CC);
-							end--;
-							changes++;
+							DELETE_OP();
 						}
 					}
 					break;
 				
+				case ZEND_JMPZNZ:
+				case ZEND_CATCH:
+					/* ext don't jump to a jmp */
+					if(op_array->opcodes[opline->extended_value].opcode == ZEND_JMP) {
+						//printf("TRUEE %d %d", opline->extended_value, op_array->opcodes[opline->extended_value].op2.u.opline_num);
+						opline->extended_value = op_array->opcodes[opline->extended_value].op1.u.opline_num;
+						changes++;
+					}
+					
+					goto OP2_JMP;
+					
 				case ZEND_JMPZ:
 				case ZEND_JMPNZ:
 				case ZEND_JMPZ_EX:
 				case ZEND_JMPNZ_EX:
 					/* delete ops that jump to the next line */
 					if(opline->op2.u.opline_num == cur + 1) {
-						delete_op(op_array, cur TSRMLS_CC);
-						end--;
-						changes++;
-						break;
+						DELETE_OP();
 					}
-					
-					/* don't jump to a jmp */
+				
+				case ZEND_FE_RESET:
+				case ZEND_FE_FETCH:
+					OP2_JMP:
+					/* op2 don't jump to a jmp */
 					if(op_array->opcodes[opline->op2.u.opline_num].opcode == ZEND_JMP && opline->op2.u.opline_num != op_array->opcodes[opline->op2.u.opline_num].op1.u.opline_num) {
-						opline->op2.u.opline_num = op_array->opcodes[opline->op2.u.opline_num].op2.u.opline_num;
+						opline->op2.u.opline_num = op_array->opcodes[opline->op2.u.opline_num].op1.u.opline_num;
 						changes++;
-						break;
 					}
 					
 					/* TODO if the following statement is a return, then simply reverse the logic of the jump, and place all the returns at the bottom of the function */
@@ -630,18 +628,14 @@ int pass_two(zend_op_array *op_array TSRMLS_DC)
 					if((opline+1)->op1.u.var == opline->result.u.var) {
 						/* printf("POST_INC-- op_type: %d, u.var %d, EA.type %d\n", opline->result.op_type, opline->result.u.var, opline->result.u.EA.type); */
 						opline->opcode = opline->opcode == ZEND_POST_INC ? ZEND_PRE_INC : ZEND_PRE_DEC;
-						helper_remove_ret(op_array, cur TSRMLS_CC);
-						end--;
-						changes++;
+						DELETE_ZNODE();
 					}
 					break;
 					
 				case ZEND_ECHO:
 					if(opline->op1.op_type == IS_CONST && (opline+1)->opcode == ZEND_ECHO && (opline+1)->op1.op_type == IS_CONST) {
 						concat_function(&opline->op1.u.constant, &opline->op1.u.constant, &(opline+1)->op1.u.constant TSRMLS_CC);
-						delete_op(op_array, cur+1 TSRMLS_CC);
-						end--;
-						changes++;
+						DELETE_OP();
 					}
 					break;
 				
@@ -652,27 +646,25 @@ int pass_two(zend_op_array *op_array TSRMLS_DC)
 						/* delete if variable is not used again */
 						/* delete if the next time the variable is used, it's a re-assignment */
 						if(next_use == 0 || (op_array->opcodes[next_use].opcode == ZEND_ASSIGN && op_array->opcodes[next_use].op1.u.var == opline->op1.u.var)) {
-							delete_op(op_array, cur TSRMLS_CC);
-							changes++;
-							end--;
-							break;
+							DELETE_OP();
 						}
 						
 						if(op_array->opcodes[next_use].op1.u.var == opline->op1.u.var && zend_is_valid_opcode(op_array->opcodes[next_use].opcode, opline->op2.op_type, op_array->opcodes[next_use].op2.op_type)) {
 							op_array->opcodes[next_use].op1 = opline->op2;
-							delete_op(op_array, cur TSRMLS_CC);
-							changes++;
-							end--;
-							break;
+							DELETE_OP();
 						}
 						
 						if(op_array->opcodes[next_use].op2.u.var == opline->op1.u.var && zend_is_valid_opcode(op_array->opcodes[next_use].opcode, op_array->opcodes[next_use].op1.op_type, opline->op2.op_type)) {
 							op_array->opcodes[next_use].op2 = opline->op2;
-							delete_op(op_array, cur TSRMLS_CC);
-							changes++;
-							end--;
-							break;
+							DELETE_OP();
 						}
+					}
+					break;
+				
+				case ZEND_FREE:
+					/* this is probably unnecessary, but I'm totally rayado about these things */
+					if(var_used_again(op_array, 0, &opline->op1) == cur && !var_used_again(op_array, cur, &opline->op1)) {
+						DELETE_OP();
 					}
 					break;
 				
@@ -681,10 +673,8 @@ int pass_two(zend_op_array *op_array TSRMLS_DC)
 					if(next_use && op_array->opcodes[next_use].opcode == ZEND_ECHO) {
 						/* ECHO does not use op2, so it's definitely op1 */
 						opline->opcode = ZEND_ECHO;
-						delete_znode(&opline->result);
 						op_array->opcodes[next_use].op1 = opline->op2;
-						changes++;
-						break;
+						DELETE_ZNODE();
 					}
 				case ZEND_ADD:
 				case ZEND_SUB:
@@ -708,10 +698,7 @@ int pass_two(zend_op_array *op_array TSRMLS_DC)
 				case ZEND_INIT_STRING:
 					next_use = var_used_again(op_array, cur, &opline->result);
 					if(next_use == 0) {
-						delete_op(op_array, cur TSRMLS_CC);
-						changes++;
-						end--;
-						break;
+						DELETE_OP();
 					}
 				
 					if(opline->op1.op_type == IS_CONST && opline->op2.op_type == IS_CONST) {
@@ -787,11 +774,9 @@ int pass_two(zend_op_array *op_array TSRMLS_DC)
 								EMPTY_SWITCH_DEFAULT_CASE()
 							}
 							
+							/* TODO - some type checking to see if it can accept? */
 							*zn = opline->op1;
-							delete_op(op_array, cur TSRMLS_CC);
-							end--;
-							changes++;
-							next_use++;
+							DELETE_OP();
 							break;
 						}
 					}
@@ -801,8 +786,7 @@ int pass_two(zend_op_array *op_array TSRMLS_DC)
 					/* convert all prints without the return value used into echos */
 					if((opline+1)->op1.u.var == opline->result.u.var && (opline+1)->opcode == ZEND_FREE) {
 						opline->opcode = ZEND_ECHO;
-						helper_remove_ret(op_array, cur TSRMLS_CC);
-						changes++;
+						DELETE_ZNODE();
 					}
 					break;
 			}
