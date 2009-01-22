@@ -135,7 +135,11 @@ zend_module_entry php_gettext_module_entry = {
 	NULL,
 	NULL,
 	NULL,
+#if WANT_INI
 	PHP_MINFO(php_gettext),
+#else
+	NULL,
+#endif
 	NO_VERSION_YET,
 	STANDARD_MODULE_PROPERTIES
 };
@@ -144,12 +148,14 @@ zend_module_entry php_gettext_module_entry = {
 ZEND_GET_MODULE(php_gettext)
 #endif
 
+#if WANT_INI
 PHP_MINFO_FUNCTION(php_gettext)
 {
 	php_info_print_table_start();
 	php_info_print_table_row(2, "GetText Support", "enabled");
 	php_info_print_table_end();
 }
+#endif
 
 /* {{{ proto string textdomain(string domain)
    Set the textdomain to "domain". Returns the current domain */
