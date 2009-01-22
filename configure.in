@@ -140,7 +140,7 @@ PHP_ARG_WITH(libdir, for system library directory,
 
 PHP_ARG_ENABLE(rpath, whether to enable runpaths,
 [  --disable-rpath         Disable passing additional runtime library
-                          search paths], yes, no)
+                          search paths], no, no)
 
 dnl check for -R, etc. switch
 PHP_RUNPATH_SWITCH
@@ -935,7 +935,7 @@ fi
 
 PHP_ARG_WITH(pear, [whether to install PEAR],
 [  --with-pear=DIR         Install PEAR in DIR [PREFIX/lib/php]
-  --without-pear          Do not install PEAR], DEFAULT, yes)
+  --without-pear          Do not install PEAR], no, yes) #  --without-pear          Do not install PEAR], DEFAULT, yes)
 
 if test "$PHP_PEAR" != "no"; then
 

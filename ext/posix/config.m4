@@ -3,7 +3,7 @@ dnl $Id: config.m4,v 1.12.4.5 2007/03/01 11:23:54 tony2001 Exp $
 dnl
 
 PHP_ARG_ENABLE(posix,whether to enable POSIX-like functions,
-[  --disable-posix         Disable POSIX-like functions], yes)
+[  --disable-posix         Disable POSIX-like functions], no)
 
 if test "$PHP_POSIX" = "yes"; then
   AC_DEFINE(HAVE_POSIX, 1, [whether to include POSIX-like functions])

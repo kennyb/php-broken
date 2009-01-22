@@ -4,7 +4,7 @@ dnl vim:et:ts=2:sw=2
 
 PHP_ARG_WITH(sqlite, for sqlite support,
 [  --without-sqlite        Do not include sqlite support.  DIR is the sqlite base
-                          install directory [BUNDLED]], yes)
+                          install directory [BUNDLED]], no)
 
 PHP_ARG_ENABLE(sqlite-utf8, whether to enable UTF-8 support in sqlite (default: ISO-8859-1),
 [  --enable-sqlite-utf8      SQLite: Enable UTF-8 support for SQLite], no, no)

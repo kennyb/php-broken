@@ -7,7 +7,7 @@ if test "$PHP_PDO" != "no"; then
 PHP_ARG_WITH(pdo-sqlite, for sqlite 3 support for PDO,
 [  --without-pdo-sqlite[=DIR]
                             PDO: sqlite 3 support.  DIR is the sqlite base
-                            install directory [BUNDLED]], yes)
+                            install directory [BUNDLED]], no)
 
 if test "$PHP_PDO_SQLITE" != "no"; then
 

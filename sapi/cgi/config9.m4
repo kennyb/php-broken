@@ -6,7 +6,7 @@ PHP_ARG_ENABLE(cgi,,
 [  --disable-cgi           Disable building CGI version of PHP], yes, no)
 
 PHP_ARG_ENABLE(fastcgi,,
-[  --enable-fastcgi          CGI: Enable FastCGI support in the CGI binary], no, no)
+[  --enable-fastcgi          CGI: Enable FastCGI support in the CGI binary], yes, no)
 
 PHP_ARG_ENABLE(force-cgi-redirect,,
 [  --enable-force-cgi-redirect
@@ -20,7 +20,7 @@ PHP_ARG_ENABLE(discard-path,,
 
 PHP_ARG_ENABLE(path-info-check,,
 [  --disable-path-info-check CGI: If this is disabled, paths such as
-                            /info.php/test?a=b will fail to work], yes, no)
+                            /info.php/test?a=b will fail to work], no, no)
 
 dnl
 dnl CGI setup

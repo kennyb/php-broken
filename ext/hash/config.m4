@@ -2,7 +2,7 @@ dnl $Id: config.m4,v 1.10.2.4.2.1 2007/07/03 17:25:33 sniper Exp $
 dnl config.m4 for extension hash
 
 PHP_ARG_ENABLE(hash, whether to enable hash support,
-[  --disable-hash          Disable hash support], yes)
+[  --disable-hash          Disable hash support], no)
 
 if test "$PHP_HASH" != "no"; then
   AC_DEFINE(HAVE_HASH_EXT,1,[Have HASH Extension])
