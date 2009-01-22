@@ -2,7 +2,6 @@
 
 ZEND_API void {%EXECUTOR_NAME%}(zend_op_array *op_array TSRMLS_DC)
 {
-	zend_execute_data execute_data;
 	{%HELPER_VARS%}
 
 	{%INTERNAL_LABELS%}
@@ -26,7 +25,7 @@ ZEND_API void {%EXECUTOR_NAME%}(zend_op_array *op_array TSRMLS_DC)
 	EX(original_in_execution) = EG(in_execution);
 	EX(symbol_table) = EG(active_symbol_table);
 	EX(prev_execute_data) = EG(current_execute_data);
-	EG(current_execute_data) = &execute_data;
+	{%EXECUTE_DATA_ASSIGN%}
 
 	EG(in_execution) = 1;
 	if (op_array->start_op) {

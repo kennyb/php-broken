@@ -1402,7 +1402,7 @@ ZEND_API void execute_internal(zend_execute_data *execute_data_ptr, int return_v
 	} \
 	EG(in_execution) = EX(original_in_execution); \
 	EG(current_execute_data) = EX(prev_execute_data); \
-	ZEND_VM_RETURN()
+	ZEND_VM_RETURN();
 
 #include "zend_vm_execute.h"
 

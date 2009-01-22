@@ -70,9 +70,6 @@ typedef struct _znode {
 
 typedef struct _zend_execute_data zend_execute_data;
 
-#define ZEND_OPCODE_HANDLER_ARGS zend_execute_data *execute_data TSRMLS_DC
-#define ZEND_OPCODE_HANDLER_ARGS_PASSTHRU execute_data TSRMLS_CC
-
 typedef int (*opcode_handler_t) (ZEND_OPCODE_HANDLER_ARGS);
 
 extern ZEND_API opcode_handler_t *zend_opcode_handlers;
@@ -304,8 +301,6 @@ struct _zend_execute_data {
 	struct _zend_execute_data *prev_execute_data;
 	zval *old_error_reporting;
 };
-
-#define EX(element) execute_data.element
 
 
 #define IS_CONST	(1<<0)

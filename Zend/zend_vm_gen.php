@@ -53,6 +53,7 @@ error_reporting(E_ALL);
 define("ZEND_VM_KIND_CALL",   1);
 define("ZEND_VM_KIND_SWITCH", 2);
 define("ZEND_VM_KIND_GOTO",   3);
+define("ZEND_VM_KIND_GOTO2",   4);
 
 $op_types = array(
 	"ANY",
@@ -427,6 +428,22 @@ function gen_code($f, $spec, $kind, $code, $op1, $op2) {
 				),
 				$code);
 			break;
+		case ZEND_VM_KIND_GOTO2:
+			$code = preg_replace(
+				array(
+					"/EXECUTE_DATA/m",
+					"/ZEND_VM_DISPATCH_TO_HANDLER\(\s*([A-Z_]*)\s*\)/m",
+					"/ZEND_VM_DISPATCH_TO_HELPER\(\s*([A-Za-z_]*)\s*\)/me",
+					"/ZEND_VM_DISPATCH_TO_HELPER_EX\(\s*([A-Za-z_]*)\s*,\s*([A-Za-z_]*)\s*,\s*(.*)\s*\);/me",
+				),
+				array(
+					"execute_data",
+					"goto \\1".($spec?"_SPEC":"").$prefix[$op1].$prefix[$op2]."_HANDLER",
+					"'goto '.helper_name('\\1',$spec,'$op1','$op2')",
+					"'\\2 = \\3; goto '.helper_name('\\1',$spec,'$op1','$op2').';'",
+				),
+				$code);
+			break;
 	}
 
 	/* Remove unused free_op1 and free_op2 declarations */
@@ -497,6 +514,11 @@ function gen_handler($f, $spec, $kind, $name, $op1, $op2, $use, $code, $lineno) 
 			}
 			break;
 		case ZEND_VM_KIND_GOTO:
+		case ZEND_VM_KIND_GOTO2:
+			if(ZEND_VM_ALIGNMENT) {
+				out($f,"asm(\".align ".ZEND_VM_ALIGNMENT."\");\n");
+			}
+			
 			out($f,$name.($spec?"_SPEC":"").$prefix[$op1].$prefix[$op2]."_HANDLER:\n");
 			break;
 	}
@@ -528,6 +550,7 @@ function gen_helper($f, $spec, $kind, $name, $op1, $op2, $param, $code, $lineno)
 			out($f, $name.($spec?"_SPEC":"").$prefix[$op1].$prefix[$op2].":\n");
 			break;
 		case ZEND_VM_KIND_GOTO:
+		case ZEND_VM_KIND_GOTO2:
 			out($f, $name.($spec?"_SPEC":"").$prefix[$op1].$prefix[$op2].":\n");
 			break;
 	}
@@ -566,6 +589,7 @@ function gen_labels($f, $spec, $kind, $prolog) {
 										out($f,$prolog."(opcode_handler_t)-1,\n");
 										break;
 									case ZEND_VM_KIND_GOTO:
+									case ZEND_VM_KIND_GOTO2:
 										out($f,$prolog."(opcode_handler_t)&&ZEND_NULL_HANDLER,\n");
 										break;
 								}
@@ -604,6 +628,7 @@ function gen_labels($f, $spec, $kind, $prolog) {
 										out($f,$prolog."(opcode_handler_t)".((string)($num*25+$typecode[$op1]*5+$typecode[$op2])).",\n");
 										break;
 									case ZEND_VM_KIND_GOTO:
+									case ZEND_VM_KIND_GOTO2:
 										out($f,$prolog."(opcode_handler_t)&&".$dsc["op"]."_SPEC".$prefix[$op1].$prefix[$op2]."_HANDLER,\n");
 										break;
 								}
@@ -617,6 +642,7 @@ function gen_labels($f, $spec, $kind, $prolog) {
 										out($f,$prolog."(opcode_handler_t)-1,\n");
 										break;
 									case ZEND_VM_KIND_GOTO:
+									case ZEND_VM_KIND_GOTO2:
 										out($f,$prolog."(opcode_handler_t)&&ZEND_NULL_HANDLER,\n");
 										break;
 								}
@@ -642,6 +668,7 @@ function gen_labels($f, $spec, $kind, $prolog) {
 						out($f,$prolog."(opcode_handler_t)-1,\n");
 						break;
 					case ZEND_VM_KIND_GOTO:
+					case ZEND_VM_KIND_GOTO2:
 						out($f,$prolog."(opcode_handler_t)&&ZEND_NULL_HANDLER,\n");
 						break;
 				}
@@ -657,6 +684,7 @@ function gen_labels($f, $spec, $kind, $prolog) {
 					out($f,$prolog."(opcode_handler_t)".((string)$num).",\n");
 					break;
 				case ZEND_VM_KIND_GOTO:
+				case ZEND_VM_KIND_GOTO2:
 					out($f,$prolog."(opcode_handler_t)&&".$dsc["op"]."_HANDLER,\n");
 					break;
 			}
@@ -672,6 +700,7 @@ function gen_labels($f, $spec, $kind, $prolog) {
 			out($f,$prolog."(opcode_handler_t)-1\n");
 			break;
 		case ZEND_VM_KIND_GOTO:
+		case ZEND_VM_KIND_GOTO2:
 			out($f,$prolog."(opcode_handler_t)&&ZEND_NULL_HANDLER\n");
 			break;
 	}
@@ -796,7 +825,17 @@ function gen_executor_code($f, $spec, $kind, $prolog) {
 			out($f,"\tzend_error_noreturn(E_ERROR, \"Invalid opcode %d/%d/%d.\", EX(opline)->opcode, EX(opline)->op1.op_type, EX(opline)->op2.op_type);\n");
 			out($f,"\tZEND_VM_RETURN_FROM_EXECUTE_LOOP();\n");
 			break;
+		case ZEND_VM_KIND_GOTO2:
+			if(ZEND_VM_ALIGNMENT) {
+				out($f,"asm(\".align ".ZEND_VM_ALIGNMENT."\");\n");
+			}
+			
+			out($f,"ZEND_RETURN_HANDLER:\n\treturn;\n");
 		case ZEND_VM_KIND_GOTO:
+			if(ZEND_VM_ALIGNMENT) {
+				out($f,"asm(\".align ".ZEND_VM_ALIGNMENT."\");\n");
+			}
+			
 			out($f,"ZEND_NULL_HANDLER:\n");
 			out($f,"\tzend_error_noreturn(E_ERROR, \"Invalid opcode %d/%d/%d.\", EX(opline)->opcode, EX(opline)->op1.op_type, EX(opline)->op2.op_type);\n");
 			out($f,"\tZEND_VM_RETURN_FROM_EXECUTE_LOOP();\n");
@@ -847,7 +886,25 @@ function gen_executor($f, $skl, $spec, $kind, $executor_name, $initializer_name,
 							out($f,"#define ZEND_VM_DISPATCH(opcode, opline) goto *(void**)(zend_vm_get_opcode_handler(opcode, opline->op1.op_type, opline->op2.op_type));\n\n");
 							out($f,"#define ZEND_OPCODE_HANDLER_ARGS_PASSTHRU_INTERNAL &execute_data TSRMLS_CC\n");
 							break;
+						case ZEND_VM_KIND_GOTO2:
+							out($f,"\n");
+							out($f,"#define ZEND_VM_CONTINUE() goto *(void**)(EX(opline)->handler)\n");
+							//out($f,"#define ZEND_VM_RETURN()   return\n");
+							out($f,"#define ZEND_VM_RETURN()   goto ZEND_RETURN_HANDLER\n");
+							out($f,"#define ZEND_VM_DISPATCH(opcode, opline) goto *(void**)(zend_vm_get_opcode_handler(opcode, opline->op1.op_type, opline->op2.op_type));\n\n");
+							out($f,"#define ZEND_OPCODE_HANDLER_ARGS_PASSTHRU_INTERNAL TSRMLS_CC\n");
+							break;
 					}
+					
+					if($kind == ZEND_VM_KIND_GOTO2) {
+						out($f,"#define EX(element) execute_data->element\n");
+					} else {
+						out($f,"#define EX(element) execute_data.element\n");
+					}
+					
+					out($f,"#define ZEND_OPCODE_HANDLER_ARGS zend_execute_data *execute_data TSRMLS_DC\n");
+					out($f,"#define ZEND_OPCODE_HANDLER_ARGS_PASSTHRU execute_data TSRMLS_CC\n");
+					
 					break;
 				case "EXECUTOR_NAME":
 					out($f, $m[1].$executor_name.$m[3]."\n");
@@ -864,9 +921,14 @@ function gen_executor($f, $skl, $spec, $kind, $executor_name, $initializer_name,
 					} else {
 						skip_blanks($f, $m[1], $m[3]."\n");
 					}
+					if($kind == ZEND_VM_KIND_GOTO2) {
+						out($f, $m[1]."zend_execute_data* execute_data = do_alloca(sizeof(zend_execute_data));\n");
+					} else {
+						out($f, $m[1]."zend_execute_data execute_data;\n");
+					}
 					break;
 				case "INTERNAL_LABELS":
-					if ($kind == ZEND_VM_KIND_GOTO) {
+					if ($kind == ZEND_VM_KIND_GOTO || $kind == ZEND_VM_KIND_GOTO2) {
 					  // Emit array of labels of opcode handlers and code for
 					  // zend_opcode_handlers initialization
 						$prolog = $m[1];
@@ -899,6 +961,7 @@ function gen_executor($f, $skl, $spec, $kind, $executor_name, $initializer_name,
 							out($f, $m[1]."dispatch_handler = EX(opline)->handler;\nzend_vm_dispatch:\n".$m[1]."switch ((int)dispatch_handler)".$m[3]."\n");
 							break;
 						case ZEND_VM_KIND_GOTO:
+						case ZEND_VM_KIND_GOTO2:
 							out($f, $m[1]."goto *(void**)(EX(opline)->handler);".$m[3]."\n");
 							break;
 					}
@@ -924,13 +987,20 @@ function gen_executor($f, $skl, $spec, $kind, $executor_name, $initializer_name,
 						}
 					}
 					break;
+				case "EXECUTE_DATA_ASSIGN":
+					if($kind == ZEND_VM_KIND_GOTO2) {
+						out($f, $m[1]."EG(current_execute_data) = execute_data;".$m[3]."\n");
+					} else {
+						out($f, $m[1]."EG(current_execute_data) = &execute_data;".$m[3]."\n");
+					}
+					break;
 				case "INITIALIZER_NAME":
 					out($f, $m[1].$initializer_name.$m[3]."\n");
 					break;
 				case "EXTERNAL_LABELS":
 				  // Emit code that initializes zend_opcode_handlers array
 					$prolog = $m[1];
-					if ($kind == ZEND_VM_KIND_GOTO) {
+					if ($kind == ZEND_VM_KIND_GOTO || $kind == ZEND_VM_KIND_GOTO2) {
 					  // Labels are defined in the executor itself, so we call it
 					  // with op_array NULL and it sets zend_opcode_handlers array
 						out($f,$prolog."TSRMLS_FETCH();\n");
@@ -1223,7 +1293,13 @@ function gen_vm($def, $skel) {
 		out($f, "\t\t\t_UNUSED_CODE, /* 15             */\n");
 		out($f, "\t\t\t_CV_CODE      /* 16 = IS_CV     */\n");
 		out($f, "\t\t};\n");
-		out($f, "\t\treturn zend_opcode_handlers[opcode * 25 + zend_vm_decode[op1_type] * 5 + zend_vm_decode[op2_type]] != ZEND_NULL_HANDLER;\n");
+		if(ZEND_VM_KIND == ZEND_VM_KIND_CALL) {
+			out($f, "\t\treturn zend_opcode_handlers[opcode * 25 + zend_vm_decode[op1_type] * 5 + zend_vm_decode[op2_type]] != ZEND_NULL_HANDLER;\n");
+		} else if(ZEND_VM_KIND == ZEND_VM_KIND_SWITCH) {
+			out($f, "\t\treturn zend_opcode_handlers[opcode * 25 + zend_vm_decode[op1_type] * 5 + zend_vm_decode[op2_type]] != (opcode_handler_t)-1;\n");
+		} else {
+			out($f, "\t\treturn zend_opcode_handlers[opcode * 25 + zend_vm_decode[op1_type] * 5 + zend_vm_decode[op2_type]] != zend_opcode_handlers[ZEND_ASSIGN_REF * 25 + 1 + 1];\n");
+		}
 		if (ZEND_VM_OLD_EXECUTOR) {
 			out($f, "\t}\n");
 		}
@@ -1324,6 +1400,9 @@ for ($i = 1;  $i < $argc; $i++) {
 			case "GOTO":
 				define("ZEND_VM_KIND", ZEND_VM_KIND_GOTO);
 				break;
+			case "GOTO2":
+				define("ZEND_VM_KIND", ZEND_VM_KIND_GOTO2);
+				break;
 			default:
 				echo("ERROR: Invalid vm kind '$kind'\n");
 				usage();
@@ -1341,6 +1420,9 @@ for ($i = 1;  $i < $argc; $i++) {
 	} else if ($argv[$i] == "--with-op-type-defines") {
 		// Enabling debuging using original zend_vm_def.h
 		define("ZEND_OP_TYPE_DEFINES", 1);
+	} else if (strpos($argv[$i],"--goto-align=") === 0) {
+		// Enabling debuging using original zend_vm_def.h
+		define("ZEND_VM_ALIGNMENT", (int)substr($argv[$i], strlen("--goto-align=")));
 	} else if ($argv[$i] == "--help") {
 		usage();
 		exit();
@@ -1371,6 +1453,10 @@ if (!defined("ZEND_VM_LINES")) {
 if (!defined("ZEND_OP_TYPE_DEFINES")) {
   // Disabling op type #defines
 	define("ZEND_OP_TYPE_DEFINES", 0);
+}
+if (!defined("ZEND_VM_ALIGNMENT")) {
+  // Disabling goto op alignment
+	define("ZEND_VM_ALIGNMENT", 0);
 }
 
 gen_vm("zend_vm_def.h", "zend_vm_execute.skl");
