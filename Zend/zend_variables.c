@@ -60,13 +60,13 @@ ZEND_API void _zval_dtor_func(zval *zvalue ZEND_FILE_LINE_DC)
 				zend_list_delete(zvalue->value.lval);
 			}
 			break;
-		case IS_LONG:
+		/*case IS_LONG:
 		case IS_DOUBLE:
 		case IS_BOOL:
 		case IS_NULL:
 		default:
 			return;
-			break;
+			break;*/
 	}
 }
 
@@ -85,12 +85,12 @@ ZEND_API void _zval_internal_dtor(zval *zvalue ZEND_FILE_LINE_DC)
 		case IS_RESOURCE:
 			zend_error(E_CORE_ERROR, "Internal zval's can't be arrays, objects or resources");
 			break;
-		case IS_LONG:
+		/*case IS_LONG:
 		case IS_DOUBLE:
 		case IS_BOOL:
 		case IS_NULL:
 		default:
-			break;
+			break;*/
 	}
 }
 

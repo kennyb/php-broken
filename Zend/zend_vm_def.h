@@ -883,19 +883,17 @@ ZEND_VM_HANDLER(37, ZEND_POST_DEC, VAR|CV, ANY)
 ZEND_VM_HANDLER(40, ZEND_ECHO, CONST|TMP|VAR|CV, ANY)
 {
 	zend_op *opline = EX(opline);
-	zend_free_op free_op1;
-	zval z_copy;
+	zend_free_op free_op1, free_op2;
+	
 	zval *z = GET_OP1_ZVAL_PTR(BP_VAR_R);
-
-	if (Z_TYPE_P(z) == IS_OBJECT && Z_OBJ_HT_P(z)->get_method != NULL &&
-		zend_std_cast_object_tostring(z, &z_copy, IS_STRING TSRMLS_CC) == SUCCESS) {
-		zend_print_variable(&z_copy);
-		zval_dtor(&z_copy);
-	} else {
+	zend_print_variable(z);
+	if(opline->op2.op_type != IS_UNUSED) {
+		z = GET_OP2_ZVAL_PTR(BP_VAR_R);
 		zend_print_variable(z);
+		FREE_OP2_VAR_PTR();
 	}
-
-	FREE_OP1();
+	
+	FREE_OP1_VAR_PTR();
 	ZEND_VM_NEXT_OPCODE();
 }
 
@@ -2749,58 +2747,66 @@ ZEND_VM_HANDLER(71, ZEND_INIT_ARRAY, CONST|TMP|VAR|UNUSED|CV, CONST|TMP|VAR|UNUS
 	}
 }
 
-ZEND_VM_HANDLER(21, ZEND_CAST, CONST|TMP|VAR|CV, ANY)
+ZEND_VM_HANDLER(21, ZEND_CAST, TMP|VAR|UNUSED|CV, CONST|TMP|VAR|CV)
 {
 	zend_op *opline = EX(opline);
-	zend_free_op free_op1;
-	zval *expr = GET_OP1_ZVAL_PTR(BP_VAR_R);
-	zval *result = &EX_T(opline->result.u.var).tmp_var;
+	zend_free_op free_op2;
+	zval *expr = GET_OP2_ZVAL_PTR(BP_VAR_R);
+	zval *result = &EX_T(opline->op1.u.var).tmp_var;
 
-	if (opline->extended_value != IS_STRING) {
+	if(opline->extended_value != expr->type) {
+		if (opline->extended_value != IS_STRING) {
+			*result = *expr;
+			if (!IS_OP2_TMP_FREE()) {
+				zendi_zval_copy_ctor(*result);
+			}
+		}
+		switch (opline->extended_value) {
+			case IS_NULL:
+				convert_to_null(result);
+				break;
+			case IS_BOOL:
+				convert_to_boolean(result);
+				break;
+			case IS_LONG:
+				convert_to_long(result);
+				break;
+			case IS_DOUBLE:
+				convert_to_double(result);
+				break;
+			case IS_STRING: {
+				zval var_copy;
+				int use_copy;
+
+				zend_make_printable_zval(expr, &var_copy, &use_copy);
+				if (use_copy) {
+					*result = var_copy;
+					if (IS_OP2_TMP_FREE()) {
+						FREE_OP2();
+					}
+				} else {
+					*result = *expr;
+					if (!IS_OP2_TMP_FREE()) {
+						zendi_zval_copy_ctor(*result);
+					}
+				}
+				break;
+			}
+			case IS_ARRAY:
+				convert_to_array(result);
+				break;
+			case IS_OBJECT:
+				convert_to_object(result);
+				break;
+		}
+	} else {
 		*result = *expr;
-		if (!IS_OP1_TMP_FREE()) {
+		if (!IS_OP2_TMP_FREE()) {
 			zendi_zval_copy_ctor(*result);
 		}
 	}
-	switch (opline->extended_value) {
-		case IS_NULL:
-			convert_to_null(result);
-			break;
-		case IS_BOOL:
-			convert_to_boolean(result);
-			break;
-		case IS_LONG:
-			convert_to_long(result);
-			break;
-		case IS_DOUBLE:
-			convert_to_double(result);
-			break;
-		case IS_STRING: {
-			zval var_copy;
-			int use_copy;
-
-			zend_make_printable_zval(expr, &var_copy, &use_copy);
-			if (use_copy) {
-				*result = var_copy;
-				if (IS_OP1_TMP_FREE()) {
-					FREE_OP1();
-				}
-			} else {
-				*result = *expr;
-				if (!IS_OP1_TMP_FREE()) {
-					zendi_zval_copy_ctor(*result);
-				}
-			}
-			break;
-		}
-		case IS_ARRAY:
-			convert_to_array(result);
-			break;
-		case IS_OBJECT:
-			convert_to_object(result);
-			break;
-	}
-	FREE_OP1_IF_VAR();
+	
+	FREE_OP2_IF_VAR();
 	ZEND_VM_NEXT_OPCODE();
 }
 

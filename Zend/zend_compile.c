@@ -982,18 +982,19 @@ void zend_do_add_string(znode *result, znode *op1, znode *op2 TSRMLS_DC)
 {
 	zend_op *opline;
 
-	if (Z_STRLEN(op2->u.constant) > 1) {
+	if (Z_STRLEN(op2->u.constant) > 0) {
 		opline = get_next_op(CG(active_op_array) TSRMLS_CC);
 		opline->opcode = ZEND_ADD_STRING;
-	} else if (Z_STRLEN(op2->u.constant) == 1) {
-		int ch = *Z_STRVAL(op2->u.constant);
-
+	}/* else if (Z_STRLEN(op2->u.constant) == 1) {
+		int ch = *Z_STRVAL(op2->u.constant);*/
+	
 		/* Free memory and use ZEND_ADD_CHAR in case of 1 character strings */
+		/*
 		efree(Z_STRVAL(op2->u.constant));
 		ZVAL_LONG(&op2->u.constant, ch);
 		opline = get_next_op(CG(active_op_array) TSRMLS_CC);
 		opline->opcode = ZEND_ADD_CHAR;
-	} else { /* String can be empty after a variable at the end of a heredoc */
+	}*/ else { /* String can be empty after a variable at the end of a heredoc */
 		efree(Z_STRVAL(op2->u.constant));
 		return;
 	}
@@ -3589,12 +3590,12 @@ void zend_do_cast(znode *result, znode *expr, int type TSRMLS_DC)
 	zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
 
 	opline->opcode = ZEND_CAST;
-	opline->result.op_type = IS_TMP_VAR;
-	opline->result.u.var = get_temporary_variable(CG(active_op_array));
-	opline->op1 = *expr;
-	SET_UNUSED(opline->op2);
+	opline->op1.op_type = IS_TMP_VAR;
+	opline->op1.u.var = get_temporary_variable(CG(active_op_array));
+	opline->op2 = *expr;
+	SET_UNUSED(opline->result);
 	opline->extended_value = type;
-	*result = opline->result;
+	*result = opline->op1;
 }
 
 
