@@ -94,7 +94,7 @@ ZEND_API void execute(zend_op_array *op_array TSRMLS_DC)
 #endif
 
 		if (EX(opline)->handler(&execute_data TSRMLS_CC) > 0) {
-      return;
+			return;
 		}
 
 	}

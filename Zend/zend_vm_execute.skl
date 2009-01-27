@@ -61,7 +61,7 @@ ZEND_API void {%EXECUTOR_NAME%}(zend_op_array *op_array TSRMLS_DC)
 #endif
 
 		{%ZEND_VM_DISPATCH%} {
-      {%INTERNAL_EXECUTOR%}
+			{%INTERNAL_EXECUTOR%}
 		}
 
 	}
