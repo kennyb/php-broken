@@ -502,27 +502,6 @@ int var_used_again(zend_op_array *op_array, zend_uint op_num, znode* zn TSRMLS_D
 	return 0;
 }
 
-int var_change(zend_op_array *op_array, zend_uint old_var, zend_uint new_var, zend_uint type TSRMLS_DC)
-{
-	zend_op *opline, *end;
-	opline = op_array->opcodes;
-	end = opline + op_array->last;
-	
-	for(; opline < end; opline++) {
-		if((opline->result.u.var == old_var && opline->result.op_type == type)) {
-			opline->result.u.var = new_var;
-		}
-		
-		if(opline->op1.u.var == old_var && opline->op1.op_type == type) {
-			opline->op1.u.var = new_var;
-		}
-		
-		if(opline->op2.u.var == old_var && opline->op2.op_type == type) {
-			opline->op2.u.var = new_var;
-		}
-	}
-}
-
 int pass_two(zend_op_array *op_array TSRMLS_DC)
 {
 	zend_op *opline, *end;
@@ -667,10 +646,10 @@ OP2_JMP:
 						
 						/* now, find out how many of these assignments there are... */
 						do {
-							if(!(
-								(op_array->opcodes[next_use].op1.u.var == opline->op1.u.var && zend_is_valid_opcode(op_array->opcodes[next_use].opcode, opline->op2.op_type, op_array->opcodes[next_use].op2.op_type)) ||
-								(op_array->opcodes[next_use].op2.u.var == opline->op1.u.var && zend_is_valid_opcode(op_array->opcodes[next_use].opcode, op_array->opcodes[next_use].op1.op_type, opline->op2.op_type))
-							)) {
+							if(
+								(op_array->opcodes[next_use].op1.u.var == opline->op1.u.var && !zend_is_valid_opcode(op_array->opcodes[next_use].opcode, opline->op2.op_type, op_array->opcodes[next_use].op2.op_type)) ||
+								(op_array->opcodes[next_use].op2.u.var == opline->op1.u.var && !zend_is_valid_opcode(op_array->opcodes[next_use].opcode, op_array->opcodes[next_use].op1.op_type, opline->op2.op_type))
+							) {
 								/* we must use this opcode, because there are some opcode that can't use the op2 value */
 								goto PHASE1_CONTINUE;
 							}
@@ -694,6 +673,37 @@ OP2_JMP:
 					}
 					break;
 				
+				case ZEND_INIT_STRING:
+					next_use = var_used_again(op_array, cur, &opline->result);
+					if(next_use == 0) {
+						printf("#%d -- removing unused INIT_STRING\n", cur);
+						DELETE_OP(cur);
+					} else {
+						do {
+							next_use = var_used_again(op_array, next_use, &opline->result);
+						} while(next_use != 0 && op_array->opcodes[next_use].result.u.var == opline->result.u.var);
+						
+						zend_op* opline2 = &op_array->opcodes[next_use];
+						if(opline2->opcode == ZEND_ECHO) {
+							if(opline2->op1.u.var == opline->result.u.var && var_used_again(op_array, next_use, &opline->result) == 0) {
+								next_use = var_used_again(op_array, cur, &opline->result);
+								while(1) {
+									opline2 = &op_array->opcodes[next_use];
+									if(opline2->opcode == ZEND_ECHO) {
+										printf("#%d -- converted echoed string to series of ECHOs\n", cur);
+										DELETE_OP(next_use);
+									}
+									
+									opline2->opcode = ZEND_ECHO;
+									opline2->op1 = opline2->op2;
+									delete_znode(&opline2->result);
+									next_use = var_used_again(op_array, next_use, &opline->result);
+								}
+							}
+						}
+					}
+					break;
+					
 				case ZEND_FREE:
 					/* this is probably unnecessary, but I'm totally rayado about these things */
 					if(var_used_again(op_array, 0, &opline->op1) == cur && !var_used_again(op_array, cur, &opline->op1)) {
@@ -730,7 +740,6 @@ OP2_JMP:
 				case ZEND_BOOL_XOR:
 				
 				case ZEND_INIT_ARRAY:
-				case ZEND_INIT_STRING:
 					next_use = var_used_again(op_array, cur, &opline->result);
 					if(next_use == 0) {
 						printf("#%d -- Delete operation assigned to a variable not used again\n", cur);
@@ -839,6 +848,8 @@ PHASE1_CONTINUE: {}
 		printf("# ops (after): %d\n", op_array->last);
 	}
 
+	/* goto no_optimize; //*/
+	
 	/* optimization pass 2 - shift all unused tmp variables down and free their memory */
 	printf("# tmp vars (before): %d\n", op_array->T);
 	optimize2: {
@@ -849,9 +860,11 @@ PHASE1_CONTINUE: {}
 			int is_used = 0;
 			int size = cur * sizeof(temp_variable);
 			for(; opline < end; opline++) {
-				if(((opline->result.op_type == IS_TMP_VAR || opline->result.op_type == IS_VAR) && opline->result.u.var == size) ||
+				if(
+					((opline->result.op_type == IS_TMP_VAR || opline->result.op_type == IS_VAR) && opline->result.u.var == size) ||
 					((opline->op1.op_type == IS_TMP_VAR || opline->op1.op_type == IS_VAR) && opline->op1.u.var == size) ||
-					((opline->op2.op_type == IS_TMP_VAR || opline->op2.op_type == IS_VAR) && opline->op2.u.var == size)) {
+					((opline->op2.op_type == IS_TMP_VAR || opline->op2.op_type == IS_VAR) && opline->op2.u.var == size)
+				) {						
 					is_used = 1;
 					break;
 				}

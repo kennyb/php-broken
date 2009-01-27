@@ -281,18 +281,25 @@ ZEND_API int zend_print_zval_ex(zend_write_func_t write_func, zval *expr)
 	zval expr_copy;
 	int use_copy;
 
-	zend_make_printable_zval(expr, &expr_copy, &use_copy);
-	if (use_copy) {
-		expr = &expr_copy;
+	if(expr->type == IS_STRING) {
+		if(expr->value.str.len!=0) {
+			write_func(expr->value.str.val, expr->value.str.len);
+		}
+	} else {
+		zend_make_printable_zval(expr, &expr_copy, &use_copy);
+		if (use_copy) {
+			expr = &expr_copy;
+		}
+		
+		if (expr->value.str.len!=0) { /* optimize away empty strings */
+			write_func(expr->value.str.val, expr->value.str.len);
+		}
+		
+		if (use_copy) {
+			zval_dtor(expr);
+		}
 	}
 	
-	if (expr->value.str.len!=0) { /* optimize away empty strings */
-		write_func(expr->value.str.val, expr->value.str.len);
-	}
-	
-	if (use_copy) {
-		zval_dtor(expr);
-	}
 	return expr->value.str.len;
 }
 

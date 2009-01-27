@@ -22,6 +22,7 @@
 #ifndef ZEND_VARIABLES_H
 #define ZEND_VARIABLES_H
 
+#define zend_print_variable(var) zend_print_zval(var)
 
 BEGIN_EXTERN_C()
 

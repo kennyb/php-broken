@@ -488,12 +488,6 @@ void zend_do_print(znode *result, znode *arg TSRMLS_DC)
 
 void zend_do_echo(znode *arg TSRMLS_DC)
 {
-	/* we don't want to echo nothing */
-	if(Z_STRLEN(arg->u.constant) == 0) {
-		zval_dtor(&(arg->u.constant));
-		return;
-	}
-	
 	zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
 
 	opline->opcode = ZEND_ECHO;
