@@ -199,6 +199,7 @@ static int zend_do_fcall_common_helper_SPEC(ZEND_OPCODE_HANDLER_ARGS)
 				arg_count--;
 			}
 		}
+
 		if (!zend_execute_internal) {
 			/* saves one function call if zend_execute_internal is not used */
 			((zend_internal_function *) EX(function_state).function)->handler(opline->extended_value, EX_T(opline->result.u.var).var.ptr, EX(function_state).function->common.return_reference?&EX_T(opline->result.u.var).var.ptr:NULL, EX(object), return_value_used TSRMLS_CC);
@@ -1668,15 +1669,76 @@ static int ZEND_JMPNZ_EX_SPEC_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 static int ZEND_DO_FCALL_SPEC_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 {
 	zend_op *opline = EX(opline);
+	if(opline->op2.op_type == IS_UNUSED) {
 
-	zval *fname = &opline->op1.u.constant;
+		zval *fname = &opline->op1.u.constant;
 
-	zend_ptr_stack_3_push(&EG(arg_types_stack), EX(fbc), EX(object), NULL);
+		zend_ptr_stack_3_push(&EG(arg_types_stack), EX(fbc), EX(object), NULL);
 
-	if (zend_hash_find(EG(function_table), fname->value.str.val, fname->value.str.len+1, (void **) &EX(function_state).function)==FAILURE) {
-		zend_error_noreturn(E_ERROR, "Call to undefined function %s()", fname->value.str.val);
+		if (zend_hash_find(EG(function_table), fname->value.str.val, fname->value.str.len+1, (void **) &EX(function_state).function)==FAILURE) {
+			zend_error_noreturn(E_ERROR, "Call to undefined function %s()", fname->value.str.val);
+		}
+		EX(object) = NULL;
+
+	} else {
+		int return_value_used = RETURN_VALUE_USED(opline);
+		zend_function* func = (zend_function*) opline->op2.u.function;
+		unsigned char return_reference = func->common.return_reference;
+		zend_op *ctor_opline;
+
+
+		zend_ptr_stack_3_push(&EG(arg_types_stack), EX(fbc), EX(object), NULL);
+		//EX(function_state).function = (zend_function*) opline->op2.u.function; /* unneded? */
+
+
+		zend_ptr_stack_2_push(&EG(argument_stack), (void *)(zend_uintptr_t)opline->extended_value, NULL);
+
+		EX_T(opline->result.u.var).var.ptr_ptr = &EX_T(opline->result.u.var).var.ptr;
+		EX_T(opline->result.u.var).var.fcall_returned_reference = 0;
+
+		ALLOC_ZVAL(EX_T(opline->result.u.var).var.ptr);
+		INIT_ZVAL(*(EX_T(opline->result.u.var).var.ptr));
+
+		/*
+		if(func->common.arg_info) {
+			zend_uint i=0;
+			zval **p;
+			ulong arg_count;
+
+			p = (zval **) EG(argument_stack).top_element-2;
+			arg_count = (ulong)(zend_uintptr_t) *p;
+
+			while (arg_count>0) {
+				zend_verify_arg_type(func, ++i, *(p-arg_count) TSRMLS_CC);
+				arg_count--;
+			}
+		}*/
+
+		((zend_internal_function *) func)->handler(opline->extended_value, EX_T(opline->result.u.var).var.ptr, func->common.return_reference?&EX_T(opline->result.u.var).var.ptr:NULL, EX(object), return_value_used TSRMLS_CC);
+		EG(current_execute_data) = execute_data;
+
+		if (!return_value_used) {
+			zval_ptr_dtor(&EX_T(opline->result.u.var).var.ptr);
+		} else {
+			EX_T(opline->result.u.var).var.fcall_returned_reference = return_reference;
+		}
+
+		EX(function_state).function = (zend_function *) EX(op_array);
+		EG(function_state_ptr) = &EX(function_state);
+		ctor_opline = (zend_op*)zend_ptr_stack_pop(&EG(arg_types_stack));
+		zend_ptr_stack_2_pop(&EG(arg_types_stack), (void**)&EX(object), (void**)&EX(fbc));
+
+		zend_ptr_stack_clear_multiple(TSRMLS_C);
+
+		if (EG(exception)) {
+			zend_throw_exception_internal(NULL TSRMLS_CC);
+			if (return_value_used && EX_T(opline->result.u.var).var.ptr) {
+				zval_ptr_dtor(&EX_T(opline->result.u.var).var.ptr);
+			}
+		}
+
+		ZEND_VM_NEXT_OPCODE();
 	}
-	EX(object) = NULL;
 
 	return zend_do_fcall_common_helper_SPEC(ZEND_OPCODE_HANDLER_ARGS_PASSTHRU);
 }

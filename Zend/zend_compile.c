@@ -1556,21 +1556,39 @@ void zend_do_end_function_call(znode *function_name, znode *result, znode *argum
 			zend_error(E_WARNING, "Clone method does not require arguments");
 		}
 		opline = &CG(active_op_array)->opcodes[Z_LVAL(function_name->u.constant)];
+		SET_UNUSED(opline->op2);
 	} else {
 		opline = get_next_op(CG(active_op_array) TSRMLS_CC);
+		SET_UNUSED(opline->op1);
 		if (!is_method && !is_dynamic_fcall && function_name->op_type==IS_CONST) {
 			opline->opcode = ZEND_DO_FCALL;
 			opline->op1 = *function_name;
+			/* pre-lookup the function name to save time */
+			zval* fname = &function_name->u.constant;
+			/*
+			if (do_bind_function(opline, CG(function_table), 1) == FAILURE) {
+				return;
+			}
+			table = CG(function_table);*/
+			zend_function *function;
+			//zend_hash_find(function_table, opline->op1.u.constant.value.str.val, opline->op1.u.constant.value.str.len, (void *) &function);
+			
+			if(zend_hash_find(CG(function_table), fname->value.str.val, fname->value.str.len+1, (void *) &opline->op2.u.function)==FAILURE) {
+				zend_error_noreturn(E_COMPILE_ERROR, "Call to undefined function %s()", fname->value.str.val);
+			}
+			
+			//if((zend_function*)((opline)->op2.u.function)->type != ZEND_INTERNAL_FUNCTION) {
+			//	SET_UNUSED(opline->op2);
+			//}
 		} else {
 			opline->opcode = ZEND_DO_FCALL_BY_NAME;
-			SET_UNUSED(opline->op1);
 		}
 	}
 
 	opline->result.u.var = get_temporary_variable(CG(active_op_array));
 	opline->result.op_type = IS_VAR;
 	*result = opline->result;
-	SET_UNUSED(opline->op2);
+	
 
 	zend_stack_del_top(&CG(function_call_stack));
 	opline->extended_value = Z_LVAL(argument_list->u.constant);

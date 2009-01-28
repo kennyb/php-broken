@@ -61,6 +61,7 @@ typedef struct _znode {
 		zend_uint opline_num; /*  Needs to be signed */
 		zend_op_array *op_array;
 		zend_op *jmp_addr;
+		union zend_function *function;
 		struct {
 			zend_uint var;	/* dummy */
 			zend_uint type;
