@@ -281,6 +281,7 @@ ZEND_API double zend_string_to_double(const char *number, zend_uint length);
 ZEND_API int zval_is_true(zval *op);
 ZEND_API int compare_function(zval *result, zval *op1, zval *op2 TSRMLS_DC);
 ZEND_API int numeric_compare_function(zval *result, zval *op1, zval *op2 TSRMLS_DC);
+ZEND_API int typesafe_compare_function(zval *result, zval *op1, zval *op2 TSRMLS_DC);
 ZEND_API int string_compare_function(zval *result, zval *op1, zval *op2 TSRMLS_DC);
 #if HAVE_STRCOLL
 ZEND_API int string_locale_compare_function(zval *result, zval *op1, zval *op2 TSRMLS_DC);

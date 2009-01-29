@@ -64,6 +64,7 @@
 #define SORT_REGULAR			0
 #define SORT_NUMERIC			1
 #define	SORT_STRING				2
+#define SORT_GENERIC			4
 #define	SORT_LOCALE_STRING      5
 
 #define SORT_DESC				3
@@ -120,6 +121,7 @@ PHP_MINIT_FUNCTION(array) /* {{{ */
 	REGISTER_LONG_CONSTANT("SORT_DESC", SORT_DESC, CONST_CS | CONST_PERSISTENT);
 
 	REGISTER_LONG_CONSTANT("SORT_REGULAR", SORT_REGULAR, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("SORT_GENERIC", SORT_GENERIC, CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("SORT_NUMERIC", SORT_NUMERIC, CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("SORT_STRING", SORT_STRING, CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("SORT_LOCALE_STRING", SORT_LOCALE_STRING, CONST_CS | CONST_PERSISTENT);
@@ -158,9 +160,13 @@ static void set_compare_func(int sort_type TSRMLS_DC) /* {{{ */
 			break;
 #endif
 
-		case SORT_REGULAR:
-		default:
+		case SORT_GENERIC:
 			ARRAYG(compare_func) = compare_function;
+			break;
+		
+		default:
+		case SORT_REGULAR:
+			ARRAYG(compare_func) = typesafe_compare_function;
 			break;
 	}
 }
@@ -2894,7 +2900,7 @@ static int zval_compare(zval **a, zval **b TSRMLS_DC) /* {{{ */
 	first = *((zval **) a);
 	second = *((zval **) b);
 
-	if (string_compare_function(&result, first, second TSRMLS_CC) == FAILURE) {
+	if (typesafe_compare_function(&result, first, second TSRMLS_CC) == FAILURE) {
 		return 0;
 	} 
 

@@ -1350,6 +1350,86 @@ ZEND_API int compare_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
 }
 
 
+static int hash_zval_typesafe_compare_function(const zval **z1, const zval **z2)
+{
+	zval result;
+	TSRMLS_FETCH();
+
+	/* typesafe_compare_function() returns 1 in case of identity and 0 in case
+	 * of a difference;
+	 * whereas this comparison function is expected to return 0 on identity,
+	 * and non zero otherwise.
+	 */
+	if (typesafe_compare_function(&result, (zval *) *z1, (zval *) *z2 TSRMLS_CC)==FAILURE) {
+		return 1;
+	}
+	return !result.value.lval;
+}
+
+
+ZEND_API int typesafe_compare_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
+{
+	result->type = IS_LONG;
+	result->value.lval = 0;
+	if (op1->type != op2->type) {
+		if((op1->type == IS_DOUBLE || op1->type == IS_LONG) && (op2->type == IS_DOUBLE || op2->type == IS_LONG)) {
+			zval op1_copy, op2_copy;
+
+			op1_copy = *op1;
+			zval_copy_ctor(&op1_copy);
+
+			op2_copy = *op2;
+			zval_copy_ctor(&op2_copy);
+
+			convert_to_double(&op1_copy);
+			convert_to_double(&op2_copy);
+			
+			op1 = &op1_copy;
+			op2 = &op2_copy;
+		} else {
+			return SUCCESS;
+		}
+	}
+	switch (op1->type) {
+		case IS_NULL:
+			result->value.lval = (op2->type==IS_NULL);
+			break;
+		case IS_BOOL:
+		case IS_LONG:
+		case IS_RESOURCE:
+			result->value.lval = (op1->value.lval - op2->value.lval);
+			break;
+		case IS_DOUBLE:
+			result->value.lval = (op1->value.dval - op2->value.dval);
+			break;
+		case IS_STRING:
+			if (op1->value.str.len != op2->value.str.len) {
+				result->value.lval = zend_binary_zval_strcmp(op1, op2);
+			}
+			break;
+		case IS_ARRAY:
+			result->value.lval = zend_hash_compare(op1->value.ht, op2->value.ht, (compare_func_t) hash_zval_typesafe_compare_function, 1 TSRMLS_CC);
+			break;
+		case IS_OBJECT:
+			if (Z_OBJ_HT_P(op1) == Z_OBJ_HT_P(op2)) {
+				if (EG(ze1_compatibility_mode)) {
+					zend_compare_objects(result, op1, op2 TSRMLS_CC);
+					/* comparison returns 0 in case of equality and
+					 * 1 in case of ineqaulity, we need to reverse it
+					 */
+					result->value.lval = !result->value.lval;
+				} else {
+					result->value.lval = (Z_OBJ_HANDLE_P(op1) - Z_OBJ_HANDLE_P(op2));
+				}
+			}
+			break;
+		default:
+			return FAILURE;
+	}
+	return SUCCESS;
+}
+
+
 static int hash_zval_identical_function(const zval **z1, const zval **z2)
 {
 	zval result;
