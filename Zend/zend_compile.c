@@ -3619,19 +3619,18 @@ void zend_do_cast(znode *result, znode *expr, int type TSRMLS_DC)
 
 void zend_do_include_or_eval(int type, znode *result, znode *op1 TSRMLS_DC)
 {
-	zend_do_extended_fcall_begin(TSRMLS_C);
-	{
-		zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
-
-		opline->opcode = ZEND_INCLUDE_OR_EVAL;
-		opline->result.op_type = IS_VAR;
-		opline->result.u.var = get_temporary_variable(CG(active_op_array));
-		opline->op1 = *op1;
-		SET_UNUSED(opline->op2);
-		Z_LVAL(opline->op2.u.constant) = type;
-		*result = opline->result;
+	switch(type) {
+		case ZEND_EVAL:
+		case ZEND_INCLUDE_ONCE:
+		case ZEND_REQUIRE_ONCE:
+			zend_error(E_COMPILE_ERROR, "sorry, at the moment, eval and include_once are not supported");
+			zend_bailout();
+	
+		case ZEND_INCLUDE:
+		case ZEND_REQUIRE:
+			compile_inline_filename(&op1->u.constant TSRMLS_CC);
+		EMPTY_SWITCH_DEFAULT_CASE()
 	}
-	zend_do_extended_fcall_end(TSRMLS_C);
 }
 
 
