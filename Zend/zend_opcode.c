@@ -703,6 +703,14 @@ REASSIGN_VARS:
 						DELETE_OP(cur-1); goto PHASE1_CONTINUE;
 					}
 					break;
+				
+				case ZEND_INIT_ARRAY:
+					next_use = var_used_again(op_array, cur, &opline->result);
+					if(next_use == 0) {
+						printf("#%d -- Delete operation assigned to a variable not used again\n", cur);
+						DELETE_OP(cur); goto PHASE1_CONTINUE;
+					}
+					break;
 					
 				case ZEND_INIT_STRING:
 					next_use = var_used_again(op_array, cur, &opline->result);
@@ -792,8 +800,6 @@ REASSIGN_VARS:
 				case ZEND_BW_AND:
 				case ZEND_BW_XOR:
 				case ZEND_BOOL_XOR:
-				
-				case ZEND_INIT_ARRAY:
 					next_use = var_used_again(op_array, cur, &opline->result);
 					if(next_use == 0) {
 						printf("#%d -- Delete operation assigned to a variable not used again\n", cur);
