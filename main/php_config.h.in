@@ -2846,6 +2846,9 @@
 /*   */
 #undef ZEND_MM_ALIGNMENT_LOG2
 
+/*  Initial size of the opcode array */
+#undef INITIAL_OP_ARRAY_SIZE
+
 /* Define if the target system has support for memory allocation using mmap(MAP_ANON) */
 #undef HAVE_MEM_MMAP_ANON
 

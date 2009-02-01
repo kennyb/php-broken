@@ -129,7 +129,7 @@ AC_ARG_WITH(zend-vm,
   PHP_ZEND_VM=CALL
 ])
 
-AC_ARG_ENABLE(maintainer-zts,
+AC_ARG_ENABLE(interactive-mode,
 [  --enable-interactive-mode Enable comandline interactive mode!!],[
   ZEND_INTERACTIVE_MODE=$enableval
 ],[
@@ -151,6 +151,16 @@ AC_ARG_ENABLE(inline-optimization,
   ZEND_INLINE_OPTIMIZATION=yes
 ])
 
+AC_ARG_WITH(prealloc-opcodes,
+[  --with-prealloc-opcodes=NUM
+                          if you would like to preallocate to reduce memory operations ],[
+  ZEND_OPCODE_PREALLOC=$withval
+  AC_DEFINE_UNQUOTED(INITIAL_OP_ARRAY_SIZE, $ZEND_OPCODE_PREALLOC, [ ])
+],[
+  ZEND_OPCODE_PREALLOC=64
+  AC_DEFINE_UNQUOTED(INITIAL_OP_ARRAY_SIZE, 64, [ ])
+])
+
 AC_ARG_ENABLE(zend-multibyte,
 [  --enable-zend-multibyte Compile with zend multibyte support], [
   ZEND_MULTIBYTE=$enableval
@@ -160,6 +170,9 @@ AC_ARG_ENABLE(zend-multibyte,
 
 AC_MSG_CHECKING([virtual machine dispatch method])
 AC_MSG_RESULT($PHP_ZEND_VM)
+
+AC_MSG_CHECKING(opcode prealloc setting)
+AC_MSG_RESULT($ZEND_OPCODE_PREALLOC)
 
 AC_MSG_CHECKING(whether to enable interactive mode)
 AC_MSG_RESULT($ZEND_INTERACTIVE_MODE)

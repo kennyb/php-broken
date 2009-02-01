@@ -514,8 +514,6 @@ void zend_do_abstract_method(znode *function_name, znode *modifiers, znode *body
 
 ZEND_API void function_add_ref(zend_function *function);
 
-#define INITIAL_OP_ARRAY_SIZE 64
-
 
 /* helper functions in zend_language_scanner.l */
 ZEND_API zend_op_array *compile_file(zend_file_handle *file_handle, int type TSRMLS_DC);
