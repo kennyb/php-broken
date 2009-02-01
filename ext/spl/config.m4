@@ -2,7 +2,7 @@ dnl $Id: config.m4,v 1.13.2.4.2.3 2006/12/04 18:01:53 tony2001 Exp $
 dnl config.m4 for extension SPL
 
 PHP_ARG_ENABLE(spl, enable SPL suppport,
-[  --disable-spl           Disable Standard PHP Library], no)
+[  --enable-spl           Enable Standard PHP Library], no)
 
 if test "$PHP_SPL" != "no"; then
   AC_MSG_CHECKING(whether zend_object_value is packed)

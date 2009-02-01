@@ -2846,6 +2846,12 @@
 /*   */
 #undef ZEND_MM_ALIGNMENT_LOG2
 
+/*  strict debugging for opcode compilation (turn this off on production servers)  */
+#undef STRICT_DEBUG
+
+/*  want interactive mode */
+#undef WANT_INTERACTIVE
+
 /*  Initial size of the opcode array */
 #undef INITIAL_OP_ARRAY_SIZE
 

@@ -3,7 +3,7 @@ dnl $Id: config.m4,v 1.3.2.2 2005/12/17 15:40:37 helly Exp $
 dnl
 
 PHP_ARG_ENABLE(xmlreader, whether to enable XMLReader support,
-[  --disable-xmlreader     Disable XMLReader support], no)
+[  --enable-xmlreader     Enable XMLReader support], no)
 
 if test -z "$PHP_LIBXML_DIR"; then
   PHP_ARG_WITH(libxml-dir, libxml2 install dir,

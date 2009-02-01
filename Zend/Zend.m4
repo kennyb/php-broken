@@ -129,8 +129,15 @@ AC_ARG_WITH(zend-vm,
   PHP_ZEND_VM=CALL
 ])
 
+AC_ARG_ENABLE(detailed-errors,
+[  --enable-detailed-errors Enable detailed opcode compile errors],[
+  ZEND_DETAILED_ERRORS=$enableval
+],[
+  ZEND_DETAILED_ERRORS=no
+])
+
 AC_ARG_ENABLE(interactive-mode,
-[  --enable-interactive-mode Enable comandline interactive mode!!],[
+[  --enable-interactive-mode Enable comandline interactive mode],[
   ZEND_INTERACTIVE_MODE=$enableval
 ],[
   ZEND_INTERACTIVE_MODE=no
@@ -153,12 +160,10 @@ AC_ARG_ENABLE(inline-optimization,
 
 AC_ARG_WITH(prealloc-opcodes,
 [  --with-prealloc-opcodes=NUM
-                          if you would like to preallocate to reduce memory operations ],[
-  ZEND_OPCODE_PREALLOC=$withval
-  AC_DEFINE_UNQUOTED(INITIAL_OP_ARRAY_SIZE, $ZEND_OPCODE_PREALLOC, [ ])
+                          if you would like to preallocate more or less to reduce memory operations ],[
+  ZEND_PREALLOC_OPCODES=$withval
 ],[
-  ZEND_OPCODE_PREALLOC=64
-  AC_DEFINE_UNQUOTED(INITIAL_OP_ARRAY_SIZE, 64, [ ])
+  ZEND_PREALLOC_OPCODES=64
 ])
 
 AC_ARG_ENABLE(zend-multibyte,
@@ -167,6 +172,9 @@ AC_ARG_ENABLE(zend-multibyte,
 ],[
   ZEND_MULTIBYTE=no
 ])
+
+AC_DEFINE_UNQUOTED(INITIAL_OP_ARRAY_SIZE, $ZEND_PREALLOC_OPCODES, [ ])
+AC_DEFINE_UNQUOTED(DETAILED_ERRORS, $ZEND_DETAILED_ERRORS, [ ])
 
 AC_MSG_CHECKING([virtual machine dispatch method])
 AC_MSG_RESULT($PHP_ZEND_VM)

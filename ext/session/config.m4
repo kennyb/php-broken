@@ -3,7 +3,7 @@ dnl $Id: config.m4,v 1.28 2005/05/29 23:16:44 sniper Exp $
 dnl
 
 PHP_ARG_ENABLE(session, whether to enable PHP sessions,
-[  --disable-session       Disable session support], no)
+[  --enable-session       Enable session support], no)
 
 PHP_ARG_WITH(mm,for mm support,
 [  --with-mm[=DIR]           SESSION: Include mm support for session storage], no, no)

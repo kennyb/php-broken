@@ -2,7 +2,7 @@ dnl $Id: config.m4,v 1.9.2.1 2005/10/01 15:41:37 helly Exp $
 dnl config.m4 for extension simplexml
 
 PHP_ARG_ENABLE(simplexml, whether to enable SimpleXML support,
-[  --disable-simplexml     Disable SimpleXML support], no)
+[  --enable-simplexml     Enable SimpleXML support], no)
 
 if test -z "$PHP_LIBXML_DIR"; then
   PHP_ARG_WITH(libxml-dir, libxml2 install dir,

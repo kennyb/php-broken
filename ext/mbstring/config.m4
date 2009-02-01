@@ -277,14 +277,14 @@ dnl Main config
 dnl
 
 PHP_ARG_ENABLE(mbstring, whether to enable multibyte string support,
-[  --enable-mbstring       Enable multibyte string support], yes, yes)
+[  --disable-mbstring       Disable multibyte string support], yes, yes)
 
 PHP_ARG_ENABLE([mbregex], [whether to enable multibyte regex support],
 [  --disable-mbregex         MBSTRING: Disable multibyte regex support], yes, no)
 
 PHP_ARG_ENABLE([mbregex_backtrack], [whether to check multibyte regex backtrack],
-[  --disable-mbregex-backtrack
-                            MBSTRING: Disable multibyte regex backtrack check], no, no)
+[  --enable-mbregex-backtrack
+                            MBSTRING: Enable multibyte regex backtrack check], no, no)
 
 PHP_ARG_WITH(libmbfl, [for external libmbfl],
 [  --with-libmbfl[=DIR]      MBSTRING: Use external libmbfl.  DIR is the libmbfl base

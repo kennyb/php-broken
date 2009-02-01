@@ -139,7 +139,7 @@ PHP_ARG_WITH(libdir, for system library directory,
 [  --with-libdir=NAME      Look for libraries in .../NAME rather than .../lib],lib,no)
 
 PHP_ARG_ENABLE(rpath, whether to enable runpaths,
-[  --disable-rpath         Disable passing additional runtime library
+[  --enable-rpath         Enable passing additional runtime library
                           search paths], no, no)
 
 dnl check for -R, etc. switch

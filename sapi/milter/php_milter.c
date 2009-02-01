@@ -897,7 +897,9 @@ static void php_milter_usage(char *argv0)
 	printf(     "Usage: %s [options] [-f] <file> [args...]\n"
 	            "       %s [options] -r <code> [args...]\n"
 	            "       %s [options] [-- args...]\n"
+#if WANT_INTERACTIVE
 				"  -a               Run interactively\n"
+#endif
 				"  -c <path>|<file> Look for php.ini file in this directory\n"
 				"  -n               No php.ini file will be used\n"
 				"  -d foo[=bar]     Define INI entry foo with value 'bar'\n"
@@ -943,7 +945,9 @@ int main(int argc, char *argv[])
 /* temporary locals */
 	int orig_optind=ap_php_optind;
 	char *orig_optarg=ap_php_optarg;
+#if WANT_INTERACTIVE
 	int interactive=0;
+#endif
 	char *param_error=NULL;
 /* end of temporary locals */
 
@@ -1015,12 +1019,12 @@ int main(int argc, char *argv[])
 	
 		while ((c = ap_php_getopt(argc, argv, OPTSTRING)) != -1) {
 			switch (c) {
-
+#if WANT_INTERACTIVE
 			case 'a':	/* interactive mode */
 				printf("Interactive mode enabled\n\n");
 				interactive=1;
 				break;
-
+#endif
 			case 'C': /* don't chdir to the script directory */
 				/* This is default so NOP */
 				break;
@@ -1090,7 +1094,9 @@ int main(int argc, char *argv[])
 			exit(1);
 		}
 
+#if WANT_INTERACTIVE
 		CG(interactive) = interactive;
+#endif
 
 		/* only set script_file if not set already and not in direct mode and not at end of parameter list */
 		if (argc > ap_php_optind && !filename) {

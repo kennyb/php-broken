@@ -3,7 +3,7 @@ dnl $Id: config.m4,v 1.33.2.4.2.1 2007/03/01 11:29:43 tony2001 Exp $
 dnl
 
 PHP_ARG_WITH(iconv, for iconv support,
-[  --without-iconv[=DIR]   Exclude iconv support], no)
+[  --with-iconv[=DIR]   Include iconv support], no)
 
 if test "$PHP_ICONV" != "no"; then
 

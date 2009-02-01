@@ -3,7 +3,7 @@ dnl $Id: config.m4,v 1.3.2.4 2007/07/03 17:25:33 sniper Exp $
 dnl
 
 PHP_ARG_ENABLE(json, whether to enable JavaScript Object Serialization support,
-[  --disable-json          Disable JavaScript Object Serialization support], no)
+[  --enable-json          Enable JavaScript Object Serialization support], no)
 
 if test "$PHP_JSON" != "no"; then
   AC_DEFINE([HAVE_JSON],1 ,[whether to enable JavaScript Object Serialization support])

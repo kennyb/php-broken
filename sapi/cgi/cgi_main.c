@@ -122,7 +122,9 @@ static int php_optind = 1;
 static zend_module_entry cgi_module_entry;
 
 static const opt_struct OPTIONS[] = {
+#if WANT_INTERACTIVE
 	{'a', 0, "interactive"},
+#endif
 	{'b', 1, "bindpath"},
 	{'C', 0, "no-chdir"},
 	{'c', 1, "php-ini"},
@@ -738,7 +740,9 @@ static void php_cgi_usage(char *argv0)
 
 	php_printf("Usage: %s [-q] [-h] [-s] [-v] [-i] [-f <file>]\n"
 			   "       %s <file> [args...]\n"
+#if WANT_INTERACTIVE
 			   "  -a               Run interactively\n"
+#endif
 #if PHP_FASTCGI
 			   "  -b <address:port>|<port> Bind Path for external FASTCGI Server mode\n"
 #endif
@@ -1627,7 +1631,9 @@ consult the installation file that came with this distribution, or visit \n\
 		SG(server_context) = (void *) 1; /* avoid server_context==NULL checks */
 #endif
 		init_request_info(TSRMLS_C);
+#if WANT_INTERACTIVE
 		CG(interactive) = 0;
+#endif
 
 		if (!cgi
 #if PHP_FASTCGI
@@ -1647,12 +1653,12 @@ consult the installation file that came with this distribution, or visit \n\
 
 			while ((c = php_getopt(argc, argv, OPTIONS, &php_optarg, &php_optind, 0)) != -1) {
 				switch (c) {
-
+#if WANT_INTERACTIVE
   				case 'a':	/* interactive mode */
 						printf("Interactive mode enabled\n\n");
 						CG(interactive) = 1;
 						break;
-
+#endif
 				case 'C': /* don't chdir to the script directory */
 						SG(options) |= SAPI_OPTION_NO_CHDIR;
 						break;

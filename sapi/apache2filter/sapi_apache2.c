@@ -523,7 +523,9 @@ static int php_output_filter(ap_filter_t *f, apr_bucket_brigade *bb)
 	zfd.handle.stream.reader = php_apache_read_stream;
 	zfd.handle.stream.closer = php_apache_close_stream;
 	zfd.handle.stream.fteller = php_apache_fteller_stream;
+#if WANT_INTERACTIVE
 	zfd.handle.stream.interactive = 0;
+#endif
 	
 	zfd.filename = f->r->filename;
 	zfd.opened_path = NULL;

@@ -2,7 +2,7 @@ dnl $Id: config.m4,v 1.6.2.3 2006/12/05 23:51:30 tony2001 Exp $
 dnl config.m4 for input filtering extension
 
 PHP_ARG_ENABLE(filter, whether to enable input filter support,
-[  --disable-filter        Disable input filter support], no)
+[  --enable-filter        Enable input filter support], no)
 
 PHP_ARG_WITH(pcre-dir, pcre install prefix,
 [  --with-pcre-dir           FILTER: pcre install prefix], no, no)
