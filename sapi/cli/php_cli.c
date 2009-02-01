@@ -126,7 +126,9 @@ static char php_last_char = '\0';
 #endif
 
 static const opt_struct OPTIONS[] = {
+#if WANT_INTERACTIVE
 	{'a', 0, "interactive"},
+#endif
 	{'B', 1, "process-begin"},
 	{'C', 0, "no-chdir"}, /* for compatibility with CGI (do not chdir to script directory) */
 	{'c', 1, "php-ini"},
@@ -437,10 +439,12 @@ static void php_cli_usage(char *argv0)
 	            "       %s [options] -- [args...]\n"
 	            "       %s [options] -a\n"
 	            "\n"
+#if WANT_INTERACTIVE
 #if (HAVE_LIBREADLINE || HAVE_LIBEDIT) && !defined(COMPILE_DL_READLINE)
 				"  -a               Run as interactive shell\n"
 #else
 				"  -a               Run interactively\n"
+#endif
 #endif
 				"  -c <path>|<file> Look for php.ini file in this directory\n"
 				"  -n               No php.ini file will be used\n"
@@ -598,7 +602,9 @@ int main(int argc, char *argv[])
 	char *orig_optarg=php_optarg;
 	char *arg_free=NULL, **arg_excp=&arg_free;
 	char *script_file=NULL;
+#if WANT_INTERACTIVE
 	int interactive=0;
+#endif
 	volatile int module_started = 0;
 	volatile int request_started = 0;
 	int lineno = 0;
@@ -811,6 +817,7 @@ int main(int argc, char *argv[])
 		while ((c = php_getopt(argc, argv, OPTIONS, &php_optarg, &php_optind, 0)) != -1) {
 			switch (c) {
 
+#if WANT_INTERACTIVE
 			case 'a':	/* interactive mode */
 				if (!interactive) {
 					if (behavior != PHP_MODE_STANDARD) {
@@ -821,7 +828,7 @@ int main(int argc, char *argv[])
 					interactive=1;
 				}
 				break;
-
+#endif
 			case 'C': /* don't chdir to the script directory */
 				/* This is default so NOP */
 				break;
@@ -882,10 +889,13 @@ int main(int argc, char *argv[])
 						param_error = "You can use -r only once.\n";
 						break;
 					}
-				} else if (behavior != PHP_MODE_STANDARD || interactive) {
+				}
+#if WANT_INTERACTIVE
+				else if (behavior != PHP_MODE_STANDARD || interactive) {
 					param_error = param_mode_conflict;
 					break;
 				}
+#endif
 				behavior=PHP_MODE_CLI_DIRECT;
 				exec_direct=php_optarg;
 				break;
@@ -910,10 +920,13 @@ int main(int argc, char *argv[])
 						param_error = "You can use -B only once.\n";
 						break;
 					}
-				} else if (behavior != PHP_MODE_STANDARD || interactive) {
+				}
+#if WANT_INTERACTIVE
+				else if (behavior != PHP_MODE_STANDARD || interactive) {
 					param_error = param_mode_conflict;
 					break;
 				}
+#endif
 				behavior=PHP_MODE_PROCESS_STDIN;
 				exec_begin=php_optarg;
 				break;
@@ -924,10 +937,13 @@ int main(int argc, char *argv[])
 						param_error = "You can use -E only once.\n";
 						break;
 					}
-				} else if (behavior != PHP_MODE_STANDARD || interactive) {
+				}
+#if WANT_INTERACTIVE
+				else if (behavior != PHP_MODE_STANDARD || interactive) {
 					param_error = param_mode_conflict;
 					break;
 				}
+#endif
 				behavior=PHP_MODE_PROCESS_STDIN;
 				exec_end=php_optarg;
 				break;
@@ -986,7 +1002,7 @@ int main(int argc, char *argv[])
 			exit_status=1;
 			goto err;
 		}
-
+#if WANT_INTERACTIVE
 		if (interactive) {
 #if (HAVE_LIBREADLINE || HAVE_LIBEDIT) && !defined(COMPILE_DL_READLINE)
 			printf("Interactive shell\n\n");
@@ -997,7 +1013,8 @@ int main(int argc, char *argv[])
 		}
 
 		CG(interactive) = interactive;
-
+#endif
+		
 		/* only set script_file if not set already and not in direct mode and not at end of parameter list */
 		if (argc > php_optind 
 		  && !script_file 
@@ -1061,7 +1078,7 @@ int main(int argc, char *argv[])
 				cli_register_file_handles(TSRMLS_C);
 			}
 
-#if (HAVE_LIBREADLINE || HAVE_LIBEDIT) && !defined(COMPILE_DL_READLINE)
+#if (HAVE_LIBREADLINE || HAVE_LIBEDIT) && !defined(COMPILE_DL_READLINE) && WANT_INTERACTIVE
 			if (interactive) {
 				char *line;
 				size_t size = 4096, pos = 0, len;

@@ -34,7 +34,9 @@ typedef struct _zend_stream {
 	zend_stream_reader_t reader;
 	zend_stream_closer_t closer;
 	zend_stream_fteller_t fteller;
+#if WANT_INTERACTIVE
 	int interactive;
+#endif
 } zend_stream;
 
 typedef struct _zend_file_handle {

@@ -1081,7 +1081,9 @@ PHPAPI int php_stream_open_for_zend_ex(const char *filename, zend_file_handle *h
 		handle->handle.stream.reader = (zend_stream_reader_t)_php_stream_read;
 		handle->handle.stream.closer = stream_closer_for_zend;
 		handle->handle.stream.fteller = stream_fteller_for_zend;
+#if WANT_INTERACTIVE
 		handle->handle.stream.interactive = 0;
+#endif
 		/* suppress warning if this stream is not explicitly closed */
 		php_stream_auto_cleanup(stream);
 

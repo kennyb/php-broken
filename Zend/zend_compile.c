@@ -1106,7 +1106,9 @@ void zend_do_begin_function_declaration(znode *function_token, znode *function_n
 	int function_begin_line = function_token->u.opline_num;
 	zend_uint fn_flags;
 	char *lcname;
+#if WANT_INTERACTIVE
 	zend_bool orig_interactive;
+#endif
 	ALLOCA_FLAG(use_heap)
 
 	if (is_method) {
@@ -1127,10 +1129,14 @@ void zend_do_begin_function_declaration(znode *function_token, znode *function_n
 	function_token->u.op_array = CG(active_op_array);
 	lcname = zend_str_tolower_dup(name, name_len);
 
+#if WANT_INTERACTIVE
 	orig_interactive = CG(interactive);
 	CG(interactive) = 0;
+#endif
 	init_op_array(&op_array, ZEND_USER_FUNCTION, INITIAL_OP_ARRAY_SIZE TSRMLS_CC);
+#if WANT_INTERACTIVE
 	CG(interactive) = orig_interactive;
+#endif
 
 	op_array.function_name = name;
 	op_array.return_reference = return_reference;

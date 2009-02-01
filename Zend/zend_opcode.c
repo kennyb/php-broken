@@ -53,12 +53,14 @@ void init_op_array(zend_op_array *op_array, zend_uchar type, int initial_ops_siz
 	op_array->type = type;
 
 	op_array->backpatch_count = 0;
+#if WANT_INTERACTIVE
 	if (CG(interactive)) {
 		/* We must avoid a realloc() on the op_array in interactive mode, since pointers to constants
 		 * will become invalid
 		 */
 		initial_ops_size = 8192;
 	}
+#endif
 
 	op_array->refcount = (zend_uint *) emalloc(sizeof(zend_uint));
 	*op_array->refcount = 1;
@@ -99,7 +101,12 @@ void init_op_array(zend_op_array *op_array, zend_uchar type, int initial_ops_siz
 
 	op_array->start_op = NULL;
 
+#if WANT_INTERACTIVE
 	op_array->fn_flags = CG(interactive)?ZEND_ACC_INTERACTIVE:0;
+#else
+	op_array->fn_flags = 0;
+#endif
+
 
 	memset(op_array->reserved, 0, ZEND_MAX_RESERVED_RESOURCES * sizeof(void*));
 
@@ -298,12 +305,14 @@ zend_op *get_next_op(zend_op_array *op_array TSRMLS_DC)
 	zend_op *next_op;
 
 	if (next_op_num >= op_array->size) {
+#if WANT_INTERACTIVE
 		if (op_array->fn_flags & ZEND_ACC_INTERACTIVE) {
 			/* we messed up */
 			zend_printf("Ran out of opcode space!\n"
 						"You should probably consider writing this huge script into a file!\n");
 			zend_bailout();
 		}
+#endif
 		op_array->size *= 4;
 		op_array_alloc_ops(op_array);
 	}
@@ -521,7 +530,11 @@ int pass_two(zend_op_array *op_array TSRMLS_DC)
 		goto no_optimize;
 	}
 	
-	if (!(op_array->fn_flags & ZEND_ACC_INTERACTIVE) && op_array->size != op_array->last) {
+	if(
+#if WANT_INTERACTIVE
+		!(op_array->fn_flags & ZEND_ACC_INTERACTIVE) && 
+#endif
+		op_array->size != op_array->last) {
 		op_array_alloc_ops(op_array);
 		op_array->size = op_array->last;
 	}
@@ -979,7 +992,11 @@ PHASE2_CONTINUE: {}
 	printf("optimization complete!\n");
 	
 no_optimize:
-	if (!(op_array->fn_flags & ZEND_ACC_INTERACTIVE) && op_array->size != op_array->last) {
+	if(
+#if WANT_INTERACTIVE
+		!(op_array->fn_flags & ZEND_ACC_INTERACTIVE) &&
+#endif
+		op_array->size != op_array->last) {
 		op_array_alloc_ops(op_array);
 		op_array->size = op_array->last;
 	}

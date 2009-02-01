@@ -422,6 +422,35 @@ ZEND_API zend_op_array *compile_file(zend_file_handle *file_handle, int type TSR
 	return retval;
 }
 
+ZEND_API int compile_inline_filename(zval *filename TSRMLS_DC)
+{
+	zend_file_handle file_handle;
+	zend_lex_state original_lex_state;
+
+	if (filename->type != IS_STRING) {
+		zend_bailout();
+	}
+
+	file_handle.filename = filename->value.str.val;
+	file_handle.free_filename = 0;
+	file_handle.type = ZEND_HANDLE_FILENAME;
+	file_handle.opened_path = NULL;
+	file_handle.handle.fp = NULL;
+
+	int compiler_result;
+	zend_save_lexical_state(&original_lex_state TSRMLS_CC);
+	if (open_file_for_scanning(&file_handle TSRMLS_CC)==FAILURE) {
+		zend_message_dispatcher(ZMSG_FAILED_REQUIRE_FOPEN, file_handle.filename);
+		zend_bailout();
+	} else {
+		compiler_result = zendparse(TSRMLS_C);
+		if(compiler_result == 1) { /* parser error */
+			zend_bailout();
+		} else {
+			zend_restore_lexical_state(&original_lex_state TSRMLS_CC);
+		}
+	}
+}
 
 zend_op_array *compile_filename(int type, zval *filename TSRMLS_DC)
 {
@@ -546,11 +575,14 @@ zend_op_array *compile_string(zval *source_string, char *filename TSRMLS_DC)
 		efree(op_array);
 		retval = NULL;
 	} else {
+#if WANT_INTERACTIVE
 		zend_bool orig_interactive = CG(interactive);
-	
 		CG(interactive) = 0;
+#endif
 		init_op_array(op_array, ZEND_EVAL_CODE, INITIAL_OP_ARRAY_SIZE TSRMLS_CC);
+#if WANT_INTERACTIVE
 		CG(interactive) = orig_interactive;
+#endif
 		CG(active_op_array) = op_array;
 		BEGIN(ST_IN_SCRIPTING);
 		compiler_result = zendparse(TSRMLS_C);

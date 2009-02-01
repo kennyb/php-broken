@@ -473,7 +473,9 @@ static void compiler_globals_ctor(zend_compiler_globals *compiler_globals TSRMLS
 
 	zend_set_default_compile_time_values(TSRMLS_C);
 
+#if WANT_INTERACTIVE
 	CG(interactive) = 0;
+#endif
 
 	compiler_globals->auto_globals = (HashTable *) malloc(sizeof(HashTable));
 	zend_hash_init_ex(compiler_globals->auto_globals, 8, NULL, NULL, 1, 0);

@@ -185,12 +185,14 @@ struct yy_buffer_state
 	 */
 	int yy_is_our_buffer;
 
+#if WANT_INTERACTIVE
 	/* Whether this is an "interactive" input source; if so, and
 	 * if we're using stdio for input, then we want to use getc()
 	 * instead of fread(), to make sure we stop fetching input after
 	 * each newline.
 	 */
 	int yy_is_interactive;
+#endif
 
 	/* Whether we're considered to be at the beginning of a line.
 	 * If so, '^' rules will be active on the next match, otherwise
@@ -281,12 +283,14 @@ static void yy_flex_free YY_PROTO(( void * ));
 
 #define yy_new_buffer yy_create_buffer
 
+#if WANT_INTERACTIVE
 #define yy_set_interactive(is_interactive) \
 	{ \
 	if ( ! yy_current_buffer ) \
 		yy_current_buffer = yy_create_buffer( SCNG(yy_in), YY_BUF_SIZE TSRMLS_CC ); \
 	yy_current_buffer->yy_is_interactive = is_interactive; \
 	}
+#endif
 
 #define yy_set_bol(at_bol) \
 	{ \
@@ -701,20 +705,9 @@ YY_MALLOC_DECL
 			YY_FATAL_ERROR( "input in flex scanner failed" ); \
 		result = n; \
 		} \
-	else \
-		{ \
-		errno=0; \
-		while ( (result = fread(buf, 1, max_size, yyin))==0 && ferror(yyin)) \
-			{ \
-			if( errno != EINTR) \
-				{ \
-				YY_FATAL_ERROR( "input in flex scanner failed" ); \
-				break; \
-				} \
-			errno=0; \
-			clearerr(yyin); \
-			} \
-		}
+	else if ( ((result = fread( buf, 1, max_size, yyin )) == 0) \
+		  && ferror( yyin ) ) \
+		YY_FATAL_ERROR( "input in flex scanner failed" );
 #endif
 
 /* No semi-colon after return; correct usage is to write "yyterminate();" -
@@ -824,16 +817,12 @@ yy_match:
 			yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
 			++yy_cp;
 			}
-		while ( yy_base[yy_current_state] != 106 );
+		while ( yy_current_state != 62 );
+		yy_cp = yy_last_accepting_cpos;
+		yy_current_state = yy_last_accepting_state;
 
 yy_find_action:
 		yy_act = yy_accept[yy_current_state];
-		if ( yy_act == 0 )
-			{ /* have to back up */
-			yy_cp = yy_last_accepting_cpos;
-			yy_current_state = yy_last_accepting_state;
-			yy_act = yy_accept[yy_current_state];
-			}
 
 		YY_DO_BEFORE_ACTION;
 
@@ -1088,7 +1077,8 @@ ECHO;
 
 			else
 				{
-				yy_cp = yy_c_buf_p;
+				yy_cp = yy_last_accepting_cpos;
+				yy_current_state = yy_last_accepting_state;
 				goto yy_find_action;
 				}
 			}
@@ -1625,6 +1615,7 @@ void ***tsrm_ls;
 	b->yy_input_file = file;
 	b->yy_fill_buffer = 1;
 
+#if WANT_INTERACTIVE
 #if YY_ALWAYS_INTERACTIVE
 	b->yy_is_interactive = 1;
 #else
@@ -1632,6 +1623,7 @@ void ***tsrm_ls;
 	b->yy_is_interactive = 0;
 #else
 	b->yy_is_interactive = file->handle.stream.interactive;
+#endif
 #endif
 #endif
 	}
@@ -1699,7 +1691,9 @@ void ***tsrm_ls;
 	b->yy_is_our_buffer = 0;
 	b->yy_input_file = 0;
 	b->yy_n_chars = b->yy_buf_size;
+#if WANT_INTERACTIVE
 	b->yy_is_interactive = 0;
+#endif
 	b->yy_at_bol = 1;
 	b->yy_fill_buffer = 0;
 	b->yy_buffer_status = YY_BUFFER_NEW;

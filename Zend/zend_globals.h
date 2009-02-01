@@ -118,8 +118,9 @@ struct _zend_compiler_globals {
 	long catch_begin;
 
 	struct _zend_ini_parser_param *ini_parser_param;
-
+#if WANT_INTERACTIVE
 	int interactive;
+#endif
 
 	zend_uint start_lineno;
 	zend_bool increment_lineno;

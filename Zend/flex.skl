@@ -179,12 +179,14 @@ struct yy_buffer_state
 	 */
 	int yy_is_our_buffer;
 
+#if WANT_INTERACTIVE
 	/* Whether this is an "interactive" input source; if so, and
 	 * if we're using stdio for input, then we want to use getc()
 	 * instead of fread(), to make sure we stop fetching input after
 	 * each newline.
 	 */
 	int yy_is_interactive;
+#endif
 
 	/* Whether we're considered to be at the beginning of a line.
 	 * If so, '^' rules will be active on the next match, otherwise
@@ -279,12 +281,14 @@ static void yy_flex_free YY_PROTO(( void * ));
 
 #define yy_new_buffer yy_create_buffer
 
+#if WANT_INTERACTIVE
 #define yy_set_interactive(is_interactive) \
 	{ \
 	if ( ! yy_current_buffer ) \
 		yy_current_buffer = yy_create_buffer( SCNG(yy_in), YY_BUF_SIZE TSRMLS_CC ); \
 	yy_current_buffer->yy_is_interactive = is_interactive; \
 	}
+#endif
 
 #define yy_set_bol(at_bol) \
 	{ \
@@ -776,6 +780,7 @@ int yyFlexLexer::LexerInput( char* buf, int max_size )
 		if ( SCNG(yy_in)->eof() || SCNG(yy_in)->fail() )
 			return 0;
 
+#if WANT_INTERACTIVE
 		if (yy_current_buffer->yy_is_interactive) {
 			SCNG(yy_in)->get( buf[0] );
 
@@ -786,7 +791,9 @@ int yyFlexLexer::LexerInput( char* buf, int max_size )
 				return -1;
 
 			return 1;
-		} else {
+		} else 
+#endif
+		{
 			(void) SCNG(yy_in)->read( buf, max_size );
 
 			if ( SCNG(yy_in)->bad() )
@@ -1295,6 +1302,7 @@ void yyFlexLexer::yy_init_buffer( YY_BUFFER_STATE b, istream* file TSRMLS_DC )
 	b->yy_fill_buffer = 1;
 
 %-
+#if WANT_INTERACTIVE
 #if YY_ALWAYS_INTERACTIVE
 	b->yy_is_interactive = 1;
 #else
@@ -1307,6 +1315,7 @@ void yyFlexLexer::yy_init_buffer( YY_BUFFER_STATE b, istream* file TSRMLS_DC )
 %+
 	b->yy_is_interactive = (file == (istream *) &cin) ? 1 : 0;
 %*
+#endif
 	}
 
 
@@ -1378,7 +1387,9 @@ void ***tsrm_ls;
 	b->yy_is_our_buffer = 0;
 	b->yy_input_file = 0;
 	b->yy_n_chars = b->yy_buf_size;
+#if WANT_INTERACTIVE
 	b->yy_is_interactive = 0;
+#endif
 	b->yy_at_bol = 1;
 	b->yy_fill_buffer = 0;
 	b->yy_buffer_status = YY_BUFFER_NEW;

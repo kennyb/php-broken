@@ -90,14 +90,16 @@ ZEND_API int zend_stream_fixup(zend_file_handle *file_handle TSRMLS_DC)
 		file_handle->handle.stream.reader = zend_stream_stdio_reader;
 		file_handle->handle.stream.closer = zend_stream_stdio_closer;
 		file_handle->handle.stream.fteller = zend_stream_stdio_fteller;
-
+#if WANT_INTERACTIVE
 		file_handle->handle.stream.interactive = isatty(fileno((FILE *)file_handle->handle.stream.handle));
+#endif
 	}
 	return SUCCESS;
 }
 
 ZEND_API size_t zend_stream_read(zend_file_handle *file_handle, char *buf, size_t len TSRMLS_DC)
 {
+#if WANT_INTERACTIVE
 	if (file_handle->handle.stream.interactive) {
 		int c = '*';
 		size_t n; 
@@ -118,6 +120,7 @@ ZEND_API size_t zend_stream_read(zend_file_handle *file_handle, char *buf, size_
 
 		return n;
 	}
+#endif
 	return file_handle->handle.stream.reader(file_handle->handle.stream.handle, buf, len TSRMLS_CC);
 }
 

@@ -36,9 +36,15 @@
 
 #define SET_UNUSED(op)  (op).op_type = IS_UNUSED
 
+#if WANT_INTERACTIVE
 #define INC_BPC(op_array)	if (op_array->fn_flags & ZEND_ACC_INTERACTIVE) { ((op_array)->backpatch_count++); }
 #define DEC_BPC(op_array)	if (op_array->fn_flags & ZEND_ACC_INTERACTIVE) { ((op_array)->backpatch_count--); }
 #define HANDLE_INTERACTIVE()  if (CG(active_op_array)->fn_flags & ZEND_ACC_INTERACTIVE) { execute_new_code(TSRMLS_C); }
+#else
+#define INC_BPC(op_array)
+#define DEC_BPC(op_array)
+#define HANDLE_INTERACTIVE()
+#endif
 
 #define RESET_DOC_COMMENT()        \
     {                              \
