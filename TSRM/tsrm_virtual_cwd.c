@@ -45,7 +45,7 @@
 #define realpath(x,y) strcpy(y,x)
 #endif
 
-#define VIRTUAL_CWD_DEBUG 0
+#define VIRTUAL_CWD_DEBUG 1
 
 #include "TSRM.h"
 

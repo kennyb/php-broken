@@ -1352,8 +1352,8 @@ not_relative_path:
 	/* append the calling scripts' current working directory
 	 * as a fall back case
 	 */
-	if (zend_is_executing(TSRMLS_C)) {
-		exec_fname = zend_get_executed_filename(TSRMLS_C);
+	exec_fname = zend_get_executed_filename(TSRMLS_C);
+	if (exec_fname[0] != '[') {
 		exec_fname_length = strlen(exec_fname);
 		path_length = strlen(path);
 
@@ -1374,7 +1374,8 @@ not_relative_path:
 	}
 
 	ptr = pathbuf;
-
+	printf("exec: %s %s\n", ptr, path);
+	
 	while (ptr && *ptr) {
 		end = strchr(ptr, DEFAULT_DIR_SEPARATOR);
 		if (end != NULL) {

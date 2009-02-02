@@ -3962,6 +3962,8 @@ ZEND_API int compile_inline_filename(zval *filename TSRMLS_DC)
 {
 	zend_file_handle file_handle;
 	zend_lex_state original_lex_state;
+	char *file_path=NULL;
+	char *file_path_save=NULL;
 
 	if (filename->type != IS_STRING) {
 		zend_bailout();
@@ -3979,7 +3981,17 @@ ZEND_API int compile_inline_filename(zval *filename TSRMLS_DC)
 		zend_message_dispatcher(ZMSG_FAILED_REQUIRE_FOPEN, file_handle.filename);
 		zend_bailout();
 	} else {
+		if (file_handle.opened_path) {
+			file_path = file_handle.opened_path;
+		} else {
+			file_path = file_handle.filename;
+		}
+		
+		file_path_save = CG(active_op_array)->filename;
+		CG(active_op_array)->filename = file_path;
+		
 		compiler_result = zendparse(TSRMLS_C);
+		CG(active_op_array)->filename = file_path_save;
 		if(compiler_result == 1) { /* parser error */
 			zend_bailout();
 		} else {

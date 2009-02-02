@@ -437,14 +437,16 @@ static void php_cli_usage(char *argv0)
 	            "       %s [options] [-B <begin_code>] -R <code> [-E <end_code>] [--] [args...]\n"
 	            "       %s [options] [-B <begin_code>] -F <file> [-E <end_code>] [--] [args...]\n"
 	            "       %s [options] -- [args...]\n"
+#if WANT_INTERACTIVE
 	            "       %s [options] -a\n"
 	            "\n"
-#if WANT_INTERACTIVE
 #if (HAVE_LIBREADLINE || HAVE_LIBEDIT) && !defined(COMPILE_DL_READLINE)
 				"  -a               Run as interactive shell\n"
 #else
 				"  -a               Run interactively\n"
 #endif
+#else
+	            "\n"
 #endif
 				"  -c <path>|<file> Look for php.ini file in this directory\n"
 				"  -n               No php.ini file will be used\n"

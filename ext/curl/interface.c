@@ -324,7 +324,11 @@ zend_module_entry curl_module_entry = {
 	PHP_MSHUTDOWN(curl),
 	NULL,
 	NULL,
+#if WANT_INI
 	PHP_MINFO(curl),
+#else
+	NULL,
+#endif
 	NO_VERSION_YET,
 	STANDARD_MODULE_PROPERTIES
 };
@@ -334,6 +338,7 @@ zend_module_entry curl_module_entry = {
 ZEND_GET_MODULE (curl)
 #endif
 
+#if WANT_INI
 /* {{{ PHP_MINFO_FUNCTION
  */
 PHP_MINFO_FUNCTION(curl)
@@ -344,6 +349,7 @@ PHP_MINFO_FUNCTION(curl)
 	php_info_print_table_end();
 }
 /* }}} */
+#endif
 
 #define REGISTER_CURL_CONSTANT(__c) REGISTER_LONG_CONSTANT(#__c, __c, CONST_CS | CONST_PERSISTENT)
 

@@ -382,6 +382,8 @@ ZEND_API char *zend_get_executed_filename(TSRMLS_D)
 {
 	if (EG(active_op_array)) {
 		return EG(active_op_array)->filename;
+	} else if (CG(active_op_array)) {
+		return CG(active_op_array)->filename;
 	} else {
 		return "[no active file]";
 	}
