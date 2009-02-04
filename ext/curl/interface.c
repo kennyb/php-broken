@@ -163,7 +163,7 @@ static void _php_curl_close(zend_rsrc_list_entry *rsrc TSRMLS_DC);
 #endif
 
 #define PHP_CURL_CHECK_OPEN_BASEDIR(str, len, __ret)													\
-	if (((PG(open_basedir) && *PG(open_basedir)) || PG(safe_mode)) &&                                                \
+	if (((PG(open_basedir) && *PG(open_basedir)) || SAFE_MODE) &&                                                \
 	    strncasecmp(str, "file:", sizeof("file:") - 1) == 0)								\
 	{ 																							\
 		php_url *tmp_url; 																		\
@@ -180,7 +180,7 @@ static void _php_curl_close(zend_rsrc_list_entry *rsrc TSRMLS_DC);
 		}													\
 																								\
 		if (tmp_url->query || tmp_url->fragment || php_check_open_basedir(tmp_url->path TSRMLS_CC) || 									\
-			(PG(safe_mode) && !php_checkuid(tmp_url->path, "rb+", CHECKUID_CHECK_MODE_PARAM))	\
+			(SAFE_MODE && !php_checkuid(tmp_url->path, "rb+", CHECKUID_CHECK_MODE_PARAM))	\
 		) { 																					\
 			php_url_free(tmp_url); 																\
 			php_curl_ret(__ret);											\
@@ -1302,7 +1302,7 @@ static int _php_curl_setopt(php_curl *ch, long option, zval **zvalue, zval *retu
 			break;
 		case CURLOPT_FOLLOWLOCATION:
 			convert_to_long_ex(zvalue);
-			if ((PG(open_basedir) && *PG(open_basedir)) || PG(safe_mode)) {
+			if ((PG(open_basedir) && *PG(open_basedir)) || SAFE_MODE) {
 				if (Z_LVAL_PP(zvalue) != 0) {
 					php_error_docref(NULL TSRMLS_CC, E_WARNING, "CURLOPT_FOLLOWLOCATION cannot be activated when in safe_mode or an open_basedir is set");
 					RETVAL_FALSE;
@@ -1487,7 +1487,7 @@ static int _php_curl_setopt(php_curl *ch, long option, zval **zvalue, zval *retu
 					if (*postval == '@') {
 						++postval;
 						/* safe_mode / open_basedir check */
-						if (php_check_open_basedir(postval TSRMLS_CC) || (PG(safe_mode) && !php_checkuid(postval, "rb+", CHECKUID_CHECK_MODE_PARAM))) {
+						if (php_check_open_basedir(postval TSRMLS_CC) || (SAFE_MODE && !php_checkuid(postval, "rb+", CHECKUID_CHECK_MODE_PARAM))) {
 							RETVAL_FALSE;
 							return 1;
 						}
@@ -1577,7 +1577,7 @@ static int _php_curl_setopt(php_curl *ch, long option, zval **zvalue, zval *retu
 
 			convert_to_string_ex(zvalue);
 
-			if (php_check_open_basedir(Z_STRVAL_PP(zvalue) TSRMLS_CC) || (PG(safe_mode) && !php_checkuid(Z_STRVAL_PP(zvalue), "rb+", CHECKUID_CHECK_MODE_PARAM))) {
+			if (php_check_open_basedir(Z_STRVAL_PP(zvalue) TSRMLS_CC) || (SAFE_MODE && !php_checkuid(Z_STRVAL_PP(zvalue), "rb+", CHECKUID_CHECK_MODE_PARAM))) {
 				RETVAL_FALSE;
 				return 1;
 			}

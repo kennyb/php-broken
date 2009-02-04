@@ -430,7 +430,7 @@ static void php_do_chgrp(INTERNAL_FUNCTION_PARAMETERS, int do_lchgrp) /* {{{ */
 		gid = Z_LVAL_PP(group);
 	}
 
-	if (PG(safe_mode) &&(!php_checkuid(Z_STRVAL_PP(filename), NULL, CHECKUID_ALLOW_FILE_NOT_EXISTS))) {
+	if (SAFE_MODE &&(!php_checkuid(Z_STRVAL_PP(filename), NULL, CHECKUID_ALLOW_FILE_NOT_EXISTS))) {
 		RETURN_FALSE;
 	}
 
@@ -527,7 +527,7 @@ static void php_do_chown(INTERNAL_FUNCTION_PARAMETERS, int do_lchown) /* {{{ */
 		uid = Z_LVAL_PP(user);
 	}
 
-	if (PG(safe_mode) &&(!php_checkuid(Z_STRVAL_PP(filename), NULL, CHECKUID_ALLOW_FILE_NOT_EXISTS))) {
+	if (SAFE_MODE &&(!php_checkuid(Z_STRVAL_PP(filename), NULL, CHECKUID_ALLOW_FILE_NOT_EXISTS))) {
 		RETURN_FALSE;
 	}
 
@@ -595,7 +595,7 @@ PHP_FUNCTION(chmod)
 	convert_to_string_ex(filename);
 	convert_to_long_ex(mode);
 
-	if (PG(safe_mode) &&(!php_checkuid(Z_STRVAL_PP(filename), NULL, CHECKUID_ALLOW_FILE_NOT_EXISTS))) {
+	if (SAFE_MODE &&(!php_checkuid(Z_STRVAL_PP(filename), NULL, CHECKUID_ALLOW_FILE_NOT_EXISTS))) {
 		RETURN_FALSE;
 	}
 
@@ -610,7 +610,7 @@ PHP_FUNCTION(chmod)
 	   that safe mode doesn't give them.
 	*/
 
-	if(PG(safe_mode)) {
+	if(SAFE_MODE) {
 		php_stream_statbuf ssb;
 		if (php_stream_stat_path_ex(Z_STRVAL_PP(filename), 0, &ssb, NULL)) {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "stat failed for %s", Z_STRVAL_PP(filename));
@@ -669,7 +669,7 @@ PHP_FUNCTION(touch)
 	}
 	convert_to_string_ex(filename);
 
-	if (PG(safe_mode) &&(!php_checkuid(Z_STRVAL_PP(filename), NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
+	if (SAFE_MODE &&(!php_checkuid(Z_STRVAL_PP(filename), NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
 		RETURN_FALSE;
 	}
 
@@ -752,13 +752,13 @@ PHPAPI void php_stat(const char *filename, php_stat_len filename_length, int typ
 	if ((wrapper = php_stream_locate_url_wrapper(filename, &local, 0 TSRMLS_CC)) == &php_plain_files_wrapper) {
 		if (php_check_open_basedir(local TSRMLS_CC)) {
 			RETURN_FALSE;
-		} else if (PG(safe_mode)) {
+		} else if (SAFE_MODE) {
 			if (type == FS_IS_X) {
 				if (strstr(local, "..")) {
 					RETURN_FALSE;
 				} else {
 					char *b = strrchr(local, PHP_DIR_SEPARATOR);
-					snprintf(safe_mode_buf, MAXPATHLEN, "%s%s%s", PG(safe_mode_exec_dir), (b ? "" : "/"), (b ? b : local));
+					snprintf(safe_mode_buf, MAXPATHLEN, "%s%s%s", SAFE_MODE_EXEC_DIR, (b ? "" : "/"), (b ? b : local));
 					local = (char *)&safe_mode_buf;
 				}
 			} else if (!php_checkuid_ex(local, NULL, CHECKUID_ALLOW_FILE_NOT_EXISTS, CHECKUID_NO_ERRORS)) {

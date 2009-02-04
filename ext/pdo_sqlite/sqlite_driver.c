@@ -646,7 +646,7 @@ static char *make_filename_safe(const char *filename TSRMLS_DC)
 			return NULL;
 		}
 
-		if (PG(safe_mode) && (!php_checkuid(fullpath, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
+		if (SAFE_MODE && (!php_checkuid(fullpath, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
 			efree(fullpath);
 			return NULL;
 		}
@@ -721,7 +721,7 @@ static int pdo_sqlite_handle_factory(pdo_dbh_t *dbh, zval *driver_options TSRMLS
 		goto cleanup;
 	}
 
-	if (PG(safe_mode) || (PG(open_basedir) && *PG(open_basedir))) {
+	if (SAFE_MODE || (PG(open_basedir) && *PG(open_basedir))) {
 		sqlite3_set_authorizer(H->db, authorizer, NULL);
 	}
 

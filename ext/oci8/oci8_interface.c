@@ -920,7 +920,7 @@ PHP_FUNCTION(oci_lob_export)
 		RETURN_FALSE;
 	}
 	
-	if (PG(safe_mode) && (!php_checkuid(filename, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
+	if (SAFE_MODE && (!php_checkuid(filename, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
 		RETURN_FALSE;
 	}
 
@@ -1715,7 +1715,7 @@ PHP_FUNCTION(oci_password_change)
 	php_oci_connection *connection;
 
 	/*  Disable in Safe Mode  */
-	if (PG(safe_mode)) {
+	if (SAFE_MODE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "is disabled in Safe Mode");
 		RETURN_FALSE;
 	}

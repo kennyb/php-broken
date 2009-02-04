@@ -310,7 +310,7 @@ static PHP_INI_MH(OnUpdateErrorLog)
 	/* Only do the safemode/open_basedir check at runtime */
 	if ((stage == PHP_INI_STAGE_RUNTIME || stage == PHP_INI_STAGE_HTACCESS) &&
 		strcmp(new_value, "syslog")) {
-		if (PG(safe_mode) && (!php_checkuid(new_value, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
+		if (SAFE_MODE && (!php_checkuid(new_value, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
 			return FAILURE;
 		}
 
@@ -401,13 +401,12 @@ PHP_INI_BEGIN()
 	STD_PHP_INI_BOOLEAN("auto_globals_jit",		"1",		PHP_INI_PERDIR|PHP_INI_SYSTEM,	OnUpdateBool,	auto_globals_jit,	php_core_globals,	core_globals)
 #if PHP_SAFE_MODE
 	STD_PHP_INI_BOOLEAN("safe_mode",			"1",		PHP_INI_SYSTEM,		OnUpdateBool,			safe_mode,				php_core_globals,	core_globals)
-#else
-	STD_PHP_INI_BOOLEAN("safe_mode",			"0",		PHP_INI_SYSTEM,		OnUpdateBool,			safe_mode,				php_core_globals,	core_globals)
-#endif
 	STD_PHP_INI_ENTRY("safe_mode_include_dir",	NULL,		PHP_INI_SYSTEM,		OnUpdateString,			safe_mode_include_dir,	php_core_globals,	core_globals)
 	STD_PHP_INI_BOOLEAN("safe_mode_gid",		"0",		PHP_INI_SYSTEM,		OnUpdateBool,			safe_mode_gid,			php_core_globals,	core_globals)
-	STD_PHP_INI_BOOLEAN("short_open_tag",	DEFAULT_SHORT_OPEN_TAG,	PHP_INI_SYSTEM|PHP_INI_PERDIR,		OnUpdateBool,			short_tags,				zend_compiler_globals,	compiler_globals)
 	STD_PHP_INI_BOOLEAN("sql.safe_mode",		"0",		PHP_INI_SYSTEM,		OnUpdateBool,			sql_safe_mode,			php_core_globals,	core_globals)
+	STD_PHP_INI_ENTRY("safe_mode_exec_dir",		PHP_SAFE_MODE_EXEC_DIR,	PHP_INI_SYSTEM,		OnUpdateString,			safe_mode_exec_dir,		php_core_globals,	core_globals)
+#endif
+	STD_PHP_INI_BOOLEAN("short_open_tag",	DEFAULT_SHORT_OPEN_TAG,	PHP_INI_SYSTEM|PHP_INI_PERDIR,		OnUpdateBool,			short_tags,				zend_compiler_globals,	compiler_globals)
 	STD_PHP_INI_BOOLEAN("track_errors",			"0",		PHP_INI_ALL,		OnUpdateBool,			track_errors,			php_core_globals,	core_globals)
 	STD_PHP_INI_BOOLEAN("y2k_compliance",		"1",		PHP_INI_ALL,		OnUpdateBool,			y2k_compliance,			php_core_globals,	core_globals)
 
@@ -426,7 +425,6 @@ PHP_INI_BEGIN()
 	STD_PHP_INI_ENTRY("include_path",			PHP_INCLUDE_PATH,		PHP_INI_ALL,		OnUpdateStringUnempty,	include_path,			php_core_globals,	core_globals)
 	PHP_INI_ENTRY("max_execution_time",			"30",		PHP_INI_ALL,			OnUpdateTimeout)
 	STD_PHP_INI_ENTRY("open_basedir",			NULL,		PHP_INI_SYSTEM,		OnUpdateString,			open_basedir,			php_core_globals,	core_globals)
-	STD_PHP_INI_ENTRY("safe_mode_exec_dir",		PHP_SAFE_MODE_EXEC_DIR,	PHP_INI_SYSTEM,		OnUpdateString,			safe_mode_exec_dir,		php_core_globals,	core_globals)
 
 	STD_PHP_INI_BOOLEAN("file_uploads",			"1",		PHP_INI_SYSTEM,		OnUpdateBool,			file_uploads,			php_core_globals,	core_globals)
 	STD_PHP_INI_ENTRY("upload_max_filesize",	"2M",		PHP_INI_SYSTEM|PHP_INI_PERDIR,		OnUpdateLong,			upload_max_filesize,	php_core_globals,	core_globals)
@@ -1021,7 +1019,7 @@ PHP_FUNCTION(set_time_limit)
 {
 	zval **new_timeout;
 
-	if (PG(safe_mode)) {
+	if (SAFE_MODE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot set time limit in safe mode");
 		RETURN_FALSE;
 	}
@@ -1277,7 +1275,7 @@ int php_request_startup(TSRMLS_D)
 		}
 
 		/* Disable realpath cache if safe_mode or open_basedir are set */
-		if (PG(safe_mode) || (PG(open_basedir) && *PG(open_basedir))) {
+		if (SAFE_MODE || (PG(open_basedir) && *PG(open_basedir))) {
 			CWDG(realpath_cache_size_limit) = 0;
 		}
 
@@ -1752,7 +1750,7 @@ int php_module_startup(sapi_module_struct *sf, zend_module_entry *additional_mod
 	zend_register_standard_ini_entries(TSRMLS_C);
 
 	/* Disable realpath cache if safe_mode or open_basedir are set */
-	if (PG(safe_mode) || (PG(open_basedir) && *PG(open_basedir))) {
+	if (SAFE_MODE || (PG(open_basedir) && *PG(open_basedir))) {
 		CWDG(realpath_cache_size_limit) = 0;
 	}
 

@@ -652,7 +652,7 @@ SAPI_API int sapi_header_op(sapi_header_op_enum op, void *arg TSRMLS_DC)
 
 				sapi_update_response_code(401 TSRMLS_CC); /* authentication-required */
 
-				if(PG(safe_mode)) 
+				if(SAFE_MODE) 
 #if (HAVE_PCRE || HAVE_BUNDLED_PCRE) && !defined(COMPILE_DL_PCRE)
 				{
 					zval *repl_temp;

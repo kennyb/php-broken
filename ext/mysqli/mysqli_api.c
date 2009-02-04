@@ -1295,7 +1295,7 @@ PHP_FUNCTION(mysqli_options)
 	}
 	MYSQLI_FETCH_RESOURCE(mysql, MY_MYSQL *, &mysql_link, "mysqli_link", MYSQLI_STATUS_INITIALIZED);
 
-	if ((PG(open_basedir) && PG(open_basedir)[0] != '\0') || PG(safe_mode)) {
+	if ((PG(open_basedir) && PG(open_basedir)[0] != '\0') || SAFE_MODE) {
 		if(mysql_option == MYSQL_OPT_LOCAL_INFILE) {
 			RETURN_FALSE;
 		}
@@ -1423,7 +1423,7 @@ PHP_FUNCTION(mysqli_real_connect)
 	}
 
 	/* TODO: safe mode handling */
-	if (PG(sql_safe_mode)) {
+	if (SQL_SAFE_MODE) {
 	} else {
 		if (!passwd) {
 			passwd = MyG(default_pw);
@@ -1443,7 +1443,7 @@ PHP_FUNCTION(mysqli_real_connect)
 	flags |= CLIENT_MULTI_RESULTS; /* needed for mysql_multi_query() */
 	/* remove some insecure options */
 	flags &= ~CLIENT_MULTI_STATEMENTS;   /* don't allow multi_queries via connect parameter */
-	if ((PG(open_basedir) && PG(open_basedir)[0] != '\0') || PG(safe_mode)) {
+	if ((PG(open_basedir) && PG(open_basedir)[0] != '\0') || SAFE_MODE) {
 		flags &= ~CLIENT_LOCAL_FILES;
 	}
 

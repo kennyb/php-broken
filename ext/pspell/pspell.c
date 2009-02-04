@@ -312,7 +312,7 @@ static PHP_FUNCTION(pspell_new_personal)
 
 	convert_to_string_ex(personal);
 
-	if (PG(safe_mode) && (!php_checkuid(Z_STRVAL_PP(personal), NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
+	if (SAFE_MODE && (!php_checkuid(Z_STRVAL_PP(personal), NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
 		delete_pspell_config(config);
 		RETURN_FALSE;
 	}
@@ -806,7 +806,7 @@ static void pspell_config_path(INTERNAL_FUNCTION_PARAMETERS, char *option)
 
 	convert_to_string_ex(value);
 
-	if (PG(safe_mode) && (!php_checkuid(Z_STRVAL_PP(value), NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
+	if (SAFE_MODE && (!php_checkuid(Z_STRVAL_PP(value), NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
 		RETURN_FALSE;
 	}
 
@@ -864,7 +864,7 @@ static PHP_FUNCTION(pspell_config_repl)
 
 	convert_to_string_ex(repl);
 
-	if (PG(safe_mode) && (!php_checkuid(Z_STRVAL_PP(repl), NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
+	if (SAFE_MODE && (!php_checkuid(Z_STRVAL_PP(repl), NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
 		RETURN_FALSE;
 	}
 

@@ -255,7 +255,7 @@ static int php_make_safe_mode_command(char *cmd, char **safecmd, int is_persiste
 	int lcmd, larg0;
 	char *space, *sep, *arg0;
 
-	if (!PG(safe_mode)) {
+	if (!SAFE_MODE) {
 		*safecmd = pestrdup(cmd, is_persistent);
 		return SUCCESS;
 	}
@@ -280,7 +280,7 @@ static int php_make_safe_mode_command(char *cmd, char **safecmd, int is_persiste
 
 	sep = zend_memrchr(arg0, PHP_DIR_SEPARATOR, larg0);
 
-	spprintf(safecmd, 0, "%s%s%s%s", PG(safe_mode_exec_dir), (sep ? sep : "/"), (sep ? "" : arg0), (space ? cmd + larg0 : ""));
+	spprintf(safecmd, 0, "%s%s%s%s", SAFE_MODE_EXEC_DIR, (sep ? sep : "/"), (sep ? "" : arg0), (space ? cmd + larg0 : ""));
 
 	efree(arg0);
 	arg0 = php_escape_shell_cmd(*safecmd);

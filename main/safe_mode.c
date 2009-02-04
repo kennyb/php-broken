@@ -115,7 +115,7 @@ PHPAPI int php_checkuid_ex(const char *filename, const char *fopen_mode, int mod
 			gid = sb.st_gid;
 			if (uid == php_getuid()) {
 				return 1;
- 			} else if (PG(safe_mode_gid) && gid == php_getgid()) {
+ 			} else if (SAFE_MODE_GID && gid == php_getgid()) {
  				return 1;
 			}
 		}
@@ -168,7 +168,7 @@ PHPAPI int php_checkuid_ex(const char *filename, const char *fopen_mode, int mod
 		dgid = sb.st_gid;
 		if (duid == php_getuid()) {
 			return 1;
- 		} else if (PG(safe_mode_gid) && dgid == php_getgid()) {
+ 		} else if (SAFE_MODE_GID && dgid == php_getgid()) {
  			return 1;
 		} else {
 			if (SG(rfc1867_uploaded_files)) {
@@ -194,7 +194,7 @@ PHPAPI int php_checkuid_ex(const char *filename, const char *fopen_mode, int mod
 	}
 
 	if ((flags & CHECKUID_NO_ERRORS) == 0) {
-		if (PG(safe_mode_gid)) {
+		if (SAFE_MODE_GID) {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "SAFE MODE Restriction in effect.  The script whose uid/gid is %ld/%ld is not allowed to access %s owned by uid/gid %ld/%ld", php_getuid(), php_getgid(), filename, uid, gid);
 		} else {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "SAFE MODE Restriction in effect.  The script whose uid is %ld is not allowed to access %s owned by uid %ld", php_getuid(), filename, uid);

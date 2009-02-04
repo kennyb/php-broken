@@ -260,7 +260,8 @@ PHPAPI int php_check_open_basedir_ex(const char *path, int warn TSRMLS_DC)
  */
 PHPAPI int php_check_safe_mode_include_dir(const char *path TSRMLS_DC)
 {
-	if (PG(safe_mode)) {
+#if PHP_SAFE_MODE
+	if (SAFE_MODE) {
 		if (PG(safe_mode_include_dir) && *PG(safe_mode_include_dir)) {
 			char *pathbuf;
 			char *ptr;
@@ -299,6 +300,7 @@ PHPAPI int php_check_safe_mode_include_dir(const char *path TSRMLS_DC)
 		}
 		return -1;
 	}
+#endif
 
 	/* Nothing to check... */
 	return 0;
@@ -466,7 +468,7 @@ PHPAPI FILE *php_fopen_with_path(const char *filename, const char *mode, const c
 
 	/* Relative path open */
 	if (*filename == '.') {
-		if (PG(safe_mode) && (!php_checkuid(filename, mode, CHECKUID_CHECK_MODE_PARAM))) {
+		if (SAFE_MODE && (!php_checkuid(filename, mode, CHECKUID_CHECK_MODE_PARAM))) {
 			return NULL;
 		}
 		return php_fopen_and_set_opened_path(filename, mode, opened_path TSRMLS_CC);
@@ -483,14 +485,14 @@ PHPAPI FILE *php_fopen_with_path(const char *filename, const char *mode, const c
 			/* filename is in safe_mode_include_dir (or subdir) */
 			return php_fopen_and_set_opened_path(filename, mode, opened_path TSRMLS_CC);
 		}
-		if (PG(safe_mode) && (!php_checkuid(filename, mode, CHECKUID_CHECK_MODE_PARAM))) {
+		if (SAFE_MODE && (!php_checkuid(filename, mode, CHECKUID_CHECK_MODE_PARAM))) {
 			return NULL;
 		}
 		return php_fopen_and_set_opened_path(filename, mode, opened_path TSRMLS_CC);
 	}
 
 	if (!path || (path && !*path)) {
-		if (PG(safe_mode) && (!php_checkuid(filename, mode, CHECKUID_CHECK_MODE_PARAM))) {
+		if (SAFE_MODE && (!php_checkuid(filename, mode, CHECKUID_CHECK_MODE_PARAM))) {
 			return NULL;
 		}
 		return php_fopen_and_set_opened_path(filename, mode, opened_path TSRMLS_CC);
@@ -529,7 +531,7 @@ PHPAPI FILE *php_fopen_with_path(const char *filename, const char *mode, const c
 			end++;
 		}
 		snprintf(trypath, MAXPATHLEN, "%s/%s", ptr, filename);
-		if (PG(safe_mode)) {
+		if (SAFE_MODE) {
 			if (VCWD_STAT(trypath, &sb) == 0) {
 				/* file exists ... check permission */
 				if (php_check_safe_mode_include_dir(trypath TSRMLS_CC) == 0 ||

@@ -850,7 +850,7 @@ static php_stream *php_plain_files_dir_opener(php_stream_wrapper *wrapper, char 
 		return NULL;
 	}
 	
-	if (PG(safe_mode) &&(!php_checkuid(path, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
+	if (SAFE_MODE &&(!php_checkuid(path, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
 		return NULL;
 	}
 	
@@ -979,7 +979,7 @@ static php_stream *php_plain_files_stream_opener(php_stream_wrapper *wrapper, ch
 		return NULL;
 	}
 
-	if ((options & ENFORCE_SAFE_MODE) && PG(safe_mode) && (!php_checkuid(path, mode, CHECKUID_CHECK_MODE_PARAM)))
+	if (SAFE_MODE && (options & ENFORCE_SAFE_MODE) && (!php_checkuid(path, mode, CHECKUID_CHECK_MODE_PARAM)))
 		return NULL;
 
 	return php_stream_fopen_rel(path, mode, opened_path, options);
@@ -992,7 +992,7 @@ static int php_plain_files_url_stater(php_stream_wrapper *wrapper, char *url, in
 		url += sizeof("file://") - 1;
 	}
 
-	if (PG(safe_mode) &&(!php_checkuid_ex(url, NULL, CHECKUID_CHECK_FILE_AND_DIR, (flags & PHP_STREAM_URL_STAT_QUIET) ? CHECKUID_NO_ERRORS : 0))) {
+	if (SAFE_MODE &&(!php_checkuid_ex(url, NULL, CHECKUID_CHECK_FILE_AND_DIR, (flags & PHP_STREAM_URL_STAT_QUIET) ? CHECKUID_NO_ERRORS : 0))) {
 		return -1;
 	}
 
@@ -1018,7 +1018,7 @@ static int php_plain_files_unlink(php_stream_wrapper *wrapper, char *url, int op
 	}
 
 	if (options & ENFORCE_SAFE_MODE) {
-		if (PG(safe_mode) && !php_checkuid(url, NULL, CHECKUID_CHECK_FILE_AND_DIR)) {
+		if (SAFE_MODE && !php_checkuid(url, NULL, CHECKUID_CHECK_FILE_AND_DIR)) {
 			return 0;
 		}
 
@@ -1058,7 +1058,7 @@ static int php_plain_files_rename(php_stream_wrapper *wrapper, char *url_from, c
 		url_to = p + 3;
 	}
 
-	if (PG(safe_mode) && (!php_checkuid(url_from, NULL, CHECKUID_CHECK_FILE_AND_DIR) ||
+	if (SAFE_MODE && (!php_checkuid(url_from, NULL, CHECKUID_CHECK_FILE_AND_DIR) ||
 				!php_checkuid(url_to, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
 		return 0;
 	}
@@ -1208,7 +1208,7 @@ static int php_plain_files_mkdir(php_stream_wrapper *wrapper, char *dir, int mod
 
 static int php_plain_files_rmdir(php_stream_wrapper *wrapper, char *url, int options, php_stream_context *context TSRMLS_DC)
 {
-	if (PG(safe_mode) &&(!php_checkuid(url, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
+	if (SAFE_MODE &&(!php_checkuid(url, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
 		return 0;
 	}
 
@@ -1285,7 +1285,7 @@ PHPAPI php_stream *_php_stream_fopen_with_path(char *filename, char *mode, char 
 			return NULL;
 		}
 
-		if (PG(safe_mode) && (!php_checkuid(filename, mode, CHECKUID_CHECK_MODE_PARAM))) {
+		if (SAFE_MODE && (!php_checkuid(filename, mode, CHECKUID_CHECK_MODE_PARAM))) {
 			return NULL;
 		}
 		return php_stream_fopen_rel(filename, mode, opened_path, options);
@@ -1309,7 +1309,7 @@ not_relative_path:
 			/* filename is in safe_mode_include_dir (or subdir) */
 			return php_stream_fopen_rel(filename, mode, opened_path, options);
 
-		if (PG(safe_mode) && (!php_checkuid(filename, mode, CHECKUID_CHECK_MODE_PARAM)))
+		if (SAFE_MODE && (!php_checkuid(filename, mode, CHECKUID_CHECK_MODE_PARAM)))
 			return NULL;
 
 		return php_stream_fopen_rel(filename, mode, opened_path, options);
@@ -1333,7 +1333,7 @@ not_relative_path:
 		if ((php_check_safe_mode_include_dir(trypath TSRMLS_CC)) == 0) {
 			return php_stream_fopen_rel(trypath, mode, opened_path, options);
 		}	
-		if (PG(safe_mode) && (!php_checkuid(trypath, mode, CHECKUID_CHECK_MODE_PARAM))) {
+		if (SAFE_MODE && (!php_checkuid(trypath, mode, CHECKUID_CHECK_MODE_PARAM))) {
 			return NULL;
 		}
 		
@@ -1342,7 +1342,7 @@ not_relative_path:
 #endif
 
 	if (!path || (path && !*path)) {
-		if (PG(safe_mode) && (!php_checkuid(filename, mode, CHECKUID_CHECK_MODE_PARAM))) {
+		if (SAFE_MODE && (!php_checkuid(filename, mode, CHECKUID_CHECK_MODE_PARAM))) {
 			return NULL;
 		}
 		return php_stream_fopen_rel(filename, mode, opened_path, options);
@@ -1391,7 +1391,7 @@ not_relative_path:
 			goto stream_skip;
 		}
 		
-		if (PG(safe_mode)) {
+		if (SAFE_MODE) {
 			if (VCWD_STAT(trypath, &sb) == 0) {
 				/* file exists ... check permission */
 				if ((php_check_safe_mode_include_dir(trypath TSRMLS_CC) == 0) ||

@@ -190,7 +190,7 @@ PHP_FUNCTION(iptcembed)
 		return;
 	}
 
-	if (PG(safe_mode) && (!php_checkuid(jpeg_file, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
+	if (SAFE_MODE && (!php_checkuid(jpeg_file, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
 		RETURN_FALSE;
 	}
 

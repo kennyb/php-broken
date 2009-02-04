@@ -1689,7 +1689,7 @@ PHP_MINFO_FUNCTION(apache)
 		env_arr = table_elts(r->headers_in);
 		env = (table_entry *)env_arr->elts;
 		for (i = 0; i < env_arr->nelts; ++i) {
-			if (env[i].key && (!PG(safe_mode) || (PG(safe_mode) && strncasecmp(env[i].key, "authorization", 13)))) {
+			if (env[i].key && (!SAFE_MODE || (SAFE_MODE && strncasecmp(env[i].key, "authorization", 13)))) {
 				php_info_print_table_row(2, env[i].key, env[i].val);
 			}
 		}
@@ -1788,7 +1788,7 @@ static void apache_table_to_zval(table *t, int safe_mode, zval *return_value)
    Fetch all HTTP request headers */
 PHP_FUNCTION(apache_request_headers)
 {
-	apache_table_to_zval(((request_rec *)SG(server_context))->headers_in, PG(safe_mode), return_value);
+	apache_table_to_zval(((request_rec *)SG(server_context))->headers_in, SAFE_MODE, return_value);
 }
 /* }}} */
 

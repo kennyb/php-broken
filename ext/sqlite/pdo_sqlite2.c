@@ -522,7 +522,7 @@ static char *make_filename_safe(const char *filename TSRMLS_DC)
 			return NULL;
 		}
 
-		if (PG(safe_mode) && (!php_checkuid(fullpath, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
+		if (SAFE_MODE && (!php_checkuid(fullpath, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
 			efree(fullpath);
 			return NULL;
 		}

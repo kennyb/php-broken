@@ -157,7 +157,7 @@
    }
 
 #define TIDY_SAFE_MODE_CHECK(filename) \
-if ((PG(safe_mode) && (!php_checkuid(filename, NULL, CHECKUID_CHECK_FILE_AND_DIR))) || php_check_open_basedir(filename TSRMLS_CC)) { \
+if ((SAFE_MODE && (!php_checkuid(filename, NULL, CHECKUID_CHECK_FILE_AND_DIR))) || php_check_open_basedir(filename TSRMLS_CC)) { \
 	RETURN_FALSE; \
 } \
 

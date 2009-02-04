@@ -414,7 +414,7 @@ PHP_FUNCTION(nsapi_request_headers)
 	for (i=0; i < rc->rq->headers->hsize; i++) {
 		entry=rc->rq->headers->ht[i];
 		while (entry) {
-			if (!PG(safe_mode) || strncasecmp(entry->param->name, "authorization", 13)) {
+			if (!SAFE_MODE || strncasecmp(entry->param->name, "authorization", 13)) {
 				add_assoc_string(return_value, entry->param->name, entry->param->value, 1);
 			}
 			entry=entry->next;
@@ -606,7 +606,7 @@ static void sapi_nsapi_register_server_variables(zval *track_vars_array TSRMLS_D
 	for (i=0; i < rc->rq->headers->hsize; i++) {
 		entry=rc->rq->headers->ht[i];
 		while (entry) {
-			if (!PG(safe_mode) || strncasecmp(entry->param->name, "authorization", 13)) {
+			if (!SAFE_MODE || strncasecmp(entry->param->name, "authorization", 13)) {
 				if (strcasecmp(entry->param->name, "content-length")==0 || strcasecmp(entry->param->name, "content-type")==0) {
 					value=estrdup(entry->param->name);
 					pos = 0;
@@ -955,7 +955,7 @@ int NSAPI_PUBLIC php5_execute(pblock *pb, Session *sn, Request *rq)
 	
 	nsapi_php_ini_entries(NSLS_C TSRMLS_CC);
 
-	if (!PG(safe_mode)) php_handle_auth_data(pblock_findval("authorization", rq->headers) TSRMLS_CC);
+	if (!SAFE_MODE) php_handle_auth_data(pblock_findval("authorization", rq->headers) TSRMLS_CC);
 
 	file_handle.type = ZEND_HANDLE_FILENAME;
 	file_handle.filename = SG(request_info).path_translated;

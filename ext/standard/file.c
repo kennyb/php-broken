@@ -948,7 +948,7 @@ PHP_FUNCTION(popen)
 		}
 	}
 #endif
-	if (PG(safe_mode)){
+	if (SAFE_MODE){
 		b = strchr(Z_STRVAL_PP(arg1), ' ');
 		if (!b) {
 			b = strrchr(Z_STRVAL_PP(arg1), '/');
@@ -964,9 +964,9 @@ PHP_FUNCTION(popen)
 		}
 		
 		if (b) {
-			spprintf(&buf, 0, "%s%s", PG(safe_mode_exec_dir), b);
+			spprintf(&buf, 0, "%s%s", SAFE_MODE_EXEC_DIR, b);
 		} else {
-			spprintf(&buf, 0, "%s/%s", PG(safe_mode_exec_dir), Z_STRVAL_PP(arg1));
+			spprintf(&buf, 0, "%s/%s", SAFE_MODE_EXEC_DIR, Z_STRVAL_PP(arg1));
 		}
 
 		tmp = php_escape_shell_cmd(buf);
@@ -1405,7 +1405,7 @@ PHPAPI int php_mkdir_ex(char *dir, long mode, int options TSRMLS_DC) /* {{{ */
 {
 	int ret;
 
-	if (PG(safe_mode) && (!php_checkuid(dir, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
+	if (SAFE_MODE && (!php_checkuid(dir, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
 		return -1;
 	}
 
@@ -1736,7 +1736,7 @@ PHP_FUNCTION(copy)
 	convert_to_string_ex(source);
 	convert_to_string_ex(target);
 
-	if (PG(safe_mode) &&(!php_checkuid(Z_STRVAL_PP(source), NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
+	if (SAFE_MODE &&(!php_checkuid(Z_STRVAL_PP(source), NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
 		RETURN_FALSE;
 	}
 
@@ -2384,7 +2384,7 @@ PHP_FUNCTION(realpath)
 	convert_to_string_ex(path);
 
 	if (VCWD_REALPATH(Z_STRVAL_PP(path), resolved_path_buff)) {
-		if (PG(safe_mode) && (!php_checkuid(resolved_path_buff, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
+		if (SAFE_MODE && (!php_checkuid(resolved_path_buff, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
 			RETURN_FALSE;
 		}
 

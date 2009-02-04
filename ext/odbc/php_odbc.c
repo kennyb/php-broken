@@ -1020,7 +1020,7 @@ PHP_FUNCTION(odbc_execute)
 				filename[strlen(filename)] = '\0';
 
 				/* Check for safe mode. */
-				if (PG(safe_mode) && (!php_checkuid(filename, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
+				if (SAFE_MODE && (!php_checkuid(filename, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
 					efree(filename);
 					efree(params);
 					RETURN_FALSE;

@@ -63,7 +63,7 @@ PHP_FUNCTION(readlink)
 	}
 	convert_to_string_ex(filename);
 
-	if (PG(safe_mode) && !php_checkuid(Z_STRVAL_PP(filename), NULL, CHECKUID_CHECK_FILE_AND_DIR)) {
+	if (SAFE_MODE && !php_checkuid(Z_STRVAL_PP(filename), NULL, CHECKUID_CHECK_FILE_AND_DIR)) {
 		RETURN_FALSE;
 	}
 
@@ -134,11 +134,11 @@ PHP_FUNCTION(symlink)
 		RETURN_FALSE;
 	}
 
-	if (PG(safe_mode) && !php_checkuid(dest_p, NULL, CHECKUID_CHECK_FILE_AND_DIR)) {
+	if (SAFE_MODE && !php_checkuid(dest_p, NULL, CHECKUID_CHECK_FILE_AND_DIR)) {
 		RETURN_FALSE;
 	}
 
-	if (PG(safe_mode) && !php_checkuid(source_p, NULL, CHECKUID_CHECK_FILE_AND_DIR)) {
+	if (SAFE_MODE && !php_checkuid(source_p, NULL, CHECKUID_CHECK_FILE_AND_DIR)) {
 		RETURN_FALSE;
 	}
 
@@ -191,11 +191,11 @@ PHP_FUNCTION(link)
 		RETURN_FALSE;
 	}
 
-	if (PG(safe_mode) && !php_checkuid(dest_p, NULL, CHECKUID_CHECK_FILE_AND_DIR)) {
+	if (SAFE_MODE && !php_checkuid(dest_p, NULL, CHECKUID_CHECK_FILE_AND_DIR)) {
 		RETURN_FALSE;
 	}
 
-	if (PG(safe_mode) && !php_checkuid(source_p, NULL, CHECKUID_CHECK_FILE_AND_DIR)) {
+	if (SAFE_MODE && !php_checkuid(source_p, NULL, CHECKUID_CHECK_FILE_AND_DIR)) {
 		RETURN_FALSE;
 	}
 

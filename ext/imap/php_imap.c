@@ -782,7 +782,7 @@ static void php_imap_do_open(INTERNAL_FUNCTION_PARAMETERS, int persistent)
 	/* local filename, need to perform open_basedir and safe_mode checks */
 	if (Z_STRVAL_PP(mailbox)[0] != '{' && 
 			(php_check_open_basedir(Z_STRVAL_PP(mailbox) TSRMLS_CC) || 
-			(PG(safe_mode) && !php_checkuid(Z_STRVAL_PP(mailbox), NULL, CHECKUID_CHECK_FILE_AND_DIR)))) {
+			(SAFE_MODE && !php_checkuid(Z_STRVAL_PP(mailbox), NULL, CHECKUID_CHECK_FILE_AND_DIR)))) {
 		RETURN_FALSE;
 	}
 
@@ -862,7 +862,7 @@ PHP_FUNCTION(imap_reopen)
 	/* local filename, need to perform open_basedir and safe_mode checks */
 	if (Z_STRVAL_PP(mailbox)[0] != '{' && 
 			(php_check_open_basedir(Z_STRVAL_PP(mailbox) TSRMLS_CC) || 
-			(PG(safe_mode) && !php_checkuid(Z_STRVAL_PP(mailbox), NULL, CHECKUID_CHECK_FILE_AND_DIR)))) {
+			(SAFE_MODE && !php_checkuid(Z_STRVAL_PP(mailbox), NULL, CHECKUID_CHECK_FILE_AND_DIR)))) {
 		RETURN_FALSE;
 	}
 

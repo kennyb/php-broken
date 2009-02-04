@@ -469,7 +469,7 @@ PHP_FUNCTION(fdf_open)
 
 	convert_to_string_ex(file);
 
-	if (php_check_open_basedir(Z_STRVAL_PP(file) TSRMLS_CC) || (PG(safe_mode) && !php_checkuid(Z_STRVAL_PP(file), "wb+", CHECKUID_CHECK_MODE_PARAM))) {
+	if (php_check_open_basedir(Z_STRVAL_PP(file) TSRMLS_CC) || (SAFE_MODE && !php_checkuid(Z_STRVAL_PP(file), "wb+", CHECKUID_CHECK_MODE_PARAM))) {
 		RETURN_FALSE;
 	}
 
@@ -760,7 +760,7 @@ PHP_FUNCTION(fdf_set_ap)
 	convert_to_long_ex(face);
 	convert_to_string_ex(filename);
 
-	if (php_check_open_basedir(Z_STRVAL_PP(filename) TSRMLS_CC) || (PG(safe_mode) && !php_checkuid(Z_STRVAL_PP(filename), "wb+", CHECKUID_CHECK_MODE_PARAM))) {
+	if (php_check_open_basedir(Z_STRVAL_PP(filename) TSRMLS_CC) || (SAFE_MODE && !php_checkuid(Z_STRVAL_PP(filename), "wb+", CHECKUID_CHECK_MODE_PARAM))) {
 		RETURN_FALSE;
 	}
 
@@ -815,7 +815,7 @@ PHP_FUNCTION(fdf_get_ap) {
 
 	ZEND_FETCH_RESOURCE(fdf, FDFDoc *, &r_fdf, -1, "fdf", le_fdf);
 
-	if (php_check_open_basedir(filename TSRMLS_CC) || (PG(safe_mode) && !php_checkuid(filename, "wb+", CHECKUID_CHECK_MODE_PARAM))) {
+	if (php_check_open_basedir(filename TSRMLS_CC) || (SAFE_MODE && !php_checkuid(filename, "wb+", CHECKUID_CHECK_MODE_PARAM))) {
 		RETURN_FALSE;
 	}
 
@@ -955,7 +955,7 @@ PHP_FUNCTION(fdf_set_file)
 		return;
 	}
 
-	if (php_check_open_basedir(filename TSRMLS_CC) || (PG(safe_mode) && !php_checkuid(filename, "wb+", CHECKUID_CHECK_MODE_PARAM))) {
+	if (php_check_open_basedir(filename TSRMLS_CC) || (SAFE_MODE && !php_checkuid(filename, "wb+", CHECKUID_CHECK_MODE_PARAM))) {
 		RETURN_FALSE;
 	}
 
@@ -1032,7 +1032,7 @@ PHP_FUNCTION(fdf_save)
 	ZEND_FETCH_RESOURCE(fdf, FDFDoc *, &r_fdf, -1, "fdf", le_fdf);
 
 	if(filename) {
-		if (php_check_open_basedir(filename TSRMLS_CC) || (PG(safe_mode) && !php_checkuid(filename, "wb+", CHECKUID_CHECK_MODE_PARAM))) {
+		if (php_check_open_basedir(filename TSRMLS_CC) || (SAFE_MODE && !php_checkuid(filename, "wb+", CHECKUID_CHECK_MODE_PARAM))) {
 			RETURN_FALSE;
 		}
 		err = FDFSave(fdf, filename);	
@@ -1152,7 +1152,7 @@ PHP_FUNCTION(fdf_add_template)
 	convert_to_string_ex(template);
 	convert_to_long_ex(rename);
 
-	if (php_check_open_basedir(Z_STRVAL_PP(filename) TSRMLS_CC) || (PG(safe_mode) && !php_checkuid(Z_STRVAL_PP(filename), "wb+", CHECKUID_CHECK_MODE_PARAM))) {
+	if (php_check_open_basedir(Z_STRVAL_PP(filename) TSRMLS_CC) || (SAFE_MODE && !php_checkuid(Z_STRVAL_PP(filename), "wb+", CHECKUID_CHECK_MODE_PARAM))) {
 		RETURN_FALSE;
 	}
 
@@ -1726,7 +1726,7 @@ PHP_FUNCTION(fdf_get_attachment) {
 	
 	ZEND_FETCH_RESOURCE(fdf, FDFDoc *, &r_fdf, -1, "fdf", le_fdf);
 
-	if (php_check_open_basedir(savepath TSRMLS_CC) || (PG(safe_mode) && !php_checkuid(savepath, "wb+", CHECKUID_CHECK_MODE_PARAM))) {
+	if (php_check_open_basedir(savepath TSRMLS_CC) || (SAFE_MODE && !php_checkuid(savepath, "wb+", CHECKUID_CHECK_MODE_PARAM))) {
 		RETURN_FALSE;
 	}
 

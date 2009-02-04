@@ -4510,7 +4510,7 @@ PHP_FUNCTION(putenv)
 		}
 		pe.key_len = strlen(pe.key);
 
-		if (PG(safe_mode)) {
+		if (SAFE_MODE) {
 			/* Check the protected list */
 			if (zend_hash_exists(&BG(sm_protected_env_vars), pe.key, pe.key_len)) {
 				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Safe Mode warning: Cannot override protected environment variable '%s'", pe.key);
@@ -5564,7 +5564,7 @@ PHP_FUNCTION(highlight_file)
 		RETURN_FALSE;
 	}
 
-	if (PG(safe_mode) && (!php_checkuid(filename, NULL, CHECKUID_ALLOW_ONLY_FILE))) {
+	if (SAFE_MODE && (!php_checkuid(filename, NULL, CHECKUID_ALLOW_ONLY_FILE))) {
 		RETURN_FALSE;
 	}
 
@@ -5811,13 +5811,13 @@ PHP_FUNCTION(ini_set)
 #define _CHECK_PATH(var, ini) php_ini_check_path(Z_STRVAL_PP(var), Z_STRLEN_PP(var), ini, sizeof(ini))
 	
 	/* safe_mode & basedir check */
-	if (PG(safe_mode) || PG(open_basedir)) {
+	if (SAFE_MODE || PG(open_basedir)) {
 		if (_CHECK_PATH(varname, "error_log") ||
 			_CHECK_PATH(varname, "java.class.path") ||
 			_CHECK_PATH(varname, "java.home") ||
 			_CHECK_PATH(varname, "java.library.path") ||
 			_CHECK_PATH(varname, "vpopmail.directory")) {
-			if (PG(safe_mode) &&(!php_checkuid(Z_STRVAL_PP(new_value), NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
+			if (SAFE_MODE &&(!php_checkuid(Z_STRVAL_PP(new_value), NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
 				zval_dtor(return_value);
 				RETURN_FALSE;
 			}
@@ -5830,7 +5830,7 @@ PHP_FUNCTION(ini_set)
 	}	
 		
 	/* checks that ensure the user does not overwrite certain ini settings when safe_mode is enabled */
-	if (PG(safe_mode)) {
+	if (SAFE_MODE) {
 		if (!strncmp("max_execution_time", Z_STRVAL_PP(varname), sizeof("max_execution_time")) ||
 			!strncmp("memory_limit", Z_STRVAL_PP(varname), sizeof("memory_limit")) ||
 			!strncmp("child_terminate", Z_STRVAL_PP(varname), sizeof("child_terminate"))) {
@@ -6221,7 +6221,7 @@ PHP_FUNCTION(move_uploaded_file)
 		RETURN_FALSE;
 	}
 
-	if (PG(safe_mode) && (!php_checkuid(Z_STRVAL_PP(new_path), NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
+	if (SAFE_MODE && (!php_checkuid(Z_STRVAL_PP(new_path), NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
 		RETURN_FALSE;
 	}
 

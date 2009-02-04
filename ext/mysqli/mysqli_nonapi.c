@@ -54,7 +54,7 @@ PHP_FUNCTION(mysqli_connect)
 	}
     
 	/* TODO: safe mode handling */
-	if (PG(sql_safe_mode)){
+	if (SQL_SAFE_MODE){
 	} else {
 		if (!passwd) {
 			passwd = MyG(default_pw);

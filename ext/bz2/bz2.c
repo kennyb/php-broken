@@ -226,7 +226,7 @@ PHP_BZ2_API php_stream *_php_stream_bz2open(php_stream_wrapper *wrapper,
 	path_copy = path;
 #endif  
 
-	if ((PG(safe_mode) && (!php_checkuid(path_copy, NULL, CHECKUID_CHECK_FILE_AND_DIR))) || php_check_open_basedir(path_copy TSRMLS_CC)) {
+	if ((SAFE_MODE && (!php_checkuid(path_copy, NULL, CHECKUID_CHECK_FILE_AND_DIR))) || php_check_open_basedir(path_copy TSRMLS_CC)) {
 		return NULL;
 	}
 	

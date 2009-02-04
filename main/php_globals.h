@@ -48,6 +48,20 @@ extern ZEND_API struct _php_core_globals core_globals;
 
 struct _php_tick_function_entry;
 
+#if PHP_SAFE_MODE
+# define SAFE_MODE PG(safe_mode)
+# define SAFE_MODE PG(safe_mode_include_dir)
+# define SAFE_MODE_GID PG(safe_mode_gid)
+# define SAFE_MODE_EXEC_DIR PG(safe_mode_exec_dir)
+# define SQL_SAFE_MODE PG(sql_safe_mode)
+#else
+# define SAFE_MODE 0
+# define SAFE_MODE_INCLUDE_DIR 0
+# define SAFE_MODE_GID 0
+# define SAFE_MODE_EXEC_DIR 0
+# define SQL_SAFE_MODE 0
+#endif
+
 typedef struct _arg_separators {
 	char *output;
 	char *input;
@@ -58,24 +72,23 @@ struct _php_core_globals {
 	zend_bool magic_quotes_runtime;
 	zend_bool magic_quotes_sybase;
 
+#if PHP_SAFE_MODE
 	zend_bool safe_mode;
+	char *safe_mode_include_dir;
+	zend_bool safe_mode_gid;
+	zend_bool sql_safe_mode;
+	char *safe_mode_exec_dir;
+#endif
 
 	zend_bool allow_call_time_pass_reference;
 	zend_bool implicit_flush;
 
 	long output_buffering;
-
-	char *safe_mode_include_dir;
-	zend_bool safe_mode_gid;
-	zend_bool sql_safe_mode;
-	zend_bool enable_dl;
-
 	char *output_handler;
+	zend_bool enable_dl;
 
 	char *unserialize_callback_func;
 	long serialize_precision;
-
-	char *safe_mode_exec_dir;
 
 	long memory_limit;
 	long max_input_time;
