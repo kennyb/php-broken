@@ -3958,7 +3958,7 @@ ZEND_API zend_op_array *compile_file(zend_file_handle *file_handle, int type TSR
 	return retval;
 }
 
-ZEND_API int compile_inline_filename(zval *filename TSRMLS_DC)
+ZEND_API int compile_inline_filename(zval *filename, int type TSRMLS_DC)
 {
 	zend_file_handle file_handle;
 	zend_lex_state original_lex_state;
@@ -3987,17 +3987,20 @@ ZEND_API int compile_inline_filename(zval *filename TSRMLS_DC)
 			file_path = file_handle.filename;
 		}
 		
-		file_path_save = CG(active_op_array)->filename;
-		CG(active_op_array)->filename = file_path;
-		
-		compiler_result = zendparse(TSRMLS_C);
-		CG(active_op_array)->filename = file_path_save;
-		if(compiler_result == 1) { /* parser error */
-			zend_bailout();
-		} else {
-			zend_restore_lexical_state(&original_lex_state TSRMLS_CC);
+		if(zend_hash_add_empty_element(&EG(included_files), file_path, strlen(file_path)+1) == SUCCESS || type == ZEND_INCLUDE) {
+			file_path_save = CG(active_op_array)->filename;
+			CG(active_op_array)->filename = file_path;
+			
+			compiler_result = zendparse(TSRMLS_C);
+			CG(active_op_array)->filename = file_path_save;
+			if(compiler_result == 1) { /* parser error */
+				zend_bailout();
+			}
 		}
 	}
+	
+	zend_destroy_file_handle(&file_handle TSRMLS_CC);
+	zend_restore_lexical_state(&original_lex_state TSRMLS_CC);
 }
 
 zend_op_array *compile_filename(int type, zval *filename TSRMLS_DC)

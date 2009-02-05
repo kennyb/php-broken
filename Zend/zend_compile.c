@@ -3627,16 +3627,18 @@ void zend_do_include_or_eval(int type, znode *result, znode *op1 TSRMLS_DC)
 {
 	switch(type) {
 		case ZEND_EVAL:
-		case ZEND_INCLUDE_ONCE:
-		case ZEND_REQUIRE_ONCE:
-			zend_error(E_COMPILE_ERROR, "sorry, at the moment, eval and include_once are not supported");
+			zend_error(E_COMPILE_ERROR, "sorry, eval is no longer supported");
 			zend_bailout();
-	
-		case ZEND_INCLUDE:
+		
+		case ZEND_REQUIRE_ONCE:
+			type = ZEND_INCLUDE_ONCE;
+			break;
+		
 		case ZEND_REQUIRE:
-			compile_inline_filename(&op1->u.constant TSRMLS_CC);
-		EMPTY_SWITCH_DEFAULT_CASE()
+			type = ZEND_INCLUDE;
 	}
+	
+	compile_inline_filename(&op1->u.constant, type TSRMLS_CC);
 }
 
 

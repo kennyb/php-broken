@@ -1374,7 +1374,6 @@ not_relative_path:
 	}
 
 	ptr = pathbuf;
-	printf("exec: %s %s\n", ptr, path);
 	
 	while (ptr && *ptr) {
 		end = strchr(ptr, DEFAULT_DIR_SEPARATOR);
