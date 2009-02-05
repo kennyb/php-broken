@@ -160,7 +160,7 @@ ZEND_VM_HANDLER(17, ZEND_IS_EQUAL, CONST|TMP|VAR|CV, CONST|TMP|VAR|CV)
 	zend_op *opline = EX(opline);
 	zend_free_op free_op1, free_op2;
 
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		GET_OP1_ZVAL_PTR(BP_VAR_R),
 		GET_OP2_ZVAL_PTR(BP_VAR_R) TSRMLS_CC);
 	FREE_OP1();
@@ -173,9 +173,10 @@ ZEND_VM_HANDLER(18, ZEND_IS_NOT_EQUAL, CONST|TMP|VAR|CV, CONST|TMP|VAR|CV)
 	zend_op *opline = EX(opline);
 	zend_free_op free_op1, free_op2;
 
-	is_not_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		GET_OP1_ZVAL_PTR(BP_VAR_R),
 		GET_OP2_ZVAL_PTR(BP_VAR_R) TSRMLS_CC);
+	EX_T(opline->result.u.var).tmp_var.value.lval = -EX_T(opline->result.u.var).tmp_var.value.lval;
 	FREE_OP1();
 	FREE_OP2();
 	ZEND_VM_NEXT_OPCODE();
@@ -2090,7 +2091,7 @@ ZEND_VM_HANDLER(60, ZEND_DO_FCALL, CONST, ANY)
 		zend_op *ctor_opline;
 		
 		
-		//EX(function_state).function = (zend_function*) opline->op2.u.function; /* unneded? */
+		/* EX(function_state).function = (zend_function*) opline->op2.u.function; /* unneded? */
 		zend_ptr_stack_3_push(&EG(arg_types_stack), EX(fbc), EX(object), NULL);
 		zend_ptr_stack_2_push(&EG(argument_stack), (void *)(zend_uintptr_t)opline->extended_value, NULL);
 
@@ -2100,7 +2101,8 @@ ZEND_VM_HANDLER(60, ZEND_DO_FCALL, CONST, ANY)
 		ALLOC_ZVAL(EX_T(opline->result.u.var).var.ptr);
 		INIT_ZVAL(*(EX_T(opline->result.u.var).var.ptr));
 
-		if(func->common.arg_info) {
+		/* TODO - do we need to do arg_info? */
+		/*if(func->common.arg_info) {
 			zend_uint i=0;
 			zval **p;
 			ulong arg_count;
@@ -2112,7 +2114,7 @@ ZEND_VM_HANDLER(60, ZEND_DO_FCALL, CONST, ANY)
 				zend_verify_arg_type(func, ++i, *(p-arg_count) TSRMLS_CC);
 				arg_count--;
 			}
-		}
+		}*/
 		
 		((zend_internal_function *) func)->handler(opline->extended_value, EX_T(opline->result.u.var).var.ptr, func->common.return_reference?&EX_T(opline->result.u.var).var.ptr:NULL, EX(object), return_value_used TSRMLS_CC);
 		EG(current_execute_data) = EXECUTE_DATA;
@@ -2537,7 +2539,7 @@ ZEND_VM_HANDLER(48, ZEND_CASE, CONST|TMP|VAR|CV, CONST|TMP|VAR|CV)
 			EX_T(opline->op1.u.var).str_offset.str->refcount++;
 		}
 	}
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 				 GET_OP1_ZVAL_PTR(BP_VAR_R),
 				 GET_OP2_ZVAL_PTR(BP_VAR_R) TSRMLS_CC);
 

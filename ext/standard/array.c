@@ -64,8 +64,7 @@
 #define SORT_REGULAR			0
 #define SORT_NUMERIC			1
 #define	SORT_STRING				2
-#define SORT_GENERIC			4
-#define	SORT_LOCALE_STRING      5
+#define	SORT_LOCALE_STRING      4
 
 #define SORT_DESC				3
 #define SORT_ASC				4
@@ -121,7 +120,6 @@ PHP_MINIT_FUNCTION(array) /* {{{ */
 	REGISTER_LONG_CONSTANT("SORT_DESC", SORT_DESC, CONST_CS | CONST_PERSISTENT);
 
 	REGISTER_LONG_CONSTANT("SORT_REGULAR", SORT_REGULAR, CONST_CS | CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("SORT_GENERIC", SORT_GENERIC, CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("SORT_NUMERIC", SORT_NUMERIC, CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("SORT_STRING", SORT_STRING, CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("SORT_LOCALE_STRING", SORT_LOCALE_STRING, CONST_CS | CONST_PERSISTENT);
@@ -159,10 +157,6 @@ static void set_compare_func(int sort_type TSRMLS_DC) /* {{{ */
 			ARRAYG(compare_func) = string_locale_compare_function;
 			break;
 #endif
-
-		case SORT_GENERIC:
-			ARRAYG(compare_func) = compare_function;
-			break;
 		
 		default:
 		case SORT_REGULAR:
@@ -1233,7 +1227,7 @@ static void php_search_array(INTERNAL_FUNCTION_PARAMETERS, int behavior)
    	ulong num_key;
 	uint str_key_len;
    	char *string_key;
-	int (*is_equal_func)(zval *, zval *, zval * TSRMLS_DC) = is_equal_function;
+	int (*is_equal_func)(zval *, zval *, zval * TSRMLS_DC) = typesafe_compare_function;
 
 	if (ZEND_NUM_ARGS() < 2 || ZEND_NUM_ARGS() > 3 ||
 		zend_get_parameters_ex(ZEND_NUM_ARGS(), &value, &array, &strict) == FAILURE) {
@@ -2434,7 +2428,7 @@ PHP_FUNCTION(array_keys)
 	uint   string_key_len;
 	ulong  num_key;		/* Numeric key */
 	HashPosition pos;
-	int (*is_equal_func)(zval *, zval *, zval * TSRMLS_DC) = is_equal_function;
+	int (*is_equal_func)(zval *, zval *, zval * TSRMLS_DC) = typesafe_compare_function;
 
 
 	search_value = NULL;

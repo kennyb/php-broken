@@ -40,11 +40,6 @@ $header_text = <<< DATA
    +----------------------------------------------------------------------+
 */
 
-echo "rebuilding ini scanner...\n";
-system("flex -B -8 -L -Sflex.skl -Pini_ -ozend_ini_scanner.c zend_ini_scanner.l");
-
-echo "rebuilding language scanner...\n";
-system("flex -B -8 -L -Sflex.skl -Pzend -ozend_language_scanner.c zend_language_scanner.l");
 
 DATA;
 
@@ -54,6 +49,12 @@ DATA;
 */
 
 error_reporting(E_ALL);
+
+echo "rebuilding ini scanner...\n";
+system("flex -B -8 -L -Sflex.skl -Pini_ -ozend_ini_scanner.c zend_ini_scanner.l");
+
+echo "rebuilding language scanner...\n";
+system("flex -B -8 -L -Sflex.skl -Pzend -ozend_language_scanner.c zend_language_scanner.l");
 
 define("ZEND_VM_KIND_CALL",   1);
 define("ZEND_VM_KIND_SWITCH", 2);

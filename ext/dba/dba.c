@@ -191,7 +191,11 @@ zend_module_entry dba_module_entry = {
 	PHP_MSHUTDOWN(dba),
 	NULL,
 	NULL,
+#if WANT_INI
 	PHP_MINFO(dba),
+#else
+	NULL,
+#endif
 	NO_VERSION_YET,
 	PHP_MODULE_GLOBALS(dba),
 	PHP_GINIT(dba),
@@ -536,6 +540,7 @@ PHP_MSHUTDOWN_FUNCTION(dba)
 
 #include "ext/standard/php_smart_str.h"
 
+#if WANT_INI
 /* {{{ PHP_MINFO_FUNCTION
  */
 PHP_MINFO_FUNCTION(dba)
@@ -560,6 +565,7 @@ PHP_MINFO_FUNCTION(dba)
 	php_info_print_table_end();
 }
 /* }}} */
+#endif
 
 /* {{{ php_dba_update
  */

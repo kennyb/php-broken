@@ -1018,11 +1018,11 @@ ZEND_API int shift_left_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
 		return SUCCESS;
 	}
 
-#if DEBUG_STRICT
-	result->type = IS_NULL;
+#if STRICT_DEBUG
 	zend_error(E_ERROR, "shifting can only be done on integers");
-	return FAILURE;
 #endif
+	result->type = IS_NULL;
+	return FAILURE;
 }
 
 
@@ -1034,11 +1034,11 @@ ZEND_API int shift_right_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
 		return SUCCESS;
 	}
 
-#if DEBUG_STRICT
-	result->type = IS_NULL;
+#if STRICT_DEBUG
 	zend_error(E_ERROR, "shifting can only be done on integers");
-	return FAILURE;
 #endif
+	result->type = IS_NULL;
+	return FAILURE;
 }
 
 
@@ -1214,142 +1214,6 @@ static inline void zend_free_obj_get_result(zval *op)
 	}
 }
 
-#define COMPARE_RETURN_AND_FREE(retval) \
-			zend_free_obj_get_result(op1_free); \
-			zend_free_obj_get_result(op2_free); \
-			return retval;
-
-ZEND_API int compare_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
-{
-	zval op1_copy, op2_copy;
-	zval *op1_free, *op2_free;
-	int op1_obj = Z_TYPE_P(op1) == IS_OBJECT;
-	int op2_obj = Z_TYPE_P(op2) == IS_OBJECT;
-	int eq_comp = op1_obj && op2_obj && (Z_OBJ_HANDLER_P(op1,compare_objects) 
-	                                  == Z_OBJ_HANDLER_P(op2,compare_objects));
-
-	if (op1_obj && !eq_comp) {
-		if (Z_TYPE_P(op2) == IS_NULL) {
-			ZVAL_LONG(result, 1);
-			return SUCCESS;
-		} else if (Z_OBJ_HT_P(op1)->get) {
-			op1 = op1_free = Z_OBJ_HT_P(op1)->get(op1 TSRMLS_CC);
-		} else if (!op2_obj && Z_OBJ_HT_P(op1)->cast_object) {
-			ALLOC_INIT_ZVAL(op1_free);
-			if (Z_OBJ_HT_P(op1)->cast_object(op1, op1_free, Z_TYPE_P(op2) TSRMLS_CC) == FAILURE) {
-				op2_free = NULL;
-				ZVAL_LONG(result, 1);
-				COMPARE_RETURN_AND_FREE(SUCCESS);
-			}
-			op1 = op1_free;
-		} else {
-			op1_free = NULL;
-		}
-		op1_obj = Z_TYPE_P(op1) == IS_OBJECT;
-		eq_comp = op1_obj && op2_obj && (Z_OBJ_HANDLER_P(op1,compare_objects) 
-	                                  == Z_OBJ_HANDLER_P(op2,compare_objects));
-	} else {
-		op1_free = NULL;
-	}
-	if (op2_obj && !eq_comp) {
-		if (Z_TYPE_P(op1) == IS_NULL) {
-			op2_free = NULL;
-			ZVAL_LONG(result, -1);
-			COMPARE_RETURN_AND_FREE(SUCCESS);
-		} else if (Z_OBJ_HT_P(op2)->get) {
-			op2 = op2_free = Z_OBJ_HT_P(op2)->get(op2 TSRMLS_CC);
-		} else if (!op1_obj && Z_OBJ_HT_P(op2)->cast_object) {
-			ALLOC_INIT_ZVAL(op2_free);
-			if (Z_OBJ_HT_P(op2)->cast_object(op2, op2_free, Z_TYPE_P(op1) TSRMLS_CC) == FAILURE) {
-				ZVAL_LONG(result, -1);
-				COMPARE_RETURN_AND_FREE(SUCCESS);
-			}
-			op2 = op2_free;
-		} else {
-			op2_free = NULL;
-		}
-		op2_obj = Z_TYPE_P(op2) == IS_OBJECT;
-		eq_comp = op1_obj && op2_obj && (Z_OBJ_HANDLER_P(op1,compare_objects) 
-	                                  == Z_OBJ_HANDLER_P(op2,compare_objects));
-	} else {
-		op2_free = NULL;
-	}
-
-	if ((Z_TYPE_P(op1) == IS_NULL && Z_TYPE_P(op2) == IS_STRING)
-		|| (Z_TYPE_P(op2) == IS_NULL && Z_TYPE_P(op1) == IS_STRING)) {
-		if (Z_TYPE_P(op1) == IS_NULL) {
-			ZVAL_LONG(result, zend_binary_strcmp("", 0, Z_STRVAL_P(op2), Z_STRLEN_P(op2)));
-			COMPARE_RETURN_AND_FREE(SUCCESS);
-		} else {
-			ZVAL_LONG(result, zend_binary_strcmp(Z_STRVAL_P(op1), Z_STRLEN_P(op1), "", 0));
-			COMPARE_RETURN_AND_FREE(SUCCESS);
-		}
-	}
-		
-	if (op1->type == IS_STRING && op2->type == IS_STRING) {
-		zendi_smart_strcmp(result, op1, op2);
-		COMPARE_RETURN_AND_FREE(SUCCESS);
-	}
-
-	if (Z_TYPE_P(op1) == IS_BOOL || Z_TYPE_P(op2) == IS_BOOL
-		|| Z_TYPE_P(op1) == IS_NULL || Z_TYPE_P(op2) == IS_NULL) {
-		zendi_convert_to_boolean(op1, op1_copy, result);
-		zendi_convert_to_boolean(op2, op2_copy, result);
-		ZVAL_LONG(result, ZEND_NORMALIZE_BOOL(Z_LVAL_P(op1) - Z_LVAL_P(op2)));
-		COMPARE_RETURN_AND_FREE(SUCCESS);
-	}
-
-	/* If both are objects sharing the same comparision handler then use is */
-	if (eq_comp) {
-		if (Z_OBJ_HANDLE_P(op1) == Z_OBJ_HANDLE_P(op2)) {
-			/* object handles are identical, apprently this is the same object */
-			ZVAL_LONG(result, 0);
-			COMPARE_RETURN_AND_FREE(SUCCESS);
-		}
-		ZVAL_LONG(result, Z_OBJ_HT_P(op1)->compare_objects(op1, op2 TSRMLS_CC));
-		COMPARE_RETURN_AND_FREE(SUCCESS);
-	}
-
-	zendi_convert_scalar_to_number(op1, op1_copy, result);
-	zendi_convert_scalar_to_number(op2, op2_copy, result);
-
-	if (Z_TYPE_P(op1) == IS_LONG && Z_TYPE_P(op2) == IS_LONG) {
-		ZVAL_LONG(result, Z_LVAL_P(op1)>Z_LVAL_P(op2)?1:(Z_LVAL_P(op1)<Z_LVAL_P(op2)?-1:0));
-		COMPARE_RETURN_AND_FREE(SUCCESS);
-	}
-	if ((Z_TYPE_P(op1) == IS_DOUBLE || Z_TYPE_P(op1) == IS_LONG)
-		&& (Z_TYPE_P(op2) == IS_DOUBLE || Z_TYPE_P(op2) == IS_LONG)) {
-		Z_DVAL_P(result) = (Z_TYPE_P(op1) == IS_LONG ? (double) Z_LVAL_P(op1) : Z_DVAL_P(op1)) - (Z_TYPE_P(op2) == IS_LONG ? (double) Z_LVAL_P(op2) : Z_DVAL_P(op2));
-		ZVAL_LONG(result, ZEND_NORMALIZE_BOOL(Z_DVAL_P(result)));
-		COMPARE_RETURN_AND_FREE(SUCCESS);
-	}
-	if (Z_TYPE_P(op1)==IS_ARRAY && Z_TYPE_P(op2)==IS_ARRAY) {
-		zend_compare_arrays(result, op1, op2 TSRMLS_CC);
-		COMPARE_RETURN_AND_FREE(SUCCESS);
-	}
-
-	if (Z_TYPE_P(op1)==IS_ARRAY) {
-		ZVAL_LONG(result, 1);
-		COMPARE_RETURN_AND_FREE(SUCCESS);
-	}
-	if (Z_TYPE_P(op2)==IS_ARRAY) {
-		ZVAL_LONG(result, -1);
-		COMPARE_RETURN_AND_FREE(SUCCESS);
-	}
-	if (Z_TYPE_P(op1)==IS_OBJECT) {
-		ZVAL_LONG(result, 1);
-		COMPARE_RETURN_AND_FREE(SUCCESS);
-	}
-	if (Z_TYPE_P(op2)==IS_OBJECT) {
-		ZVAL_LONG(result, -1);
-		COMPARE_RETURN_AND_FREE(SUCCESS);
-	}
-
-	ZVAL_BOOL(result, 0);
-	COMPARE_RETURN_AND_FREE(FAILURE);
-}
-
-
 static int hash_zval_typesafe_compare_function(const zval **z1, const zval **z2)
 {
 	zval result;
@@ -1387,9 +1251,13 @@ ZEND_API int typesafe_compare_function(zval *result, zval *op1, zval *op2 TSRMLS
 			op1 = &op1_copy;
 			op2 = &op2_copy;
 		} else {
-			return SUCCESS;
+#if STRICT_DEBUG
+			zend_error(E_WARNING,"You cannot compare two objects of different types");
+#endif
+			return FAILURE;
 		}
 	}
+	
 	switch (op1->type) {
 		case IS_NULL:
 			result->value.lval = (op2->type==IS_NULL);
@@ -1483,15 +1351,7 @@ ZEND_API int is_identical_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
 			break;
 		case IS_OBJECT:
 			if (Z_OBJ_HT_P(op1) == Z_OBJ_HT_P(op2)) {
-				if (EG(ze1_compatibility_mode)) {
-					zend_compare_objects(result, op1, op2 TSRMLS_CC);
-					/* comparison returns 0 in case of equality and
-					 * 1 in case of ineqaulity, we need to reverse it
-					 */
-					result->value.lval = !result->value.lval;
-				} else {
-					result->value.lval = (Z_OBJ_HANDLE_P(op1) == Z_OBJ_HANDLE_P(op2));
-				}
+				result->value.lval = (Z_OBJ_HANDLE_P(op1) == Z_OBJ_HANDLE_P(op2));
 			} else {
 				result->value.lval = 0;
 			}
@@ -1506,91 +1366,16 @@ ZEND_API int is_identical_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
 
 ZEND_API int is_not_identical_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
 {
-   result->type = IS_BOOL;
-   if (is_identical_function(result, op1, op2 TSRMLS_CC) == FAILURE) {
-	  return FAILURE;
-   }
-   result->value.lval = !result->value.lval;
-   return SUCCESS;
-}
-
-
-ZEND_API int is_equal_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
-{
 	result->type = IS_BOOL;
-	result->value.lval = 0;
-	
-	if(op1->type == op2->type) {
-		switch(op1->type) {
-			case IS_LONG:
-				if(op1->value.lval == op2->value.lval) {
-					result->value.lval = 1;
-				}
-
-				return SUCCESS;
-			
-			case IS_STRING:
-				result->value.lval = !zend_binary_zval_strcmp(op1, op2);
-				return SUCCESS;
-		
-			case IS_DOUBLE:
-				if(op1->value.dval == op2->value.dval) {
-					result->value.lval = 1;
-				}
-
-				return SUCCESS;
-		}
-
-#if STRICT_DEBUG
-		zend_error(E_ERROR, "comparison operators less than / greater than must be of the type long or double");
+	if (is_identical_function(result, op1, op2 TSRMLS_CC) == FAILURE) {
 		return FAILURE;
-#endif
 	}
-
-#if STRICT_DEBUG
-	zend_error(E_ERROR, "comparison operators must be of the same type");
-#endif
-	return FAILURE;
+	
+	result->value.lval = !result->value.lval;
+	return SUCCESS;
 }
 
 
-ZEND_API int is_not_equal_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
-{
-	result->type = IS_BOOL;
-	result->value.lval = 0;
-	
-	if(op1->type == op2->type) {
-		switch(op1->type) {
-			case IS_LONG:
-				if(op1->value.lval != op2->value.lval) {
-					result->value.lval = 1;
-				}
-
-				return SUCCESS;
-			
-			case IS_STRING:
-				result->value.lval = zend_binary_zval_strcmp(op1, op2);
-				return SUCCESS;
-		
-			case IS_DOUBLE:
-				if(op1->value.dval != op2->value.dval) {
-					result->value.lval = 1;
-				}
-
-				return SUCCESS;
-		}
-
-#if STRICT_DEBUG
-		zend_error(E_ERROR, "comparison operators less than / greater than must be of the type long or double");
-		return FAILURE;
-#endif
-	}
-
-#if STRICT_DEBUG
-	zend_error(E_ERROR, "comparison operators must be of the same type");
-#endif
-	return FAILURE;
-}
 
 
 ZEND_API int is_smaller_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
@@ -1787,6 +1572,8 @@ ZEND_API int increment_function(zval *op1)
 		case IS_STRING:
 			zend_error(E_WARNING,"You cannot increment a string. use the function str_inc");
 			break;
+		default:
+			zend_error(E_WARNING,"You cannot increment this type of a variable");
 #endif
 	}
 	return FAILURE;
@@ -1809,6 +1596,8 @@ ZEND_API int decrement_function(zval *op1)
 		case IS_STRING:
 			zend_error(E_WARNING,"You cannot decrement a string. use the function str_dec");
 			break;
+		default:
+			zend_error(E_WARNING,"You cannot decrement this type of a variable");
 #endif
 	}
 	return FAILURE;
@@ -1978,7 +1767,7 @@ static int hash_zval_compare_function(const zval **z1, const zval **z2 TSRMLS_DC
 {
 	zval result;
 
-	if (compare_function(&result, (zval *) *z1, (zval *) *z2 TSRMLS_CC)==FAILURE) {
+	if (typesafe_compare_function(&result, (zval *) *z1, (zval *) *z2 TSRMLS_CC)==FAILURE) {
 		return 1;
 	}
 	return result.value.lval;

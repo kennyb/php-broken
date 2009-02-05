@@ -854,10 +854,11 @@ REASSIGN_VARS:
 									is_not_identical_function(&opline->op1.u.constant, &opline->op1.u.constant, &opline->op2.u.constant TSRMLS_CC);
 									break;
 								case ZEND_IS_EQUAL:
-									is_equal_function(&opline->op1.u.constant, &opline->op1.u.constant, &opline->op2.u.constant TSRMLS_CC);
+									typesafe_compare_function(&opline->op1.u.constant, &opline->op1.u.constant, &opline->op2.u.constant TSRMLS_CC);
 									break;
 								case ZEND_IS_NOT_EQUAL:
-									is_not_equal_function(&opline->op1.u.constant, &opline->op1.u.constant, &opline->op2.u.constant TSRMLS_CC);
+									typesafe_compare_function(&opline->op1.u.constant, &opline->op1.u.constant, &opline->op2.u.constant TSRMLS_CC);
+									opline->op1.u.constant.value.lval = -opline->op1.u.constant.value.lval;
 									break;
 								case ZEND_IS_SMALLER:
 									is_smaller_function(&opline->op1.u.constant, &opline->op1.u.constant, &opline->op2.u.constant TSRMLS_CC);
@@ -1060,76 +1061,6 @@ ZEND_API unary_op_type get_unary_op(int opcode)
 	}
 }
 
-ZEND_API void *get_binary_op(int opcode)
-{
-	switch (opcode) {
-		case ZEND_ADD:
-		case ZEND_ASSIGN_ADD:
-			return (void *) add_function;
-			break;
-		case ZEND_SUB:
-		case ZEND_ASSIGN_SUB:
-			return (void *) sub_function;
-			break;
-		case ZEND_MUL:
-		case ZEND_ASSIGN_MUL:
-			return (void *) mul_function;
-			break;
-		case ZEND_DIV:
-		case ZEND_ASSIGN_DIV:
-			return (void *) div_function;
-			break;
-		case ZEND_MOD:
-		case ZEND_ASSIGN_MOD:
-			return (void *) mod_function;
-			break;
-		case ZEND_SL:
-		case ZEND_ASSIGN_SL:
-			return (void *) shift_left_function;
-			break;
-		case ZEND_SR:
-		case ZEND_ASSIGN_SR:
-			return (void *) shift_right_function;
-			break;
-		case ZEND_CONCAT:
-		case ZEND_ASSIGN_CONCAT:
-			return (void *) concat_function;
-			break;
-		case ZEND_IS_IDENTICAL:
-			return (void *) is_identical_function;
-			break;
-		case ZEND_IS_NOT_IDENTICAL:
-			return (void *) is_not_identical_function;
-			break;
-		case ZEND_IS_EQUAL:
-			return (void *) is_equal_function;
-			break;
-		case ZEND_IS_NOT_EQUAL:
-			return (void *) is_not_equal_function;
-			break;
-		case ZEND_IS_SMALLER:
-			return (void *) is_smaller_function;
-			break;
-		case ZEND_IS_SMALLER_OR_EQUAL:
-			return (void *) is_smaller_or_equal_function;
-			break;
-		case ZEND_BW_OR:
-		case ZEND_ASSIGN_BW_OR:
-			return (void *) bitwise_or_function;
-			break;
-		case ZEND_BW_AND:
-		case ZEND_ASSIGN_BW_AND:
-			return (void *) bitwise_and_function;
-			break;
-		case ZEND_BW_XOR:
-		case ZEND_ASSIGN_BW_XOR:
-			return (void *) bitwise_xor_function;
-			break;
-		default:
-			return (void *) NULL;
-			break;
-	}
-}
 
 /*
  * Local variables:

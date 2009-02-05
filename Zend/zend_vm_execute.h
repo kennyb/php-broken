@@ -1687,10 +1687,8 @@ static int ZEND_DO_FCALL_SPEC_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 		zend_op *ctor_opline;
 
 
+		/* EX(function_state).function = (zend_function*) opline->op2.u.function; /* unneded? */
 		zend_ptr_stack_3_push(&EG(arg_types_stack), EX(fbc), EX(object), NULL);
-		//EX(function_state).function = (zend_function*) opline->op2.u.function; /* unneded? */
-
-
 		zend_ptr_stack_2_push(&EG(argument_stack), (void *)(zend_uintptr_t)opline->extended_value, NULL);
 
 		EX_T(opline->result.u.var).var.ptr_ptr = &EX_T(opline->result.u.var).var.ptr;
@@ -1699,8 +1697,8 @@ static int ZEND_DO_FCALL_SPEC_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 		ALLOC_ZVAL(EX_T(opline->result.u.var).var.ptr);
 		INIT_ZVAL(*(EX_T(opline->result.u.var).var.ptr));
 
-		/*
-		if(func->common.arg_info) {
+		/* TODO - do we need to do arg_info? */
+		/*if(func->common.arg_info) {
 			zend_uint i=0;
 			zval **p;
 			ulong arg_count;
@@ -2524,7 +2522,7 @@ static int ZEND_IS_EQUAL_SPEC_CONST_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 
 
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		&opline->op1.u.constant,
 		&opline->op2.u.constant TSRMLS_CC);
 
@@ -2537,9 +2535,10 @@ static int ZEND_IS_NOT_EQUAL_SPEC_CONST_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 
 
-	is_not_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		&opline->op1.u.constant,
 		&opline->op2.u.constant TSRMLS_CC);
+	EX_T(opline->result.u.var).tmp_var.value.lval = -EX_T(opline->result.u.var).tmp_var.value.lval;
 
 
 	ZEND_VM_NEXT_OPCODE();
@@ -2660,7 +2659,7 @@ static int ZEND_CASE_SPEC_CONST_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 			EX_T(opline->op1.u.var).str_offset.str->refcount++;
 		}
 	}
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 				 &opline->op1.u.constant,
 				 &opline->op2.u.constant TSRMLS_CC);
 
@@ -2950,7 +2949,7 @@ static int ZEND_IS_EQUAL_SPEC_CONST_TMP_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 	zend_free_op free_op2;
 
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		&opline->op1.u.constant,
 		_get_zval_ptr_tmp(&opline->op2, EX(Ts), &free_op2 TSRMLS_CC) TSRMLS_CC);
 
@@ -2963,9 +2962,10 @@ static int ZEND_IS_NOT_EQUAL_SPEC_CONST_TMP_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 	zend_free_op free_op2;
 
-	is_not_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		&opline->op1.u.constant,
 		_get_zval_ptr_tmp(&opline->op2, EX(Ts), &free_op2 TSRMLS_CC) TSRMLS_CC);
+	EX_T(opline->result.u.var).tmp_var.value.lval = -EX_T(opline->result.u.var).tmp_var.value.lval;
 
 	zval_dtor(free_op2.var);
 	ZEND_VM_NEXT_OPCODE();
@@ -3063,7 +3063,7 @@ static int ZEND_CASE_SPEC_CONST_TMP_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 			EX_T(opline->op1.u.var).str_offset.str->refcount++;
 		}
 	}
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 				 &opline->op1.u.constant,
 				 _get_zval_ptr_tmp(&opline->op2, EX(Ts), &free_op2 TSRMLS_CC) TSRMLS_CC);
 
@@ -3309,7 +3309,7 @@ static int ZEND_IS_EQUAL_SPEC_CONST_VAR_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 	zend_free_op free_op2;
 
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		&opline->op1.u.constant,
 		_get_zval_ptr_var(&opline->op2, EX(Ts), &free_op2 TSRMLS_CC) TSRMLS_CC);
 
@@ -3322,9 +3322,10 @@ static int ZEND_IS_NOT_EQUAL_SPEC_CONST_VAR_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 	zend_free_op free_op2;
 
-	is_not_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		&opline->op1.u.constant,
 		_get_zval_ptr_var(&opline->op2, EX(Ts), &free_op2 TSRMLS_CC) TSRMLS_CC);
+	EX_T(opline->result.u.var).tmp_var.value.lval = -EX_T(opline->result.u.var).tmp_var.value.lval;
 
 	if (free_op2.var) {zval_ptr_dtor(&free_op2.var);};
 	ZEND_VM_NEXT_OPCODE();
@@ -3422,7 +3423,7 @@ static int ZEND_CASE_SPEC_CONST_VAR_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 			EX_T(opline->op1.u.var).str_offset.str->refcount++;
 		}
 	}
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 				 &opline->op1.u.constant,
 				 _get_zval_ptr_var(&opline->op2, EX(Ts), &free_op2 TSRMLS_CC) TSRMLS_CC);
 
@@ -3761,7 +3762,7 @@ static int ZEND_IS_EQUAL_SPEC_CONST_CV_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 
 
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		&opline->op1.u.constant,
 		_get_zval_ptr_cv(&opline->op2, EX(Ts), BP_VAR_R TSRMLS_CC) TSRMLS_CC);
 
@@ -3774,9 +3775,10 @@ static int ZEND_IS_NOT_EQUAL_SPEC_CONST_CV_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 
 
-	is_not_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		&opline->op1.u.constant,
 		_get_zval_ptr_cv(&opline->op2, EX(Ts), BP_VAR_R TSRMLS_CC) TSRMLS_CC);
+	EX_T(opline->result.u.var).tmp_var.value.lval = -EX_T(opline->result.u.var).tmp_var.value.lval;
 
 
 	ZEND_VM_NEXT_OPCODE();
@@ -3874,7 +3876,7 @@ static int ZEND_CASE_SPEC_CONST_CV_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 			EX_T(opline->op1.u.var).str_offset.str->refcount++;
 		}
 	}
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 				 &opline->op1.u.constant,
 				 _get_zval_ptr_cv(&opline->op2, EX(Ts), BP_VAR_R TSRMLS_CC) TSRMLS_CC);
 
@@ -5064,7 +5066,7 @@ static int ZEND_IS_EQUAL_SPEC_TMP_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 	zend_free_op free_op1;
 
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		_get_zval_ptr_tmp(&opline->op1, EX(Ts), &free_op1 TSRMLS_CC),
 		&opline->op2.u.constant TSRMLS_CC);
 	zval_dtor(free_op1.var);
@@ -5077,9 +5079,10 @@ static int ZEND_IS_NOT_EQUAL_SPEC_TMP_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 	zend_free_op free_op1;
 
-	is_not_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		_get_zval_ptr_tmp(&opline->op1, EX(Ts), &free_op1 TSRMLS_CC),
 		&opline->op2.u.constant TSRMLS_CC);
+	EX_T(opline->result.u.var).tmp_var.value.lval = -EX_T(opline->result.u.var).tmp_var.value.lval;
 	zval_dtor(free_op1.var);
 
 	ZEND_VM_NEXT_OPCODE();
@@ -5277,7 +5280,7 @@ static int ZEND_CASE_SPEC_TMP_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 			EX_T(opline->op1.u.var).str_offset.str->refcount++;
 		}
 	}
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 				 _get_zval_ptr_tmp(&opline->op1, EX(Ts), &free_op1 TSRMLS_CC),
 				 &opline->op2.u.constant TSRMLS_CC);
 
@@ -5584,7 +5587,7 @@ static int ZEND_IS_EQUAL_SPEC_TMP_TMP_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 	zend_free_op free_op1, free_op2;
 
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		_get_zval_ptr_tmp(&opline->op1, EX(Ts), &free_op1 TSRMLS_CC),
 		_get_zval_ptr_tmp(&opline->op2, EX(Ts), &free_op2 TSRMLS_CC) TSRMLS_CC);
 	zval_dtor(free_op1.var);
@@ -5597,9 +5600,10 @@ static int ZEND_IS_NOT_EQUAL_SPEC_TMP_TMP_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 	zend_free_op free_op1, free_op2;
 
-	is_not_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		_get_zval_ptr_tmp(&opline->op1, EX(Ts), &free_op1 TSRMLS_CC),
 		_get_zval_ptr_tmp(&opline->op2, EX(Ts), &free_op2 TSRMLS_CC) TSRMLS_CC);
+	EX_T(opline->result.u.var).tmp_var.value.lval = -EX_T(opline->result.u.var).tmp_var.value.lval;
 	zval_dtor(free_op1.var);
 	zval_dtor(free_op2.var);
 	ZEND_VM_NEXT_OPCODE();
@@ -5783,7 +5787,7 @@ static int ZEND_CASE_SPEC_TMP_TMP_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 			EX_T(opline->op1.u.var).str_offset.str->refcount++;
 		}
 	}
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 				 _get_zval_ptr_tmp(&opline->op1, EX(Ts), &free_op1 TSRMLS_CC),
 				 _get_zval_ptr_tmp(&opline->op2, EX(Ts), &free_op2 TSRMLS_CC) TSRMLS_CC);
 
@@ -6091,7 +6095,7 @@ static int ZEND_IS_EQUAL_SPEC_TMP_VAR_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 	zend_free_op free_op1, free_op2;
 
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		_get_zval_ptr_tmp(&opline->op1, EX(Ts), &free_op1 TSRMLS_CC),
 		_get_zval_ptr_var(&opline->op2, EX(Ts), &free_op2 TSRMLS_CC) TSRMLS_CC);
 	zval_dtor(free_op1.var);
@@ -6104,9 +6108,10 @@ static int ZEND_IS_NOT_EQUAL_SPEC_TMP_VAR_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 	zend_free_op free_op1, free_op2;
 
-	is_not_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		_get_zval_ptr_tmp(&opline->op1, EX(Ts), &free_op1 TSRMLS_CC),
 		_get_zval_ptr_var(&opline->op2, EX(Ts), &free_op2 TSRMLS_CC) TSRMLS_CC);
+	EX_T(opline->result.u.var).tmp_var.value.lval = -EX_T(opline->result.u.var).tmp_var.value.lval;
 	zval_dtor(free_op1.var);
 	if (free_op2.var) {zval_ptr_dtor(&free_op2.var);};
 	ZEND_VM_NEXT_OPCODE();
@@ -6290,7 +6295,7 @@ static int ZEND_CASE_SPEC_TMP_VAR_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 			EX_T(opline->op1.u.var).str_offset.str->refcount++;
 		}
 	}
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 				 _get_zval_ptr_tmp(&opline->op1, EX(Ts), &free_op1 TSRMLS_CC),
 				 _get_zval_ptr_var(&opline->op2, EX(Ts), &free_op2 TSRMLS_CC) TSRMLS_CC);
 
@@ -6692,7 +6697,7 @@ static int ZEND_IS_EQUAL_SPEC_TMP_CV_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 	zend_free_op free_op1;
 
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		_get_zval_ptr_tmp(&opline->op1, EX(Ts), &free_op1 TSRMLS_CC),
 		_get_zval_ptr_cv(&opline->op2, EX(Ts), BP_VAR_R TSRMLS_CC) TSRMLS_CC);
 	zval_dtor(free_op1.var);
@@ -6705,9 +6710,10 @@ static int ZEND_IS_NOT_EQUAL_SPEC_TMP_CV_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 	zend_free_op free_op1;
 
-	is_not_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		_get_zval_ptr_tmp(&opline->op1, EX(Ts), &free_op1 TSRMLS_CC),
 		_get_zval_ptr_cv(&opline->op2, EX(Ts), BP_VAR_R TSRMLS_CC) TSRMLS_CC);
+	EX_T(opline->result.u.var).tmp_var.value.lval = -EX_T(opline->result.u.var).tmp_var.value.lval;
 	zval_dtor(free_op1.var);
 
 	ZEND_VM_NEXT_OPCODE();
@@ -6889,7 +6895,7 @@ static int ZEND_CASE_SPEC_TMP_CV_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 			EX_T(opline->op1.u.var).str_offset.str->refcount++;
 		}
 	}
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 				 _get_zval_ptr_tmp(&opline->op1, EX(Ts), &free_op1 TSRMLS_CC),
 				 _get_zval_ptr_cv(&opline->op2, EX(Ts), BP_VAR_R TSRMLS_CC) TSRMLS_CC);
 
@@ -8532,7 +8538,7 @@ static int ZEND_IS_EQUAL_SPEC_VAR_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 	zend_free_op free_op1;
 
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		_get_zval_ptr_var(&opline->op1, EX(Ts), &free_op1 TSRMLS_CC),
 		&opline->op2.u.constant TSRMLS_CC);
 	if (free_op1.var) {zval_ptr_dtor(&free_op1.var);};
@@ -8545,9 +8551,10 @@ static int ZEND_IS_NOT_EQUAL_SPEC_VAR_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 	zend_free_op free_op1;
 
-	is_not_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		_get_zval_ptr_var(&opline->op1, EX(Ts), &free_op1 TSRMLS_CC),
 		&opline->op2.u.constant TSRMLS_CC);
+	EX_T(opline->result.u.var).tmp_var.value.lval = -EX_T(opline->result.u.var).tmp_var.value.lval;
 	if (free_op1.var) {zval_ptr_dtor(&free_op1.var);};
 
 	ZEND_VM_NEXT_OPCODE();
@@ -9541,7 +9548,7 @@ static int ZEND_CASE_SPEC_VAR_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 			EX_T(opline->op1.u.var).str_offset.str->refcount++;
 		}
 	}
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 				 _get_zval_ptr_var(&opline->op1, EX(Ts), &free_op1 TSRMLS_CC),
 				 &opline->op2.u.constant TSRMLS_CC);
 
@@ -10110,7 +10117,7 @@ static int ZEND_IS_EQUAL_SPEC_VAR_TMP_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 	zend_free_op free_op1, free_op2;
 
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		_get_zval_ptr_var(&opline->op1, EX(Ts), &free_op1 TSRMLS_CC),
 		_get_zval_ptr_tmp(&opline->op2, EX(Ts), &free_op2 TSRMLS_CC) TSRMLS_CC);
 	if (free_op1.var) {zval_ptr_dtor(&free_op1.var);};
@@ -10123,9 +10130,10 @@ static int ZEND_IS_NOT_EQUAL_SPEC_VAR_TMP_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 	zend_free_op free_op1, free_op2;
 
-	is_not_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		_get_zval_ptr_var(&opline->op1, EX(Ts), &free_op1 TSRMLS_CC),
 		_get_zval_ptr_tmp(&opline->op2, EX(Ts), &free_op2 TSRMLS_CC) TSRMLS_CC);
+	EX_T(opline->result.u.var).tmp_var.value.lval = -EX_T(opline->result.u.var).tmp_var.value.lval;
 	if (free_op1.var) {zval_ptr_dtor(&free_op1.var);};
 	zval_dtor(free_op2.var);
 	ZEND_VM_NEXT_OPCODE();
@@ -11122,7 +11130,7 @@ static int ZEND_CASE_SPEC_VAR_TMP_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 			EX_T(opline->op1.u.var).str_offset.str->refcount++;
 		}
 	}
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 				 _get_zval_ptr_var(&opline->op1, EX(Ts), &free_op1 TSRMLS_CC),
 				 _get_zval_ptr_tmp(&opline->op2, EX(Ts), &free_op2 TSRMLS_CC) TSRMLS_CC);
 
@@ -11692,7 +11700,7 @@ static int ZEND_IS_EQUAL_SPEC_VAR_VAR_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 	zend_free_op free_op1, free_op2;
 
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		_get_zval_ptr_var(&opline->op1, EX(Ts), &free_op1 TSRMLS_CC),
 		_get_zval_ptr_var(&opline->op2, EX(Ts), &free_op2 TSRMLS_CC) TSRMLS_CC);
 	if (free_op1.var) {zval_ptr_dtor(&free_op1.var);};
@@ -11705,9 +11713,10 @@ static int ZEND_IS_NOT_EQUAL_SPEC_VAR_VAR_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 	zend_free_op free_op1, free_op2;
 
-	is_not_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		_get_zval_ptr_var(&opline->op1, EX(Ts), &free_op1 TSRMLS_CC),
 		_get_zval_ptr_var(&opline->op2, EX(Ts), &free_op2 TSRMLS_CC) TSRMLS_CC);
+	EX_T(opline->result.u.var).tmp_var.value.lval = -EX_T(opline->result.u.var).tmp_var.value.lval;
 	if (free_op1.var) {zval_ptr_dtor(&free_op1.var);};
 	if (free_op2.var) {zval_ptr_dtor(&free_op2.var);};
 	ZEND_VM_NEXT_OPCODE();
@@ -12742,7 +12751,7 @@ static int ZEND_CASE_SPEC_VAR_VAR_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 			EX_T(opline->op1.u.var).str_offset.str->refcount++;
 		}
 	}
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 				 _get_zval_ptr_var(&opline->op1, EX(Ts), &free_op1 TSRMLS_CC),
 				 _get_zval_ptr_var(&opline->op2, EX(Ts), &free_op2 TSRMLS_CC) TSRMLS_CC);
 
@@ -13760,7 +13769,7 @@ static int ZEND_IS_EQUAL_SPEC_VAR_CV_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 	zend_free_op free_op1;
 
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		_get_zval_ptr_var(&opline->op1, EX(Ts), &free_op1 TSRMLS_CC),
 		_get_zval_ptr_cv(&opline->op2, EX(Ts), BP_VAR_R TSRMLS_CC) TSRMLS_CC);
 	if (free_op1.var) {zval_ptr_dtor(&free_op1.var);};
@@ -13773,9 +13782,10 @@ static int ZEND_IS_NOT_EQUAL_SPEC_VAR_CV_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 	zend_free_op free_op1;
 
-	is_not_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		_get_zval_ptr_var(&opline->op1, EX(Ts), &free_op1 TSRMLS_CC),
 		_get_zval_ptr_cv(&opline->op2, EX(Ts), BP_VAR_R TSRMLS_CC) TSRMLS_CC);
+	EX_T(opline->result.u.var).tmp_var.value.lval = -EX_T(opline->result.u.var).tmp_var.value.lval;
 	if (free_op1.var) {zval_ptr_dtor(&free_op1.var);};
 
 	ZEND_VM_NEXT_OPCODE();
@@ -14805,7 +14815,7 @@ static int ZEND_CASE_SPEC_VAR_CV_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 			EX_T(opline->op1.u.var).str_offset.str->refcount++;
 		}
 	}
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 				 _get_zval_ptr_var(&opline->op1, EX(Ts), &free_op1 TSRMLS_CC),
 				 _get_zval_ptr_cv(&opline->op2, EX(Ts), BP_VAR_R TSRMLS_CC) TSRMLS_CC);
 
@@ -21101,7 +21111,7 @@ static int ZEND_IS_EQUAL_SPEC_CV_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 
 
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		_get_zval_ptr_cv(&opline->op1, EX(Ts), BP_VAR_R TSRMLS_CC),
 		&opline->op2.u.constant TSRMLS_CC);
 
@@ -21114,9 +21124,10 @@ static int ZEND_IS_NOT_EQUAL_SPEC_CV_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 
 
-	is_not_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		_get_zval_ptr_cv(&opline->op1, EX(Ts), BP_VAR_R TSRMLS_CC),
 		&opline->op2.u.constant TSRMLS_CC);
+	EX_T(opline->result.u.var).tmp_var.value.lval = -EX_T(opline->result.u.var).tmp_var.value.lval;
 
 
 	ZEND_VM_NEXT_OPCODE();
@@ -22106,7 +22117,7 @@ static int ZEND_CASE_SPEC_CV_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 			EX_T(opline->op1.u.var).str_offset.str->refcount++;
 		}
 	}
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 				 _get_zval_ptr_cv(&opline->op1, EX(Ts), BP_VAR_R TSRMLS_CC),
 				 &opline->op2.u.constant TSRMLS_CC);
 
@@ -22671,7 +22682,7 @@ static int ZEND_IS_EQUAL_SPEC_CV_TMP_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 	zend_free_op free_op2;
 
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		_get_zval_ptr_cv(&opline->op1, EX(Ts), BP_VAR_R TSRMLS_CC),
 		_get_zval_ptr_tmp(&opline->op2, EX(Ts), &free_op2 TSRMLS_CC) TSRMLS_CC);
 
@@ -22684,9 +22695,10 @@ static int ZEND_IS_NOT_EQUAL_SPEC_CV_TMP_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 	zend_free_op free_op2;
 
-	is_not_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		_get_zval_ptr_cv(&opline->op1, EX(Ts), BP_VAR_R TSRMLS_CC),
 		_get_zval_ptr_tmp(&opline->op2, EX(Ts), &free_op2 TSRMLS_CC) TSRMLS_CC);
+	EX_T(opline->result.u.var).tmp_var.value.lval = -EX_T(opline->result.u.var).tmp_var.value.lval;
 
 	zval_dtor(free_op2.var);
 	ZEND_VM_NEXT_OPCODE();
@@ -23679,7 +23691,7 @@ static int ZEND_CASE_SPEC_CV_TMP_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 			EX_T(opline->op1.u.var).str_offset.str->refcount++;
 		}
 	}
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 				 _get_zval_ptr_cv(&opline->op1, EX(Ts), BP_VAR_R TSRMLS_CC),
 				 _get_zval_ptr_tmp(&opline->op2, EX(Ts), &free_op2 TSRMLS_CC) TSRMLS_CC);
 
@@ -24245,7 +24257,7 @@ static int ZEND_IS_EQUAL_SPEC_CV_VAR_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 	zend_free_op free_op2;
 
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		_get_zval_ptr_cv(&opline->op1, EX(Ts), BP_VAR_R TSRMLS_CC),
 		_get_zval_ptr_var(&opline->op2, EX(Ts), &free_op2 TSRMLS_CC) TSRMLS_CC);
 
@@ -24258,9 +24270,10 @@ static int ZEND_IS_NOT_EQUAL_SPEC_CV_VAR_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 	zend_free_op free_op2;
 
-	is_not_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		_get_zval_ptr_cv(&opline->op1, EX(Ts), BP_VAR_R TSRMLS_CC),
 		_get_zval_ptr_var(&opline->op2, EX(Ts), &free_op2 TSRMLS_CC) TSRMLS_CC);
+	EX_T(opline->result.u.var).tmp_var.value.lval = -EX_T(opline->result.u.var).tmp_var.value.lval;
 
 	if (free_op2.var) {zval_ptr_dtor(&free_op2.var);};
 	ZEND_VM_NEXT_OPCODE();
@@ -25290,7 +25303,7 @@ static int ZEND_CASE_SPEC_CV_VAR_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 			EX_T(opline->op1.u.var).str_offset.str->refcount++;
 		}
 	}
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 				 _get_zval_ptr_cv(&opline->op1, EX(Ts), BP_VAR_R TSRMLS_CC),
 				 _get_zval_ptr_var(&opline->op2, EX(Ts), &free_op2 TSRMLS_CC) TSRMLS_CC);
 
@@ -26303,7 +26316,7 @@ static int ZEND_IS_EQUAL_SPEC_CV_CV_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 
 
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		_get_zval_ptr_cv(&opline->op1, EX(Ts), BP_VAR_R TSRMLS_CC),
 		_get_zval_ptr_cv(&opline->op2, EX(Ts), BP_VAR_R TSRMLS_CC) TSRMLS_CC);
 
@@ -26316,9 +26329,10 @@ static int ZEND_IS_NOT_EQUAL_SPEC_CV_CV_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	zend_op *opline = EX(opline);
 
 
-	is_not_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 		_get_zval_ptr_cv(&opline->op1, EX(Ts), BP_VAR_R TSRMLS_CC),
 		_get_zval_ptr_cv(&opline->op2, EX(Ts), BP_VAR_R TSRMLS_CC) TSRMLS_CC);
+	EX_T(opline->result.u.var).tmp_var.value.lval = -EX_T(opline->result.u.var).tmp_var.value.lval;
 
 
 	ZEND_VM_NEXT_OPCODE();
@@ -27343,7 +27357,7 @@ static int ZEND_CASE_SPEC_CV_CV_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 			EX_T(opline->op1.u.var).str_offset.str->refcount++;
 		}
 	}
-	is_equal_function(&EX_T(opline->result.u.var).tmp_var,
+	typesafe_compare_function(&EX_T(opline->result.u.var).tmp_var,
 				 _get_zval_ptr_cv(&opline->op1, EX(Ts), BP_VAR_R TSRMLS_CC),
 				 _get_zval_ptr_cv(&opline->op2, EX(Ts), BP_VAR_R TSRMLS_CC) TSRMLS_CC);
 
