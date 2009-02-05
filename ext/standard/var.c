@@ -691,14 +691,18 @@ static void php_var_binserialize_intern(smart_str *buf, smart_str *map, zval *st
 	} 
 }
 
-PHPAPI void php_var_binserialize(smart_str *buf, smart_str *map, zval **struc, HashTable *var_hash TSRMLS_DC)
+PHPAPI void php_var_binserialize(smart_str *buf, zval **struc, HashTable *var_hash TSRMLS_DC)
 {
-	php_var_binserialize_intern(buf, map, *struc, var_hash TSRMLS_CC);
+	smart_str buf_data = {0};
+	php_var_binserialize_intern(&buf_data, buf, *struc, var_hash TSRMLS_CC);
+	smart_str_appendl(buf, buf_data.c, buf_data.len);
+	smart_str_free(&buf_data);
 	smart_str_0(buf);
 }
 	
 /* }}} */
 
+#ifndef USE_BINARY_SERIALIZATION
 /* {{{ proto string serialize(mixed variable)
    Returns a string representation of variable (which can later be unserialized) */
 PHP_FUNCTION(binserialize)
@@ -706,8 +710,7 @@ PHP_FUNCTION(binserialize)
 	zval **struc;
 	php_serialize_data_t var_hash;
 	smart_str buf = {0};
-	smart_str map = {0};
-
+	
 	if (ZEND_NUM_ARGS() != 1 || zend_get_parameters_ex(1, &struc) == FAILURE) {
 		WRONG_PARAM_COUNT;
 	}
@@ -717,13 +720,11 @@ PHP_FUNCTION(binserialize)
 	Z_STRLEN_P(return_value) = 0;
 
 	PHP_VAR_SERIALIZE_INIT(var_hash);
-	php_var_binserialize(&buf, &map, struc, &var_hash TSRMLS_CC);
+	php_var_binserialize(&buf, struc, &var_hash TSRMLS_CC);
 	PHP_VAR_SERIALIZE_DESTROY(var_hash);
 
-	if (map.c) {
-		/* smart_str_appendc(&map, 0); */
-		smart_str_appendl(&map, buf.c, buf.len);
-		RETURN_STRINGL(map.c, map.len, 0);
+	if (buf.c) {
+		RETURN_STRINGL(buf.c, buf.len, 0);
 	} else {
 		RETURN_NULL();
 	}
@@ -733,8 +734,6 @@ PHP_FUNCTION(binserialize)
 
 /* {{{ proto mixed unserialize(string variable_representation)
    Takes a string representation of variable and recreates it */
-
-
 PHP_FUNCTION(binunserialize)
 {
 	char *buf;
@@ -794,6 +793,7 @@ PHP_FUNCTION(binunserialize)
 }
 
 /* }}} */
+#endif
 
 /*
 ==================================================
@@ -1163,7 +1163,14 @@ static void php_var_serialize_intern(smart_str *buf, zval *struc, HashTable *var
 
 PHPAPI void php_var_serialize(smart_str *buf, zval **struc, HashTable *var_hash TSRMLS_DC)
 {
+#if USE_BINARY_SERIALIZATION
+	smart_str buf_data = {0};
+	php_var_binserialize_intern(&buf_data, buf, *struc, var_hash TSRMLS_CC);
+	smart_str_appendl(buf, buf_data.c, buf_data.len);
+	smart_str_free(&buf_data);
+#else
 	php_var_serialize_intern(buf, *struc, var_hash TSRMLS_CC);
+#endif
 	smart_str_0(buf);
 }
 	

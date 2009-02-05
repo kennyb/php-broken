@@ -593,6 +593,46 @@ PHPAPI int php_var_binunserialize(BINUNSERIALIZE_PARAMETER)
 	return 0;
 }
 
+#if USE_BINARY_SERIALIZATION
+//zval **rval, const unsigned char **p, const unsigned char *max, php_unserialize_data_t *var_hash TSRMLS_DC
+PHPAPI int php_var_unserialize(UNSERIALIZE_PARAMETER)
+{
+	const unsigned char *map;
+	const unsigned char *data;
+	
+	map = data = *p;
+	
+	/* find the offset of the data */
+	/* if we're an array, we need to jump the array map as well */
+	char key = *data++;
+	int array_len;
+	switch(key) {
+		case 'a':
+		case 'A':
+		case 'm':
+			array_len = 0;
+			memcpy(&array_len, data, key == 'a' ? 1 : key == 'A' ? 2 : 4);
+			data += array_len;
+	}
+	
+	/* these have a second parameter in the map -- the length */
+	switch(key) {
+		case 'w':
+		case 'm':
+			data += 2;
+		
+		case 'S':
+		case 'A':
+			data++;
+		
+		case 's':
+		case 'a':
+			data++;
+	}
+	
+	return php_var_binunserialize(rval, &map, &data, max,  var_hash TSRMLS_CC);
+}
+#else
 PHPAPI int php_var_unserialize(UNSERIALIZE_PARAMETER)
 {
 	const unsigned char *cursor, *limit, *marker, *start;
@@ -1334,3 +1374,4 @@ yy97:
 
 	return 0;
 }
+#endif

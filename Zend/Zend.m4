@@ -173,8 +173,8 @@ AC_ARG_ENABLE(zend-multibyte,
   ZEND_MULTIBYTE=no
 ])
 
-AC_DEFINE_UNQUOTED(INITIAL_OP_ARRAY_SIZE, $ZEND_PREALLOC_OPCODES, [ ])
-AC_DEFINE_UNQUOTED(DETAILED_ERRORS, $ZEND_DETAILED_ERRORS, [ ])
+AC_DEFINE_UNQUOTED(INITIAL_OP_ARRAY_SIZE, $ZEND_PREALLOC_OPCODES, [ Initial size of the opcode array ])
+AC_DEFINE_UNQUOTED(DETAILED_ERRORS, $ZEND_DETAILED_ERRORS, [ want to include detailed errors ])
 
 AC_MSG_CHECKING([virtual machine dispatch method])
 AC_MSG_RESULT($PHP_ZEND_VM)
@@ -226,7 +226,7 @@ fi
 test -n "$DEBUG_CFLAGS" && CFLAGS="$CFLAGS $DEBUG_CFLAGS"
 
 if test "$ZEND_INTERACTIVE_MODE" = "yes"; then
-  AC_DEFINE(WANT_INTERACTIVE, 1, [ ])
+  AC_DEFINE(WANT_INTERACTIVE, 1, [ want to interactive mode code ])
 fi
 
 if test "$ZEND_MAINTAINER_ZTS" = "yes"; then

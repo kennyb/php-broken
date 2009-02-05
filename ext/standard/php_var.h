@@ -26,8 +26,10 @@
 PHP_FUNCTION(var_dump);
 PHP_FUNCTION(var_export);
 PHP_FUNCTION(debug_zval_dump);
+#ifndef USE_BINARY_SERIALIZATION
 PHP_FUNCTION(binserialize);
 PHP_FUNCTION(binunserialize);
+#endif
 PHP_FUNCTION(serialize);
 PHP_FUNCTION(unserialize);
 PHP_FUNCTION(memory_get_usage);

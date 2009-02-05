@@ -2,6 +2,24 @@ dnl $Id: config.m4,v 1.80.2.3.2.3 2007/07/11 11:56:03 jani Exp $ -*- autoconf -*
 
 divert(3)dnl
 
+PHP_ARG_ENABLE(binary-serialization, whether binary serialization is default,
+[  --enable-binary-serialization enable binary serialization],no)
+
+
+#AC_ARG_ENABLE(binary-serialization,
+#[  --enable-binary-serialization Enable binary serialization],[
+#  USE_BINARY_SERIALIZATION=$enableval
+#],[
+#  USE_BINARY_SERIALIZATION=no
+#])
+#AC_MSG_CHECKING(whether to binary serialization)
+#AC_MSG_RESULT($USE_BINARY_SERIALIZATION)
+
+if test "$PHP_BINARY_SERIALIZATION" = "yes"; then
+  AC_DEFINE(USE_BINARY_SERIALIZATION, 1, [ use binary serialization instead of text serialization ])
+fi
+
+
 dnl
 dnl Check if flush should be called explicitly after buffered io
 dnl

@@ -3430,8 +3430,13 @@ zend_function_entry basic_functions[] = {
 	PHP_FE(call_user_func_array,											arginfo_call_user_func_array)
 	PHP_DEP_FE(call_user_method,											arginfo_call_user_method)
 	PHP_DEP_FE(call_user_method_array,										arginfo_call_user_method_array)
+#if USE_BINARY_SERIALIZATION
+	PHP_FALIAS(binserialize, serialize,			NULL)
+	PHP_FALIAS(binunserialize, unserialize,			NULL)
+#else
 	PHP_FE(binserialize,														arginfo_serialize)
 	PHP_FE(binunserialize,														arginfo_unserialize)
+#endif
 	PHP_FE(serialize,														arginfo_serialize)
 	PHP_FE(unserialize,														arginfo_unserialize)
 

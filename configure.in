@@ -1318,6 +1318,16 @@ case $host_alias in
   ;;
 esac
 
+dnl Selectively disable optimization due to high RAM usage during
+dnl compiling the executor.
+if test -n "$GCC" && test "$ZEND_INLINE_OPTIMIZATION" != "yes"; then
+  flag=-O0
+else
+  flag=
+fi
+
+PHP_ADD_SOURCES_X(Zend, zend_execute.c,,PHP_GLOBAL_OBJS,,$flag)
+
 PHP_ADD_SOURCES(Zend, \
     zend_language_parser.c zend_language_scanner.c \
     zend_ini_parser.c zend_ini_scanner.c \
@@ -1333,16 +1343,6 @@ if test -r "$abs_srcdir/Zend/zend_objects.c"; then
   PHP_ADD_SOURCES(Zend, zend_objects.c zend_object_handlers.c zend_objects_API.c \
     zend_default_classes.c)
 fi
-
-dnl Selectively disable optimization due to high RAM usage during
-dnl compiling the executor.
-if test -n "$GCC" && test "$ZEND_INLINE_OPTIMIZATION" != "yes"; then
-  flag=-O0
-else
-  flag=
-fi
-
-PHP_ADD_SOURCES_X(Zend, zend_execute.c,,PHP_GLOBAL_OBJS,,$flag)
 
 PHP_ADD_BUILD_DIR(main main/streams)
 PHP_ADD_BUILD_DIR(regex)

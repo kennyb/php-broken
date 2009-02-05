@@ -2528,6 +2528,9 @@
 /*   */
 #undef SQLITE_UTF8
 
+/*  use binary serialization instead of text serialization  */
+#undef USE_BINARY_SERIALIZATION
+
 /* Define if flush should be called explicitly after a buffered io. */
 #undef HAVE_FLUSHIO
 
@@ -2816,6 +2819,12 @@
 /* Define if dlsym() requires a leading underscore in symbol names.  */
 #undef DLSYM_NEEDS_UNDERSCORE
 
+/*  Initial size of the opcode array  */
+#undef INITIAL_OP_ARRAY_SIZE
+
+/*  want to include detailed errors  */
+#undef DETAILED_ERRORS
+
 /* virtual machine dispatch method */
 #undef ZEND_VM_KIND
 
@@ -2830,6 +2839,9 @@
 
 /*   */
 #undef ZEND_DEBUG
+
+/*  want to interactive mode code  */
+#undef WANT_INTERACTIVE
 
 /*   */
 #undef ZTS
@@ -2845,15 +2857,6 @@
 
 /*   */
 #undef ZEND_MM_ALIGNMENT_LOG2
-
-/*  strict debugging for opcode compilation (turn this off on production servers)  */
-#undef STRICT_DEBUG
-
-/*  want interactive mode */
-#undef WANT_INTERACTIVE
-
-/*  Initial size of the opcode array */
-#undef INITIAL_OP_ARRAY_SIZE
 
 /* Define if the target system has support for memory allocation using mmap(MAP_ANON) */
 #undef HAVE_MEM_MMAP_ANON
