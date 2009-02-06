@@ -223,7 +223,29 @@ static inline long parse_iv2(const unsigned char *p, const unsigned char **q)
 
 static inline long parse_iv(const unsigned char *p)
 {
-	return parse_iv2(p, NULL);
+	char cursor;
+	long result = 0;
+	int neg = 0;
+
+	switch (*p) {
+		case '-':
+			neg++;
+			/* fall-through */
+		case '+':
+			p++;
+	}
+	
+	while (1) {
+		cursor = (char)*p;
+		if (cursor >= '0' && cursor <= '9') {
+			result = result * 10 + cursor - '0';
+		} else {
+			break;
+		}
+		p++;
+	}
+	if (neg) return -result;
+	return result;
 }
 
 /* no need to check for length - re2c already did */
@@ -449,18 +471,13 @@ static inline int process_nested_bindata(BINUNSERIALIZE_PARAMETER, HashTable *ht
 		
 		zval_dtor(key);
 		FREE_ZVAL(key);
-
-		/*if (elements && *(*p-1) != ';' && *(*p-1) != '}') {
-			(*p)--;
-			return 0;
-		}*/
 	}
 
 	return 1;
 }
 
-int num_elements(char* data, int len) {
-	char* start = data;
+int unserialize_num_elements(const unsigned char* data, unsigned int len) {
+	const unsigned char* start = data;
 	unsigned int array_len;
 	int elements = 0;
 	while(data - start < len) {
@@ -509,7 +526,7 @@ PHPAPI int php_var_binunserialize(BINUNSERIALIZE_PARAMETER)
 	unsigned int len;
 	
 	INIT_PZVAL(*rval);
-	unsigned char key = *map++;
+	const unsigned char key = *map++;
 	(*p_map)++;
 	
 	switch(key) {
@@ -545,7 +562,7 @@ PHPAPI int php_var_binunserialize(BINUNSERIALIZE_PARAMETER)
 			
 			(*p_map) += bite_size;
 			
-			ZVAL_STRINGL(*rval, data, len, 1);
+			ZVAL_STRINGL(*rval, (char*) data, len, 1);
 			(*p_data) += len;
 			return 1;
 		
@@ -573,7 +590,7 @@ PHPAPI int php_var_binunserialize(BINUNSERIALIZE_PARAMETER)
 			memcpy(&len, map, bite_size);
 			/* increase the map pointer so it's pointing to the array map */
 			map += bite_size;
-			int elements = num_elements(map, len);
+			int elements = unserialize_num_elements(map, len);
 			*p_map = map;
 			
 			

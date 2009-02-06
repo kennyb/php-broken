@@ -56,9 +56,9 @@ struct _php_tick_function_entry;
 # define SQL_SAFE_MODE PG(sql_safe_mode)
 #else
 # define SAFE_MODE 0
-# define SAFE_MODE_INCLUDE_DIR 0
+# define SAFE_MODE_INCLUDE_DIR ""
 # define SAFE_MODE_GID 0
-# define SAFE_MODE_EXEC_DIR 0
+# define SAFE_MODE_EXEC_DIR ""
 # define SQL_SAFE_MODE 0
 #endif
 
