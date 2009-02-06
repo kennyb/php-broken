@@ -2967,34 +2967,6 @@ PHPAPI void php_stripslashes(char *str, int *len TSRMLS_DC)
 	s = str;
 	t = str;
 
-	if (PG(magic_quotes_sybase)) {
-		while (l > 0) {
-			if (*t == '\'') {
-				if ((l > 0) && (t[1] == '\'')) {
-					t++;
-					if (len != NULL) {
-						(*len)--;
-					}
-					l--;
-				}
-				*s++ = *t++;
-			} else if (*t == '\\' && t[1] == '0' && l > 0) {
-				*s++='\0';
-				t+=2;
-				if (len != NULL) {
-					(*len)--;
-				}
-				l--;
-			} else {
-				*s++ = *t++;
-			}
-			l--;
-		}
-		*s = '\0';
-		
-		return;
-	}
-
 	while (l > 0) {
 		if (*t == '\\') {
 			t++;				/* skip the slash */
@@ -3266,42 +3238,23 @@ PHPAPI char *php_addslashes_ex(char *str, int length, int *new_length, int shoul
 	end = source + length;
 	target = new_str;
 	
-	if (!ignore_sybase && PG(magic_quotes_sybase)) {
-		while (source < end) {
-			switch (*source) {
-				case '\0':
-					*target++ = '\\';
-					*target++ = '0';
-					break;
-				case '\'':
-					*target++ = '\'';
-					*target++ = '\'';
-					break;
-				default:
-					*target++ = *source;
-					break;
-			}
-			source++;
+	while (source < end) {
+		switch (*source) {
+			case '\0':
+				*target++ = '\\';
+				*target++ = '0';
+				break;
+			case '\'':
+			case '\"':
+			case '\\':
+				*target++ = '\\';
+				/* break is missing *intentionally* */
+			default:
+				*target++ = *source;
+				break;	
 		}
-	} else {
-		while (source < end) {
-			switch (*source) {
-				case '\0':
-					*target++ = '\\';
-					*target++ = '0';
-					break;
-				case '\'':
-				case '\"':
-				case '\\':
-					*target++ = '\\';
-					/* break is missing *intentionally* */
-				default:
-					*target++ = *source;
-					break;	
-			}
-		
-			source++;
-		}
+	
+		source++;
 	}
 	
 	*target = 0;

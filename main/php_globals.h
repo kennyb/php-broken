@@ -68,10 +68,6 @@ typedef struct _arg_separators {
 } arg_separators;
 
 struct _php_core_globals {
-	zend_bool magic_quotes_gpc;
-	zend_bool magic_quotes_runtime;
-	zend_bool magic_quotes_sybase;
-
 #if PHP_SAFE_MODE
 	zend_bool safe_mode;
 	char *safe_mode_include_dir;

@@ -45,8 +45,6 @@ array(18) {
   [15]=>
   string(12) "number_float"
   [16]=>
-  string(12) "magic_quotes"
-  [17]=>
   string(8) "callback"
 }
 

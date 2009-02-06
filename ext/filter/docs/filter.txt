@@ -31,7 +31,6 @@ Change Log
     * Changed return value of filters which got invalid data from 'false' to
       'null.
     * Failed filters do not throw an E_NOTICE any longer.
-    * Added a magic_quotes sanitizing filter.
 
 
 General Considerations
@@ -45,9 +44,6 @@ General Considerations
   then all entries in the affected super globals will be passed through the
   configured filter. The 'callback' filter can not be used here, as that
   requieres a PHP script to be running already.
-* As the input filter acts on input data before the magic quotes function
-  mangles data, all access through the filter() function will not have any
-  quotes or slashes added - it will be the pure data as send by the browser.
 * All flags mentioned here should be prepended with `FILTER_FLAG_` when used
   with PHP.
 
@@ -289,8 +285,6 @@ number_float  NUMBER_FLOAT     float       Removes all characters that are [^0-9
                                              are not stripped.
                                            * ALLOW_SCIENTIFIC: adds "eE" to the characters that
                                              are not stripped.
-
-magic_quotes  MAGIC_QUOTES     string      BC filter for people who like magic quotes.
 ============= ================ =========== =====================================================
 
 

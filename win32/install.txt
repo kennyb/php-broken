@@ -468,8 +468,8 @@ c:\php
    php.ini-recommended. We advise you to use php.ini-recommended, because
    we optimized the default settings in this file for performance, and
    security. Read this well documented file carefully because it has
-   changes from php.ini-dist that will drastically affect your setup. Some
-   examples are display_errors being off and magic_quotes_gpc being off.
+   changes from php.ini-dist that will drastically affect your setup. An
+   example would be to turn display_errors off.
    In addition to reading these, study the ini settings and set every
    element manually yourself. If you would like to achieve the best
    security, then this is the way for you, although PHP works fine with

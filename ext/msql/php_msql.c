@@ -842,12 +842,8 @@ PHP_FUNCTION(msql_result)
 	}
 	
 	if (sql_row[field_offset]) {
-		if (PG(magic_quotes_runtime)) {
-			Z_STRVAL_P(return_value) = php_addslashes(sql_row[field_offset],0,&Z_STRLEN_P(return_value),0 TSRMLS_CC);
-		} else {	
-			Z_STRLEN_P(return_value) = (sql_row[field_offset]?strlen(sql_row[field_offset]):0);
-			Z_STRVAL_P(return_value) = (char *) safe_estrndup(sql_row[field_offset],Z_STRLEN_P(return_value));
-		}
+		Z_STRLEN_P(return_value) = (sql_row[field_offset]?strlen(sql_row[field_offset]):0);
+		Z_STRVAL_P(return_value) = (char *) safe_estrndup(sql_row[field_offset],Z_STRLEN_P(return_value));
 		Z_TYPE_P(return_value) = IS_STRING;
 	} else {
 		ZVAL_FALSE(return_value);
@@ -936,16 +932,10 @@ static void php_msql_fetch_hash(INTERNAL_FUNCTION_PARAMETERS, int result_type)
 		if (msql_row[i]) {
 			char *data;
 			int data_len;
-			int should_copy;
+			int should_copy = 1;
 
-			if (PG(magic_quotes_runtime)) {
-				data = php_addslashes(msql_row[i], 0, &data_len, 0 TSRMLS_CC);
-				should_copy = 0;
-			} else {
-				data = msql_row[i];
-				data_len = strlen(data);
-				should_copy = 1;
-			}
+			data = msql_row[i];
+			data_len = strlen(data);
 			
 			if (result_type & MSQL_NUM) {
 				add_index_stringl(return_value, i, data, data_len, should_copy);

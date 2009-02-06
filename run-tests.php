@@ -83,7 +83,6 @@ while(@ob_end_clean());
 if (ob_get_level()) echo "Not all buffers were deleted.\n";
 
 error_reporting(E_ALL);
-ini_set('magic_quotes_runtime',0); // this would break tests by modifying EXPECT sections
 
 if (ini_get('safe_mode')) {
 	echo <<< SAFE_MODE_WARNING
@@ -186,7 +185,6 @@ $ini_overwrites = array(
 		'error_append_string=',
 		'auto_prepend_file=',
 		'auto_append_file=',
-		'magic_quotes_runtime=0',
 		'ignore_repeated_errors=0',
 	);
 

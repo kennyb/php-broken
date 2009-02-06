@@ -37255,15 +37255,11 @@ class PEAR_Config extends PEAR
             return $this->raiseError("PEAR_Config::readConfigFile fopen('$file','r') failed");
         }
         $size = filesize($file);
-        $rt = get_magic_quotes_runtime();
-        set_magic_quotes_runtime(0);
         fclose($fp);
         $contents = file_get_contents($file);
         if (empty($contents)) {
             return $this->raiseError('Configuration file "' . $file . '" is empty');
         }
-        
-        set_magic_quotes_runtime($rt);
 
         $version = false;
         if (preg_match('/^#PEAR_Config\s+(\S+)\s+/si', $contents, $matches)) {
@@ -39405,12 +39401,9 @@ class PEAR_DependencyDB
             $err = PEAR::raiseError("Could not open dependencies file `".$this->_depdb."'");
             return $err;
         }
-        $rt = get_magic_quotes_runtime();
-        set_magic_quotes_runtime(0);
         clearstatcache();
         fclose($fp);
         $data = unserialize(file_get_contents($this->_depdb));
-        set_magic_quotes_runtime($rt);
         $this->_cache = $data;
         return $data;
     }
@@ -39430,10 +39423,7 @@ class PEAR_DependencyDB
             $this->_unlock();
             return PEAR::raiseError("Could not open dependencies file `".$this->_depdb."' for writing");
         }
-        $rt = get_magic_quotes_runtime();
-        set_magic_quotes_runtime(0);
         fwrite($fp, serialize($deps));
-        set_magic_quotes_runtime($rt);
         fclose($fp);
         $this->_unlock();
         $this->_cache = $deps;
@@ -47374,12 +47364,9 @@ class PEAR_Registry extends PEAR
             return $this->raiseError('PEAR_Registry: could not open filemap "' . $this->filemap . '"', PEAR_REGISTRY_ERROR_FILE, null, null, $php_errormsg);
         }
         clearstatcache();
-        $rt = get_magic_quotes_runtime();
-        set_magic_quotes_runtime(0);
         $fsize = filesize($this->filemap);
         fclose($fp);
         $data = file_get_contents($this->filemap);
-        set_magic_quotes_runtime($rt);
         $tmp = unserialize($data);
         if (!$tmp && $fsize > 7) {
             return $this->raiseError('PEAR_Registry: invalid filemap data', PEAR_REGISTRY_ERROR_FORMAT, null, null, $data);
@@ -47680,12 +47667,9 @@ class PEAR_Registry extends PEAR
         if ($fp === null) {
             return null;
         }
-        $rt = get_magic_quotes_runtime();
-        set_magic_quotes_runtime(0);
         clearstatcache();
         $this->_closePackageFile($fp);
         $data = file_get_contents($this->_packageFileName($package, $channel));
-        set_magic_quotes_runtime($rt);
         $data = unserialize($data);
         if ($key === null) {
             return $data;
@@ -47717,12 +47701,9 @@ class PEAR_Registry extends PEAR
         if ($fp === null) {
             return null;
         }
-        $rt = get_magic_quotes_runtime();
-        set_magic_quotes_runtime(0);
         clearstatcache();
         $this->_closeChannelFile($fp);
         $data = file_get_contents($this->_channelFileName($channel));
-        set_magic_quotes_runtime($rt);
         $data = unserialize($data);
         return $data;
     }
@@ -49841,7 +49822,6 @@ class PEAR_RunTest
         'error_append_string=',
         'auto_prepend_file=',
         'auto_append_file=',
-        'magic_quotes_runtime=0',
         'xdebug.default_enable=0',
         'allow_url_fopen=1',
     );
@@ -52043,7 +52023,6 @@ if (!ini_get('safe_mode')) {
 ob_implicit_flush(true);
 @ini_set('track_errors', true);
 @ini_set('html_errors', false);
-@ini_set('magic_quotes_runtime', false);
 $_PEAR_PHPDIR = '#$%^&*';
 set_error_handler('error_handler');
 
@@ -61583,16 +61562,12 @@ class PEAR_Config extends PEAR
             return $this->raiseError("PEAR_Config::readConfigFile fopen('$file','r') failed");
         }
         $size = filesize($file);
-        $rt = get_magic_quotes_runtime();
-        set_magic_quotes_runtime(0);
         fclose($fp);
         $contents = file_get_contents($file);
         if (empty($contents)) {
             return $this->raiseError('Configuration file "' . $file . '" is empty');
         }
         
-        set_magic_quotes_runtime($rt);
-
         $version = false;
         if (preg_match('/^#PEAR_Config\s+(\S+)\s+/si', $contents, $matches)) {
             $version = $matches[1];
@@ -64533,12 +64508,9 @@ class PEAR_DependencyDB
             $err = PEAR::raiseError("Could not open dependencies file `".$this->_depdb."'");
             return $err;
         }
-        $rt = get_magic_quotes_runtime();
-        set_magic_quotes_runtime(0);
         clearstatcache();
         fclose($fp);
         $data = unserialize(file_get_contents($this->_depdb));
-        set_magic_quotes_runtime($rt);
         $this->_cache = $data;
         return $data;
     }
@@ -64558,10 +64530,7 @@ class PEAR_DependencyDB
             $this->_unlock();
             return PEAR::raiseError("Could not open dependencies file `".$this->_depdb."' for writing");
         }
-        $rt = get_magic_quotes_runtime();
-        set_magic_quotes_runtime(0);
         fwrite($fp, serialize($deps));
-        set_magic_quotes_runtime($rt);
         fclose($fp);
         $this->_unlock();
         $this->_cache = $deps;
@@ -83062,12 +83031,9 @@ class PEAR_Registry extends PEAR
             return $this->raiseError('PEAR_Registry: could not open filemap "' . $this->filemap . '"', PEAR_REGISTRY_ERROR_FILE, null, null, $php_errormsg);
         }
         clearstatcache();
-        $rt = get_magic_quotes_runtime();
-        set_magic_quotes_runtime(0);
         $fsize = filesize($this->filemap);
         fclose($fp);
         $data = file_get_contents($this->filemap);
-        set_magic_quotes_runtime($rt);
         $tmp = unserialize($data);
         if (!$tmp && $fsize > 7) {
             return $this->raiseError('PEAR_Registry: invalid filemap data', PEAR_REGISTRY_ERROR_FORMAT, null, null, $data);
@@ -83368,12 +83334,9 @@ class PEAR_Registry extends PEAR
         if ($fp === null) {
             return null;
         }
-        $rt = get_magic_quotes_runtime();
-        set_magic_quotes_runtime(0);
         clearstatcache();
         $this->_closePackageFile($fp);
         $data = file_get_contents($this->_packageFileName($package, $channel));
-        set_magic_quotes_runtime($rt);
         $data = unserialize($data);
         if ($key === null) {
             return $data;
@@ -83405,12 +83368,9 @@ class PEAR_Registry extends PEAR
         if ($fp === null) {
             return null;
         }
-        $rt = get_magic_quotes_runtime();
-        set_magic_quotes_runtime(0);
         clearstatcache();
         $this->_closeChannelFile($fp);
         $data = file_get_contents($this->_channelFileName($channel));
-        set_magic_quotes_runtime($rt);
         $data = unserialize($data);
         return $data;
     }

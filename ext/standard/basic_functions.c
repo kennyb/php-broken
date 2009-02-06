@@ -3416,13 +3416,6 @@ zend_function_entry basic_functions[] = {
 	PHP_FE(get_current_user,												arginfo_get_current_user)
 	PHP_FE(set_time_limit,													arginfo_set_time_limit)
 	PHP_FE(get_cfg_var,														arginfo_get_cfg_var)
-#if WANT_ALIASES
-	PHP_FALIAS(magic_quotes_runtime, set_magic_quotes_runtime,			NULL)
-#endif
-	PHP_FE(set_magic_quotes_runtime,									NULL)
-	PHP_FE(get_magic_quotes_gpc,										NULL)
-	PHP_FE(get_magic_quotes_runtime, 									NULL)
-	
 	PHP_FE(import_request_variables,										arginfo_import_request_variables)
 	PHP_FE(error_log,														arginfo_error_log)
 	PHP_FE(error_get_last,													arginfo_error_get_last)
@@ -4243,9 +4236,6 @@ PHP_RINIT_FUNCTION(basic)
 	PHP_RINIT(dir)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_RINIT(url_scanner_ex)(INIT_FUNC_ARGS_PASSTHRU);
 
-	/* Reset magic_quotes_runtime */
-	PG(magic_quotes_runtime) = INI_BOOL("magic_quotes_runtime");
-
 	/* Setup default context */
 	FG(default_context) = NULL;
 
@@ -4990,39 +4980,6 @@ PHP_FUNCTION(get_cfg_var)
 		RETURN_FALSE;
 	}
 	RETURN_STRING(value, 1);
-}
-/* }}} */
-
-/* {{{ proto bool set_magic_quotes_runtime(int new_setting)
-   Set the current active configuration setting of magic_quotes_runtime and return previous */
-PHP_FUNCTION(set_magic_quotes_runtime)
-{
-	zval **new_setting;
-
-	if (ZEND_NUM_ARGS() != 1 || zend_get_parameters_ex(1, &new_setting) == FAILURE) {
-		RETURN_FALSE;
-	}
-	convert_to_boolean_ex(new_setting);
-
-	PG(magic_quotes_runtime) = (zend_bool) Z_LVAL_PP(new_setting);
-	RETURN_TRUE;
-}
-/* }}} */
-
-/* {{{ proto int get_magic_quotes_runtime(void)
-   Get the current active configuration setting of magic_quotes_runtime */
-PHP_FUNCTION(get_magic_quotes_runtime)
-{
-	RETURN_LONG(PG(magic_quotes_runtime));
-}
-
-/* }}} */
-
-/* {{{ proto int get_magic_quotes_gpc(void)
-   Get the current active configuration setting of magic_quotes_gpc */
-PHP_FUNCTION(get_magic_quotes_gpc)
-{
-	RETURN_LONG(PG(magic_quotes_gpc));
 }
 /* }}} */
 
