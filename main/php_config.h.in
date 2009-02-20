@@ -2834,8 +2834,11 @@
 /*   */
 #undef ZEND_DEBUG
 
-/*  want to interactive mode code  */
+/*  want to compile with interactive mode ability */
 #undef WANT_INTERACTIVE
+
+/*  want to compile with php exceptions */
+#undef WANT_EXCEPTIONS
 
 /*   */
 #undef ZTS

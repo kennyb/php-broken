@@ -418,10 +418,17 @@ void zend_do_end_function_call(znode *function_name, znode *result, znode *argum
 void zend_do_return(znode *expr, int do_end_vparse TSRMLS_DC);
 void zend_do_handle_exception(TSRMLS_D);
 
+#if WANT_EXCEPTIONS
 void zend_do_try(znode *try_token TSRMLS_DC);
 void zend_do_begin_catch(znode *try_token, znode *catch_class, znode *catch_var, zend_bool first_catch TSRMLS_DC);
 void zend_do_end_catch(znode *try_token TSRMLS_DC);
 void zend_do_throw(znode *expr TSRMLS_DC);
+#else
+# define zend_do_try(a)
+# define zend_do_begin_catch(a,b,c,d)
+# define zend_do_end_catch(a)
+# define zend_do_throw(a)
+#endif
 
 ZEND_API int do_bind_function(zend_op *opline, HashTable *function_table, zend_bool compile_time);
 ZEND_API zend_class_entry *do_bind_class(zend_op *opline, HashTable *class_table, zend_bool compile_time TSRMLS_DC);
@@ -548,9 +555,15 @@ int print_class(zend_class_entry *class_entry TSRMLS_DC);
 void print_op_array(zend_op_array *op_array, int optimizations);
 int pass_two(zend_op_array *op_array TSRMLS_DC);
 zend_brk_cont_element *get_next_brk_cont_element(zend_op_array *op_array);
+#if WANT_EXCEPTIONS
 void zend_do_first_catch(znode *open_parentheses TSRMLS_DC);
 void zend_initialize_try_catch_element(znode *try_token TSRMLS_DC);
 void zend_do_mark_last_catch(znode *first_catch, znode *last_additional_catch TSRMLS_DC);
+#else
+# define zend_do_first_catch(a)
+# define zend_initialize_try_catch_element(a) zend_error(E_COMPILE_ERROR, "Exceptions not enabled");
+# define zend_do_mark_last_catch(a,b)
+#endif
 ZEND_API zend_bool zend_is_compiling(TSRMLS_D);
 ZEND_API char *zend_make_compiled_string_description(char *name TSRMLS_DC);
 ZEND_API void zend_initialize_class_data(zend_class_entry *ce, zend_bool nullify_handlers TSRMLS_DC);

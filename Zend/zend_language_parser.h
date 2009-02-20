@@ -117,9 +117,11 @@
      T_FUNCTION = 333,
      T_CONST = 334,
      T_RETURN = 335,
+#if WANT_EXCEPTIONS
      T_TRY = 336,
      T_CATCH = 337,
      T_THROW = 338,
+#endif
      T_USE = 339,
      T_GLOBAL = 340,
      T_PUBLIC = 341,

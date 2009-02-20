@@ -27,6 +27,7 @@
 #include "zend_interfaces.h"
 #include "zend_exceptions.h"
 
+#if WANT_EXCEPTIONS
 zend_class_entry *default_exception_ce;
 zend_class_entry *error_exception_ce;
 static zend_object_handlers default_exception_handlers;
@@ -443,6 +444,7 @@ ZEND_METHOD(exception, getTraceAsString)
 	RETURN_STRINGL(res, res_len, 0); 
 }
 /* }}} */
+#endif
 
 int zend_spprintf(char **message, int max_len, char *format, ...) /* {{{ */
 {
@@ -456,6 +458,7 @@ int zend_spprintf(char **message, int max_len, char *format, ...) /* {{{ */
 }
 /* }}} */
 
+#if WANT_EXCEPTIONS
 /* {{{ proto string Exception::__toString()
    Obtain the string representation of the Exception object */
 ZEND_METHOD(exception, __toString)
@@ -719,6 +722,7 @@ ZEND_API void zend_throw_exception_object(zval *exception TSRMLS_DC) /* {{{ */
 }
 /* }}} */
 
+#endif
 /*
  * Local variables:
  * tab-width: 4

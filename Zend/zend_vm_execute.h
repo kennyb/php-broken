@@ -40,7 +40,7 @@ ZEND_API void execute(zend_op_array *op_array TSRMLS_DC)
 	zend_execute_data execute_data;
 
 
-	if (EG(exception)) {
+	if (EXCEPTION) {
 		return;
 	}
 
@@ -240,7 +240,7 @@ static int zend_do_fcall_common_helper_SPEC(ZEND_OPCODE_HANDLER_ARGS)
 		EX_T(opline->result.u.var).var.fcall_returned_reference = EG(active_op_array)->return_reference;
 
 		if (return_value_used && !EX_T(opline->result.u.var).var.ptr) {
-			if (!EG(exception)) {
+			if (!EXCEPTION) {
 				ALLOC_ZVAL(EX_T(opline->result.u.var).var.ptr);
 				INIT_ZVAL(*EX_T(opline->result.u.var).var.ptr);
 			}
@@ -290,7 +290,7 @@ static int zend_do_fcall_common_helper_SPEC(ZEND_OPCODE_HANDLER_ARGS)
 	ctor_opline = (zend_op*)zend_ptr_stack_pop(&EG(arg_types_stack));
 
 	if (EG(This)) {
-		if (EG(exception) && ctor_opline) {
+		if (EXCEPTION && ctor_opline) {
 			if (RETURN_VALUE_USED(ctor_opline)) {
 				EG(This)->refcount--;
 			}
@@ -311,7 +311,7 @@ static int zend_do_fcall_common_helper_SPEC(ZEND_OPCODE_HANDLER_ARGS)
 
 	zend_ptr_stack_clear_multiple(TSRMLS_C);
 
-	if (EG(exception)) {
+	if (EXCEPTION) {
 		zend_throw_exception_internal(NULL TSRMLS_CC);
 		if (return_value_used && EX_T(opline->result.u.var).var.ptr) {
 			zval_ptr_dtor(&EX_T(opline->result.u.var).var.ptr);
@@ -327,13 +327,14 @@ static int ZEND_DO_FCALL_BY_NAME_SPEC_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	return zend_do_fcall_common_helper_SPEC(ZEND_OPCODE_HANDLER_ARGS_PASSTHRU);
 }
 
+#if WANT_EXCEPTIONS
 static int ZEND_CATCH_SPEC_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 {
 	zend_op *opline = EX(opline);
 	zend_class_entry *ce;
 
 	/* Check whether an exception has been thrown, if not, jump over code */
-	if (EG(exception) == NULL) {
+	if (EXCEPTION == NULL) {
 		ZEND_VM_SET_OPCODE(&EX(op_array)->opcodes[opline->extended_value]);
 		ZEND_VM_CONTINUE(); /* CHECK_ME */
 	}
@@ -350,11 +351,12 @@ static int ZEND_CATCH_SPEC_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	}
 
 	zend_hash_update(EG(active_symbol_table), opline->op2.u.constant.value.str.val,
-		opline->op2.u.constant.value.str.len+1, &EG(exception), sizeof(zval *), (void **) NULL);
-	EG(exception) = NULL;
+		opline->op2.u.constant.value.str.len+1, &EXCEPTION, sizeof(zval *), (void **) NULL);
+	EXCEPTION = NULL;
 	ZEND_VM_NEXT_OPCODE();
 }
 
+#endif
 static int ZEND_RECV_SPEC_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 {
 	zend_op *opline = EX(opline);
@@ -529,6 +531,7 @@ static int ZEND_ADD_INTERFACE_SPEC_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	ZEND_VM_NEXT_OPCODE();
 }
 
+#if WANT_EXCEPTIONS
 static int ZEND_HANDLE_EXCEPTION_SPEC_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 {
 	zend_uint op_num = EG(opline_before_exception)-EG(active_op_array)->opcodes;
@@ -611,6 +614,7 @@ static int ZEND_HANDLE_EXCEPTION_SPEC_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
  	}
 }
 
+#endif
 static int ZEND_VERIFY_ABSTRACT_CLASS_SPEC_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 {
 	zend_verify_abstract_class(EX_T(EX(opline)->op1.u.var).class_entry TSRMLS_CC);
@@ -1728,7 +1732,7 @@ static int ZEND_DO_FCALL_SPEC_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 
 		zend_ptr_stack_clear_multiple(TSRMLS_C);
 
-		if (EG(exception)) {
+		if (EXCEPTION) {
 			zend_throw_exception_internal(NULL TSRMLS_CC);
 			if (return_value_used && EX_T(opline->result.u.var).var.ptr) {
 				zval_ptr_dtor(&EX_T(opline->result.u.var).var.ptr);
@@ -1826,6 +1830,7 @@ return_by_value:
 	ZEND_VM_RETURN_FROM_EXECUTE_LOOP();
 }
 
+#if WANT_EXCEPTIONS
 static int ZEND_THROW_SPEC_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 {
 	zend_op *opline = EX(opline);
@@ -1850,6 +1855,7 @@ static int ZEND_THROW_SPEC_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	ZEND_VM_NEXT_OPCODE();
 }
 
+#endif
 static int ZEND_SEND_VAL_SPEC_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 {
 	zend_op *opline = EX(opline);
@@ -1934,13 +1940,13 @@ static int ZEND_CLONE_SPEC_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	}
 
 	EX_T(opline->result.u.var).var.ptr_ptr = &EX_T(opline->result.u.var).var.ptr;
-	if (!EG(exception)) {
+	if (!EXCEPTION) {
 		ALLOC_ZVAL(EX_T(opline->result.u.var).var.ptr);
 		Z_OBJVAL_P(EX_T(opline->result.u.var).var.ptr) = clone_call(obj TSRMLS_CC);
 		Z_TYPE_P(EX_T(opline->result.u.var).var.ptr) = IS_OBJECT;
 		EX_T(opline->result.u.var).var.ptr->refcount=1;
 		EX_T(opline->result.u.var).var.ptr->is_ref=1;
-		if (!RETURN_VALUE_USED(opline) || EG(exception)) {
+		if (!RETURN_VALUE_USED(opline) || EXCEPTION) {
 			zval_ptr_dtor(&EX_T(opline->result.u.var).var.ptr);
 		}
 	}
@@ -2064,7 +2070,7 @@ static int ZEND_INCLUDE_OR_EVAL_SPEC_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 		EG(function_state_ptr) = &EX(function_state);
 		destroy_op_array(new_op_array TSRMLS_CC);
 		efree(new_op_array);
-		if (EG(exception)) {
+		if (EXCEPTION) {
 			zend_throw_exception_internal(NULL TSRMLS_CC);
 		}
 	} else {
@@ -2201,7 +2207,7 @@ static int ZEND_FE_RESET_SPEC_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	if (IS_CONST != IS_TMP_VAR && ce && ce->get_iterator) {
 		iter = ce->get_iterator(ce, array_ptr, opline->extended_value & ZEND_FE_RESET_REFERENCE TSRMLS_CC);
 
-		if (iter && !EG(exception)) {
+		if (iter && !EXCEPTION) {
 			array_ptr = zend_iterator_wrap(iter TSRMLS_CC);
 		} else {
 			if (opline->extended_value & ZEND_FE_RESET_VARIABLE) {
@@ -2209,10 +2215,14 @@ static int ZEND_FE_RESET_SPEC_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 			} else {
 
 			}
-			if (!EG(exception)) {
+#if WANT_EXCEPTIONS
+			if (!EXCEPTION) {
 				zend_throw_exception_ex(NULL, 0 TSRMLS_CC, "Object of type %s did not create an Iterator", ce->name);
 			}
 			zend_throw_exception_internal(NULL TSRMLS_CC);
+#else
+			zend_error(E_ERROR, "Object of type %s did not create an Iterator", ce->name);
+#endif
 			ZEND_VM_NEXT_OPCODE();
 		}
 	}
@@ -2225,7 +2235,7 @@ static int ZEND_FE_RESET_SPEC_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 		iter->index = 0;
 		if (iter->funcs->rewind) {
 			iter->funcs->rewind(iter TSRMLS_CC);
-			if (EG(exception)) {
+			if (EXCEPTION) {
 				array_ptr->refcount--;
 				zval_ptr_dtor(&array_ptr);
 				if (opline->extended_value & ZEND_FE_RESET_VARIABLE) {
@@ -2237,7 +2247,7 @@ static int ZEND_FE_RESET_SPEC_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 			}
 		}
 		is_empty = iter->funcs->valid(iter TSRMLS_CC) != SUCCESS;
-		if (EG(exception)) {
+		if (EXCEPTION) {
 			array_ptr->refcount--;
 			zval_ptr_dtor(&array_ptr);
 			if (opline->extended_value & ZEND_FE_RESET_VARIABLE) {
@@ -4340,6 +4350,7 @@ return_by_value:
 	ZEND_VM_RETURN_FROM_EXECUTE_LOOP();
 }
 
+#if WANT_EXCEPTIONS
 static int ZEND_THROW_SPEC_TMP_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 {
 	zend_op *opline = EX(opline);
@@ -4364,6 +4375,7 @@ static int ZEND_THROW_SPEC_TMP_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	ZEND_VM_NEXT_OPCODE();
 }
 
+#endif
 static int ZEND_SEND_VAL_SPEC_TMP_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 {
 	zend_op *opline = EX(opline);
@@ -4455,13 +4467,13 @@ static int ZEND_CLONE_SPEC_TMP_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	}
 
 	EX_T(opline->result.u.var).var.ptr_ptr = &EX_T(opline->result.u.var).var.ptr;
-	if (!EG(exception)) {
+	if (!EXCEPTION) {
 		ALLOC_ZVAL(EX_T(opline->result.u.var).var.ptr);
 		Z_OBJVAL_P(EX_T(opline->result.u.var).var.ptr) = clone_call(obj TSRMLS_CC);
 		Z_TYPE_P(EX_T(opline->result.u.var).var.ptr) = IS_OBJECT;
 		EX_T(opline->result.u.var).var.ptr->refcount=1;
 		EX_T(opline->result.u.var).var.ptr->is_ref=1;
-		if (!RETURN_VALUE_USED(opline) || EG(exception)) {
+		if (!RETURN_VALUE_USED(opline) || EXCEPTION) {
 			zval_ptr_dtor(&EX_T(opline->result.u.var).var.ptr);
 		}
 	}
@@ -4585,7 +4597,7 @@ static int ZEND_INCLUDE_OR_EVAL_SPEC_TMP_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 		EG(function_state_ptr) = &EX(function_state);
 		destroy_op_array(new_op_array TSRMLS_CC);
 		efree(new_op_array);
-		if (EG(exception)) {
+		if (EXCEPTION) {
 			zend_throw_exception_internal(NULL TSRMLS_CC);
 		}
 	} else {
@@ -4722,7 +4734,7 @@ static int ZEND_FE_RESET_SPEC_TMP_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	if (IS_TMP_VAR != IS_TMP_VAR && ce && ce->get_iterator) {
 		iter = ce->get_iterator(ce, array_ptr, opline->extended_value & ZEND_FE_RESET_REFERENCE TSRMLS_CC);
 
-		if (iter && !EG(exception)) {
+		if (iter && !EXCEPTION) {
 			array_ptr = zend_iterator_wrap(iter TSRMLS_CC);
 		} else {
 			if (opline->extended_value & ZEND_FE_RESET_VARIABLE) {
@@ -4730,10 +4742,14 @@ static int ZEND_FE_RESET_SPEC_TMP_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 			} else {
 
 			}
-			if (!EG(exception)) {
+#if WANT_EXCEPTIONS
+			if (!EXCEPTION) {
 				zend_throw_exception_ex(NULL, 0 TSRMLS_CC, "Object of type %s did not create an Iterator", ce->name);
 			}
 			zend_throw_exception_internal(NULL TSRMLS_CC);
+#else
+			zend_error(E_ERROR, "Object of type %s did not create an Iterator", ce->name);
+#endif
 			ZEND_VM_NEXT_OPCODE();
 		}
 	}
@@ -4746,7 +4762,7 @@ static int ZEND_FE_RESET_SPEC_TMP_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 		iter->index = 0;
 		if (iter->funcs->rewind) {
 			iter->funcs->rewind(iter TSRMLS_CC);
-			if (EG(exception)) {
+			if (EXCEPTION) {
 				array_ptr->refcount--;
 				zval_ptr_dtor(&array_ptr);
 				if (opline->extended_value & ZEND_FE_RESET_VARIABLE) {
@@ -4758,7 +4774,7 @@ static int ZEND_FE_RESET_SPEC_TMP_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 			}
 		}
 		is_empty = iter->funcs->valid(iter TSRMLS_CC) != SUCCESS;
-		if (EG(exception)) {
+		if (EXCEPTION) {
 			array_ptr->refcount--;
 			zval_ptr_dtor(&array_ptr);
 			if (opline->extended_value & ZEND_FE_RESET_VARIABLE) {
@@ -7578,6 +7594,7 @@ return_by_value:
 	ZEND_VM_RETURN_FROM_EXECUTE_LOOP();
 }
 
+#if WANT_EXCEPTIONS
 static int ZEND_THROW_SPEC_VAR_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 {
 	zend_op *opline = EX(opline);
@@ -7602,6 +7619,7 @@ static int ZEND_THROW_SPEC_VAR_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	ZEND_VM_NEXT_OPCODE();
 }
 
+#endif
 static int ZEND_SEND_VAL_SPEC_VAR_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 {
 	zend_op *opline = EX(opline);
@@ -7798,13 +7816,13 @@ static int ZEND_CLONE_SPEC_VAR_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	}
 
 	EX_T(opline->result.u.var).var.ptr_ptr = &EX_T(opline->result.u.var).var.ptr;
-	if (!EG(exception)) {
+	if (!EXCEPTION) {
 		ALLOC_ZVAL(EX_T(opline->result.u.var).var.ptr);
 		Z_OBJVAL_P(EX_T(opline->result.u.var).var.ptr) = clone_call(obj TSRMLS_CC);
 		Z_TYPE_P(EX_T(opline->result.u.var).var.ptr) = IS_OBJECT;
 		EX_T(opline->result.u.var).var.ptr->refcount=1;
 		EX_T(opline->result.u.var).var.ptr->is_ref=1;
-		if (!RETURN_VALUE_USED(opline) || EG(exception)) {
+		if (!RETURN_VALUE_USED(opline) || EXCEPTION) {
 			zval_ptr_dtor(&EX_T(opline->result.u.var).var.ptr);
 		}
 	}
@@ -7928,7 +7946,7 @@ static int ZEND_INCLUDE_OR_EVAL_SPEC_VAR_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 		EG(function_state_ptr) = &EX(function_state);
 		destroy_op_array(new_op_array TSRMLS_CC);
 		efree(new_op_array);
-		if (EG(exception)) {
+		if (EXCEPTION) {
 			zend_throw_exception_internal(NULL TSRMLS_CC);
 		}
 	} else {
@@ -8065,7 +8083,7 @@ static int ZEND_FE_RESET_SPEC_VAR_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	if (IS_VAR != IS_TMP_VAR && ce && ce->get_iterator) {
 		iter = ce->get_iterator(ce, array_ptr, opline->extended_value & ZEND_FE_RESET_REFERENCE TSRMLS_CC);
 
-		if (iter && !EG(exception)) {
+		if (iter && !EXCEPTION) {
 			array_ptr = zend_iterator_wrap(iter TSRMLS_CC);
 		} else {
 			if (opline->extended_value & ZEND_FE_RESET_VARIABLE) {
@@ -8073,10 +8091,14 @@ static int ZEND_FE_RESET_SPEC_VAR_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 			} else {
 				if (free_op1.var) {zval_ptr_dtor(&free_op1.var);};
 			}
-			if (!EG(exception)) {
+#if WANT_EXCEPTIONS
+			if (!EXCEPTION) {
 				zend_throw_exception_ex(NULL, 0 TSRMLS_CC, "Object of type %s did not create an Iterator", ce->name);
 			}
 			zend_throw_exception_internal(NULL TSRMLS_CC);
+#else
+			zend_error(E_ERROR, "Object of type %s did not create an Iterator", ce->name);
+#endif
 			ZEND_VM_NEXT_OPCODE();
 		}
 	}
@@ -8089,7 +8111,7 @@ static int ZEND_FE_RESET_SPEC_VAR_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 		iter->index = 0;
 		if (iter->funcs->rewind) {
 			iter->funcs->rewind(iter TSRMLS_CC);
-			if (EG(exception)) {
+			if (EXCEPTION) {
 				array_ptr->refcount--;
 				zval_ptr_dtor(&array_ptr);
 				if (opline->extended_value & ZEND_FE_RESET_VARIABLE) {
@@ -8101,7 +8123,7 @@ static int ZEND_FE_RESET_SPEC_VAR_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 			}
 		}
 		is_empty = iter->funcs->valid(iter TSRMLS_CC) != SUCCESS;
-		if (EG(exception)) {
+		if (EXCEPTION) {
 			array_ptr->refcount--;
 			zval_ptr_dtor(&array_ptr);
 			if (opline->extended_value & ZEND_FE_RESET_VARIABLE) {
@@ -8219,7 +8241,7 @@ static int ZEND_FE_FETCH_SPEC_VAR_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 				/* This could cause an endless loop if index becomes zero again.
 				 * In case that ever happens we need an additional flag. */
 				iter->funcs->move_forward(iter TSRMLS_CC);
-				if (EG(exception)) {
+				if (EXCEPTION) {
 					array->refcount--;
 					zval_ptr_dtor(&array);
 					ZEND_VM_NEXT_OPCODE();
@@ -8228,7 +8250,7 @@ static int ZEND_FE_FETCH_SPEC_VAR_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 			/* If index is zero we come from FE_RESET and checked valid() already. */
 			if (!iter || (iter->index > 0 && iter->funcs->valid(iter TSRMLS_CC) == FAILURE)) {
 				/* reached end of iteration */
-				if (EG(exception)) {
+				if (EXCEPTION) {
 					array->refcount--;
 					zval_ptr_dtor(&array);
 					ZEND_VM_NEXT_OPCODE();
@@ -8236,7 +8258,7 @@ static int ZEND_FE_FETCH_SPEC_VAR_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 				ZEND_VM_JMP(EX(op_array)->opcodes+opline->op2.u.opline_num);
 			}
 			iter->funcs->get_current_data(iter, &value TSRMLS_CC);
-			if (EG(exception)) {
+			if (EXCEPTION) {
 				array->refcount--;
 				zval_ptr_dtor(&array);
 				ZEND_VM_NEXT_OPCODE();
@@ -8248,7 +8270,7 @@ static int ZEND_FE_FETCH_SPEC_VAR_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 			if (use_key) {
 				if (iter->funcs->get_current_key) {
 					key_type = iter->funcs->get_current_key(iter, &str_key, &str_key_len, &int_key TSRMLS_CC);
-					if (EG(exception)) {
+					if (EXCEPTION) {
 						array->refcount--;
 						zval_ptr_dtor(&array);
 						ZEND_VM_NEXT_OPCODE();
@@ -15296,13 +15318,13 @@ static int ZEND_CLONE_SPEC_UNUSED_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	}
 
 	EX_T(opline->result.u.var).var.ptr_ptr = &EX_T(opline->result.u.var).var.ptr;
-	if (!EG(exception)) {
+	if (!EXCEPTION) {
 		ALLOC_ZVAL(EX_T(opline->result.u.var).var.ptr);
 		Z_OBJVAL_P(EX_T(opline->result.u.var).var.ptr) = clone_call(obj TSRMLS_CC);
 		Z_TYPE_P(EX_T(opline->result.u.var).var.ptr) = IS_OBJECT;
 		EX_T(opline->result.u.var).var.ptr->refcount=1;
 		EX_T(opline->result.u.var).var.ptr->is_ref=1;
-		if (!RETURN_VALUE_USED(opline) || EG(exception)) {
+		if (!RETURN_VALUE_USED(opline) || EXCEPTION) {
 			zval_ptr_dtor(&EX_T(opline->result.u.var).var.ptr);
 		}
 	}
@@ -20307,6 +20329,7 @@ return_by_value:
 	ZEND_VM_RETURN_FROM_EXECUTE_LOOP();
 }
 
+#if WANT_EXCEPTIONS
 static int ZEND_THROW_SPEC_CV_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 {
 	zend_op *opline = EX(opline);
@@ -20331,6 +20354,7 @@ static int ZEND_THROW_SPEC_CV_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	ZEND_VM_NEXT_OPCODE();
 }
 
+#endif
 static int ZEND_SEND_VAL_SPEC_CV_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 {
 	zend_op *opline = EX(opline);
@@ -20519,13 +20543,13 @@ static int ZEND_CLONE_SPEC_CV_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	}
 
 	EX_T(opline->result.u.var).var.ptr_ptr = &EX_T(opline->result.u.var).var.ptr;
-	if (!EG(exception)) {
+	if (!EXCEPTION) {
 		ALLOC_ZVAL(EX_T(opline->result.u.var).var.ptr);
 		Z_OBJVAL_P(EX_T(opline->result.u.var).var.ptr) = clone_call(obj TSRMLS_CC);
 		Z_TYPE_P(EX_T(opline->result.u.var).var.ptr) = IS_OBJECT;
 		EX_T(opline->result.u.var).var.ptr->refcount=1;
 		EX_T(opline->result.u.var).var.ptr->is_ref=1;
-		if (!RETURN_VALUE_USED(opline) || EG(exception)) {
+		if (!RETURN_VALUE_USED(opline) || EXCEPTION) {
 			zval_ptr_dtor(&EX_T(opline->result.u.var).var.ptr);
 		}
 	}
@@ -20649,7 +20673,7 @@ static int ZEND_INCLUDE_OR_EVAL_SPEC_CV_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 		EG(function_state_ptr) = &EX(function_state);
 		destroy_op_array(new_op_array TSRMLS_CC);
 		efree(new_op_array);
-		if (EG(exception)) {
+		if (EXCEPTION) {
 			zend_throw_exception_internal(NULL TSRMLS_CC);
 		}
 	} else {
@@ -20786,7 +20810,7 @@ static int ZEND_FE_RESET_SPEC_CV_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	if (IS_CV != IS_TMP_VAR && ce && ce->get_iterator) {
 		iter = ce->get_iterator(ce, array_ptr, opline->extended_value & ZEND_FE_RESET_REFERENCE TSRMLS_CC);
 
-		if (iter && !EG(exception)) {
+		if (iter && !EXCEPTION) {
 			array_ptr = zend_iterator_wrap(iter TSRMLS_CC);
 		} else {
 			if (opline->extended_value & ZEND_FE_RESET_VARIABLE) {
@@ -20794,10 +20818,14 @@ static int ZEND_FE_RESET_SPEC_CV_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 			} else {
 
 			}
-			if (!EG(exception)) {
+#if WANT_EXCEPTIONS
+			if (!EXCEPTION) {
 				zend_throw_exception_ex(NULL, 0 TSRMLS_CC, "Object of type %s did not create an Iterator", ce->name);
 			}
 			zend_throw_exception_internal(NULL TSRMLS_CC);
+#else
+			zend_error(E_ERROR, "Object of type %s did not create an Iterator", ce->name);
+#endif
 			ZEND_VM_NEXT_OPCODE();
 		}
 	}
@@ -20810,7 +20838,7 @@ static int ZEND_FE_RESET_SPEC_CV_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 		iter->index = 0;
 		if (iter->funcs->rewind) {
 			iter->funcs->rewind(iter TSRMLS_CC);
-			if (EG(exception)) {
+			if (EXCEPTION) {
 				array_ptr->refcount--;
 				zval_ptr_dtor(&array_ptr);
 				if (opline->extended_value & ZEND_FE_RESET_VARIABLE) {
@@ -20822,7 +20850,7 @@ static int ZEND_FE_RESET_SPEC_CV_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 			}
 		}
 		is_empty = iter->funcs->valid(iter TSRMLS_CC) != SUCCESS;
-		if (EG(exception)) {
+		if (EXCEPTION) {
 			array_ptr->refcount--;
 			zval_ptr_dtor(&array_ptr);
 			if (opline->extended_value & ZEND_FE_RESET_VARIABLE) {
@@ -30472,56 +30500,236 @@ void zend_init_opcodes_handlers(void)
   	ZEND_SEND_VAR_NO_REF_SPEC_CV_HANDLER,
   	ZEND_SEND_VAR_NO_REF_SPEC_CV_HANDLER,
   	ZEND_SEND_VAR_NO_REF_SPEC_CV_HANDLER,
+#if WANT_EXCEPTIONS
   	ZEND_CATCH_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_CATCH_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_CATCH_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_CATCH_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_CATCH_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_CATCH_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_CATCH_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_CATCH_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_CATCH_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_CATCH_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_CATCH_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_CATCH_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_CATCH_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_CATCH_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_CATCH_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_CATCH_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_CATCH_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_CATCH_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_CATCH_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_CATCH_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_CATCH_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_CATCH_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_CATCH_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_CATCH_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_CATCH_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_THROW_SPEC_CONST_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_THROW_SPEC_CONST_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_THROW_SPEC_CONST_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_THROW_SPEC_CONST_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_THROW_SPEC_CONST_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_THROW_SPEC_TMP_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_THROW_SPEC_TMP_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_THROW_SPEC_TMP_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_THROW_SPEC_TMP_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_THROW_SPEC_TMP_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_THROW_SPEC_VAR_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_THROW_SPEC_VAR_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_THROW_SPEC_VAR_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_THROW_SPEC_VAR_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_THROW_SPEC_VAR_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
+#if WANT_EXCEPTIONS
   	ZEND_THROW_SPEC_CV_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_THROW_SPEC_CV_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_THROW_SPEC_CV_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_THROW_SPEC_CV_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_THROW_SPEC_CV_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
   	ZEND_FETCH_CLASS_SPEC_CONST_HANDLER,
   	ZEND_FETCH_CLASS_SPEC_TMP_HANDLER,
   	ZEND_FETCH_CLASS_SPEC_VAR_HANDLER,
@@ -31522,31 +31730,131 @@ void zend_init_opcodes_handlers(void)
   	ZEND_ISSET_ISEMPTY_PROP_OBJ_SPEC_CV_VAR_HANDLER,
   	ZEND_NULL_HANDLER,
   	ZEND_ISSET_ISEMPTY_PROP_OBJ_SPEC_CV_CV_HANDLER,
+#if WANT_EXCEPTIONS
   	ZEND_HANDLE_EXCEPTION_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_HANDLE_EXCEPTION_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_HANDLE_EXCEPTION_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_HANDLE_EXCEPTION_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_HANDLE_EXCEPTION_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_HANDLE_EXCEPTION_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_HANDLE_EXCEPTION_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_HANDLE_EXCEPTION_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_HANDLE_EXCEPTION_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_HANDLE_EXCEPTION_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_HANDLE_EXCEPTION_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_HANDLE_EXCEPTION_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_HANDLE_EXCEPTION_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_HANDLE_EXCEPTION_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_HANDLE_EXCEPTION_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_HANDLE_EXCEPTION_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_HANDLE_EXCEPTION_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_HANDLE_EXCEPTION_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_HANDLE_EXCEPTION_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_HANDLE_EXCEPTION_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_HANDLE_EXCEPTION_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_HANDLE_EXCEPTION_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_HANDLE_EXCEPTION_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_HANDLE_EXCEPTION_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
+#if WANT_EXCEPTIONS
   	ZEND_HANDLE_EXCEPTION_SPEC_HANDLER,
+#else
+  	ZEND_NULL_HANDLER,
+#endif
   	ZEND_USER_OPCODE_SPEC_HANDLER,
   	ZEND_USER_OPCODE_SPEC_HANDLER,
   	ZEND_USER_OPCODE_SPEC_HANDLER,

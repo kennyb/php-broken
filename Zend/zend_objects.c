@@ -96,9 +96,12 @@ ZEND_API void zend_objects_destroy_object(zend_object *object, zend_object_handl
 		 * For example, if an exception was thrown in a function and when the function's
 		 * local variable destruction results in a destructor being called.
 		 */
+#if WANT_EXCEPTIONS
 		old_exception = EG(exception);
 		EG(exception) = NULL;
+#endif
 		zend_call_method_with_0_params(&obj, object->ce, &destructor, ZEND_DESTRUCTOR_FUNC_NAME, NULL);
+#if WANT_EXCEPTIONS
 		if (old_exception) {
 			if (EG(exception)) {
 				zend_class_entry *default_exception_ce = zend_exception_get_default(TSRMLS_C);
@@ -113,6 +116,7 @@ ZEND_API void zend_objects_destroy_object(zend_object *object, zend_object_handl
 			}
 			EG(exception) = old_exception;
 		}
+#endif
 		zval_ptr_dtor(&obj);
 	}
 }

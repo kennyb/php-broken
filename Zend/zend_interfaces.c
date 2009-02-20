@@ -92,7 +92,7 @@ ZEND_API zval* zend_call_method(zval **object_pp, zend_class_entry *obj_ce, zend
 		if (!obj_ce) {
 			obj_ce = object_pp ? Z_OBJCE_PP(object_pp) : NULL;
 		}
-		if (!EG(exception)) {
+		if (!EXCEPTION) {
 			zend_error(E_CORE_ERROR, "Couldn't execute method %s%s%s", obj_ce ? obj_ce->name : "", obj_ce ? "::" : "", function_name);
 		}
 	}
@@ -196,7 +196,7 @@ ZEND_API int zend_user_it_get_current_key(zend_object_iterator *_iter, char **st
 
 	if (!retval) {
 		*int_key = 0;
-		if (!EG(exception))
+		if (!EXCEPTION)
 		{
 			zend_error(E_WARNING, "Nothing returned from %s::key()", iter->ce->name);
 		}
@@ -292,8 +292,12 @@ ZEND_API zend_object_iterator *zend_user_it_get_new_iterator(zend_class_entry *c
 	zend_class_entry *ce_it = iterator && Z_TYPE_P(iterator) == IS_OBJECT ? Z_OBJCE_P(iterator) : NULL;
 
 	if (!ce_it || !ce_it->get_iterator || (ce_it->get_iterator == zend_user_it_get_new_iterator && iterator == object)) {
-		if (!EG(exception)) {
+		if (!EXCEPTION) {
+#if WANT_EXCEPTIONS
 			zend_throw_exception_ex(NULL, 0 TSRMLS_CC, "Objects returned by %s::getIterator() must be traversable or implement interface Iterator", ce ? ce->name : Z_OBJCE_P(object)->name);
+#else
+			zend_error(E_ERROR, "Objects returned by %s::getIterator() must be traversable or implement interface Iterator", ce ? ce->name : Z_OBJCE_P(object)->name);
+#endif
 		}
 		if (iterator) {
 			zval_ptr_dtor(&iterator);
@@ -413,7 +417,7 @@ int zend_user_serialize(zval *object, unsigned char **buffer, zend_uint *buf_len
 	zend_call_method_with_0_params(&object, ce, &ce->serialize_func, "serialize", &retval);
 
 
-	if (!retval || EG(exception)) {
+	if (!retval || EXCEPTION) {
 		result = FAILURE;
 	} else {
 		switch(Z_TYPE_P(retval)) {
@@ -434,7 +438,11 @@ int zend_user_serialize(zval *object, unsigned char **buffer, zend_uint *buf_len
 	}
 
 	if (result == FAILURE) {
+#if WANT_EXCEPTIONS
 		zend_throw_exception_ex(NULL, 0 TSRMLS_CC, "%s::serialize() must return a string or NULL", ce->name);
+#else
+		zend_error(E_ERROR, "%s::serialize() must return a string or NULL", ce->name);
+#endif
 	}
 	return result;
 }
@@ -454,7 +462,7 @@ int zend_user_unserialize(zval **object, zend_class_entry *ce, const unsigned ch
 
 	zval_ptr_dtor(&zdata);
 
-	if (EG(exception)) {
+	if (EXCEPTION) {
 		return FAILURE;
 	} else {
 		return SUCCESS;

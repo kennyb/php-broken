@@ -494,11 +494,15 @@ function gen_code($f, $spec, $kind, $code, $op1, $op2) {
 }
 
 // Generates opcode handler
-function gen_handler($f, $spec, $kind, $name, $op1, $op2, $use, $code, $lineno) {
+function gen_handler($f, $spec, $kind, $name, $op1, $op2, $define, $use, $code, $lineno) {
 	global $definition_file, $prefix, $typecode, $opnames;
 
 	if (ZEND_VM_LINES) {
 		out($f, "#line $lineno \"$definition_file\"\n");
+	}
+	
+	if($define !== "") {
+		out($f, "#if $define\n");
 	}
 
 	// Generate opcode handler's entry point according to selected threading model
@@ -531,6 +535,10 @@ function gen_handler($f, $spec, $kind, $name, $op1, $op2, $use, $code, $lineno) 
 
 	// Generate opcode handler's code
 	gen_code($f, $spec, $kind, $code, $op1, $op2);
+	
+	if($define !== "") {
+		out($f, "#endif\n");
+	}
 }
 
 // Generates helper
@@ -575,6 +583,10 @@ function gen_labels($f, $spec, $kind, $prolog) {
 
 	  // For each opcode in opcode number order
 		foreach($opcodes as $num => $dsc) {
+			if($kind !== ZEND_VM_KIND_CALL && $dsc["define"] !== "") {
+				out($f, "#if {$dsc["define"]}\n");
+			}
+			
 			while ($next != $num) {
 			  // If some opcode numbers are not used then fill hole with pointers
 			  // to handler of undefined opcode
@@ -628,7 +640,18 @@ function gen_labels($f, $spec, $kind, $prolog) {
 							  // Emit pointer to specialized handler
 								switch ($kind) {
 									case ZEND_VM_KIND_CALL:
+										if($dsc["define"] !== "") {
+											out($f, "#if {$dsc["define"]}\n");
+										}
+										
 										out($f,$prolog.$dsc["op"]."_SPEC".$prefix[$op1].$prefix[$op2]."_HANDLER,\n");
+										
+										if($dsc["define"] !== "") {
+											out($f, "#else\n");
+											out($f,$prolog."ZEND_NULL_HANDLER,\n");
+											out($f,"#endif\n");
+										}
+										
 										break;
 									case ZEND_VM_KIND_SWITCH:
 										out($f,$prolog."(opcode_handler_t)".((string)($num*25+$typecode[$op1]*5+$typecode[$op2])).",\n");
@@ -656,6 +679,10 @@ function gen_labels($f, $spec, $kind, $prolog) {
 						}
 					}
 				}
+			}
+			
+			if($kind !== ZEND_VM_KIND_CALL && $dsc["define"] !== "") {
+				out($f, "#endif\n");
 			}
 		}
 	} else {
@@ -779,7 +806,7 @@ function gen_executor_code($f, $spec, $kind, $prolog) {
 						if (isset($opcodes[$num]["op1"][$op1]) &&
 						    isset($opcodes[$num]["op2"][$op2])) {
 						  // Generate handler code
-							gen_handler($f, 1, $kind, $opcodes[$num]["op"], $op1, $op2, isset($opcodes[$num]["use"]), $opcodes[$num]["code"], $lineno);
+							gen_handler($f, 1, $kind, $opcodes[$num]["op"], $op1, $op2, $opcodes[$num]["define"], isset($opcodes[$num]["use"]), $opcodes[$num]["code"], $lineno);
 						}
 					} else if (isset($dsc["helper"])) {
 						$num = $dsc["helper"];
@@ -804,7 +831,7 @@ function gen_executor_code($f, $spec, $kind, $prolog) {
 			if (isset($dsc["handler"])) {
 				$num = $dsc["handler"];
 			  // Generate handler code
-				gen_handler($f, 0, $kind, $opcodes[$num]["op"], "ANY", "ANY", isset($opcodes[$num]["use"]), $opcodes[$num]["code"], $lineno);
+				gen_handler($f, 0, $kind, $opcodes[$num]["op"], "ANY", "ANY", $opcodes[$num]["define"], isset($opcodes[$num]["use"]), $opcodes[$num]["code"], $lineno);
 			} else if (isset($dsc["helper"])) {
 				$num = $dsc["helper"];
 			  // Generate helper code
@@ -1068,14 +1095,30 @@ function gen_vm($def, $skel) {
 	$export         = array();
 	foreach ($in as $line) {
 		++$lineno;
-		if (strpos($line,"ZEND_VM_HANDLER(") === 0) {
+		if (strpos($line,"ZEND_VM_HANDLER(") === 0 || strpos($line,"ZEND_VM_HANDLER_EX(") === 0) {
 		  // Parsing opcode handler's definition
-			if (preg_match(
+			$define = '';
+			if(strpos($line,"ZEND_VM_HANDLER(") === 0) {
+				if(preg_match(
 					"/^ZEND_VM_HANDLER\(\s*([0-9]+)\s*,\s*([A-Z_]+)\s*,\s*([A-Z|]+)\s*,\s*([A-Z|]+)\s*\)/",
 					$line,
 					$m) == 0) {
-				die("ERROR ($def:$lineno): Invalid ZEND_VM_HANDLER definition.\n");
+						die("ERROR ($def:$lineno): Invalid ZEND_VM_HANDLER definition.\n");
+				}
+			} else {
+				if(strpos($line,"ZEND_VM_HANDLER_EX(") === 0) {
+					if(preg_match(
+						"/^ZEND_VM_HANDLER_EX\(\s*([0-9]+)\s*,\s*([A-Z_]+)\s*,\s*([A-Z|]+)\s*,\s*([A-Z|]+)\s*,\s*([A-Z|_]+)\s*\)/",
+						$line,
+						$m) == 0) {
+							die("ERROR ($def:$lineno): Invalid ZEND_VM_HANDLER_EX definition.\n");
+					} else {
+						$define = $m[5];
+					}
+				}
 			}
+			
+			
 			$code = (int)$m[1];
 			$op   = $m[2];
 			$len  = strlen($op);
@@ -1094,7 +1137,7 @@ function gen_vm($def, $skel) {
 			if (isset($opnames[$op])) {
 				die("ERROR ($def:$lineno): Opcode with name '$op' is already defined.\n");
 			}
-			$opcodes[$code] = array("op"=>$op,"op1"=>$op1,"op2"=>$op2,"code"=>"");
+			$opcodes[$code] = array("op"=>$op,"op1"=>$op1,"op2"=>$op2,"code"=>"", "define" => $define);
 			$opnames[$op] = $code;
 			$handler = $code;
 			$helper = null;

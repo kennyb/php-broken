@@ -463,7 +463,7 @@ zval *zend_std_read_dimension(zval *object, zval *offset, int type TSRMLS_DC)
 		zval_ptr_dtor(&offset);
 
 		if (!retval) {
-			if (!EG(exception)) {
+			if (!EXCEPTION) {
 				zend_error(E_ERROR, "Undefined offset for object of type %s used as array", ce->name);
 			}
 			return 0;
@@ -510,7 +510,7 @@ static int zend_std_has_dimension(zval *object, zval *offset, int check_empty TS
 		if (retval) {
 			result = i_zend_is_true(retval);
 			zval_ptr_dtor(&retval);
-			if (check_empty && result && !EG(exception)) {
+			if (check_empty && result && !EXCEPTION) {
 				zend_call_method_with_1_params(&object, ce, NULL, "offsetget", &retval, offset);
 				if (retval) {
 					result = i_zend_is_true(retval);
@@ -1025,7 +1025,7 @@ static int zend_std_has_property(zval *object, zval *member, int has_set_exists 
 			if (rv) {
 				result = zend_is_true(rv);
 				zval_ptr_dtor(&rv);
-				if (has_set_exists && result && !EG(exception) && zobj->ce->__get && !guard->in_get) {
+				if (has_set_exists && result && !EXCEPTION && zobj->ce->__get && !guard->in_get) {
 					guard->in_get = 1;
 					rv = zend_std_call_getter(object, member TSRMLS_CC);
 					guard->in_get = 0;
@@ -1096,8 +1096,8 @@ ZEND_API int zend_std_cast_object_tostring(zval *readobj, zval *writeobj, int ty
 		case IS_STRING:
 			ce = Z_OBJCE_P(readobj);
 			if (ce->__tostring &&
-                (zend_call_method_with_0_params(&readobj, ce, &ce->__tostring, "__tostring", &retval) || EG(exception))) {
-                if (EG(exception)) {
+                (zend_call_method_with_0_params(&readobj, ce, &ce->__tostring, "__tostring", &retval) || EXCEPTION)) {
+                if (EXCEPTION) {
                 	if (retval) {
 	                	zval_ptr_dtor(&retval);
 	                }

@@ -513,6 +513,7 @@ PHP_MINIT_FUNCTION(mysqli)
 
 	zend_hash_init(&classes, 0, NULL, NULL, 1);
 
+#ifdef WANT_EXCEPTIONS
 	INIT_CLASS_ENTRY(cex, "mysqli_sql_exception", mysqli_exception_methods);
 #ifdef HAVE_SPL
 	mysqli_exception_class_entry = zend_register_internal_class_ex(&cex, spl_ce_RuntimeException, NULL TSRMLS_CC);
@@ -521,7 +522,8 @@ PHP_MINIT_FUNCTION(mysqli)
 #endif
 	mysqli_exception_class_entry->ce_flags |= ZEND_ACC_FINAL;
 	zend_declare_property_long(mysqli_exception_class_entry, "code", sizeof("code")-1, 0, ZEND_ACC_PROTECTED TSRMLS_CC);
-	zend_declare_property_string(mysqli_exception_class_entry, "sqlstate", sizeof("sqlstate")-1, "00000", ZEND_ACC_PROTECTED TSRMLS_CC);	
+	zend_declare_property_string(mysqli_exception_class_entry, "sqlstate", sizeof("sqlstate")-1, "00000", ZEND_ACC_PROTECTED TSRMLS_CC);
+#endif
 
 	REGISTER_MYSQLI_CLASS_ENTRY("mysqli_driver", mysqli_driver_class_entry, mysqli_driver_methods);
 	ce = mysqli_driver_class_entry;
@@ -968,7 +970,11 @@ void php_mysqli_fetch_into_hash(INTERNAL_FUNCTION_PARAMETERS, int override_flags
 					 * single value is an array. Also we'd have to make that one
 					 * argument passed by reference.
 					 */
+#if WANT_EXCEPTIONS
 					zend_throw_exception(zend_exception_get_default(TSRMLS_C), "Parameter ctor_params must be an array", 0 TSRMLS_CC);
+#else
+					zend_error(E_ERROR, "Parameter ctor_params must be an array");
+#endif
 					return;
 				}
 			} else {
@@ -983,7 +989,11 @@ void php_mysqli_fetch_into_hash(INTERNAL_FUNCTION_PARAMETERS, int override_flags
 			fcc.object_pp = &return_value;
 		
 			if (zend_call_function(&fci, &fcc TSRMLS_CC) == FAILURE) {
+#if WANT_EXCEPTIONS
 				zend_throw_exception_ex(zend_exception_get_default(TSRMLS_C), 0 TSRMLS_CC, "Could not execute %s::%s()", ce->name, ce->constructor->common.function_name);
+#else
+				zend_error(E_ERROR, "Could not execute %s::%s()", ce->name, ce->constructor->common.function_name);
+#endif
 			} else {
 				if (retval_ptr) {
 					zval_ptr_dtor(&retval_ptr);
@@ -993,7 +1003,11 @@ void php_mysqli_fetch_into_hash(INTERNAL_FUNCTION_PARAMETERS, int override_flags
 				efree(fci.params);
 			}
 		} else if (ctor_params) {
+#if WANT_EXCEPTIONS
 			zend_throw_exception_ex(zend_exception_get_default(TSRMLS_C), 0 TSRMLS_CC, "Class %s does not have a constructor hence you cannot use ctor_params", ce->name);
+#else
+			zend_error(E_ERROR, "Class %s does not have a constructor hence you cannot use ctor_params", ce->name);
+#endif
 		}
 	}
 }

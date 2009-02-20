@@ -2704,6 +2704,7 @@ AC_DEFUN([PHP_CHECK_CONFIGURE_OPTIONS],[
 
       # Allow optimization options
       with-prealloc-opcodes | enable-detailed-errors | enable-interactive-mode[)];;
+      enable-exceptions[)];;
 
       # All the rest must be set using the PHP_ARG_* macros
       # PHP_ARG_* macros set php_enable_<arg_name> or php_with_<arg_name>

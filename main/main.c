@@ -771,7 +771,9 @@ PHPAPI void php_html_puts(const char *str, uint size TSRMLS_DC)
 PHPAPI void php_set_error_handling(error_handling_t error_handling, zend_class_entry *exception_class TSRMLS_DC)
 {
 	PG(error_handling) = error_handling;
+#if WANT_EXCEPTIONS
 	PG(exception_class) = exception_class;
+#endif
 	if (PG(last_error_message)) {
 		free(PG(last_error_message));
 		PG(last_error_message) = NULL;
@@ -824,6 +826,7 @@ static void php_error_cb(int type, const char *error_filename, const uint error_
 		PG(last_error_lineno) = error_lineno;
 	}
 
+#if WANT_EXCEPTIONS
 	/* according to error handling mode, suppress error, throw exception or show it */
 	if (PG(error_handling) != EH_NORMAL) {
 		switch (type) {
@@ -845,13 +848,14 @@ static void php_error_cb(int type, const char *error_filename, const uint error_
 				/* throw an exception if we are in EH_THROW mode
 				 * but DO NOT overwrite a pending exception
 				 */
-				if (PG(error_handling) == EH_THROW && !EG(exception)) {
+				if (PG(error_handling) == EH_THROW && !EXCEPTION) {
 					zend_throw_error_exception(PG(exception_class), buffer, 0, type TSRMLS_CC);
 				}
 				efree(buffer);
 				return;
 		}
 	}
+#endif
 
 	/* display/log the error if necessary */
 	if (display && (EG(error_reporting) & type || (type & E_CORE))

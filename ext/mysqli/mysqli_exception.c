@@ -45,12 +45,16 @@ void php_mysqli_throw_sql_exception(char *sqlstate, int errorno TSRMLS_DC, char 
 	vspprintf(&message, 0, format, arg);
 	va_end(arg);;
 
-	if (!(MyG(report_mode) & MYSQLI_REPORT_STRICT)) {
+#if WANT_EXCEPTIONS
+	if (!(MyG(report_mode) & MYSQLI_REPORT_STRICT))
+#endif
+	{
 	 	php_error_docref(NULL TSRMLS_CC, E_WARNING, "(%s/%d): %s", sqlstate, errorno, message);
 		efree(message);
 		return;
 	}
 
+#if WANT_EXCEPTIONS
 	MAKE_STD_ZVAL(sql_ex);
 	object_init_ex(sql_ex, mysqli_exception_class_entry);
 
@@ -71,6 +75,7 @@ void php_mysqli_throw_sql_exception(char *sqlstate, int errorno TSRMLS_DC, char 
 	zend_update_property_long(mysqli_exception_class_entry, sql_ex, "code", sizeof("code") - 1, errorno TSRMLS_CC);
 
 	zend_throw_exception_object(sql_ex TSRMLS_CC);
+#endif
 }
 
 /*

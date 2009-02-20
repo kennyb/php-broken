@@ -249,7 +249,7 @@ ZEND_API void zend_make_printable_zval(zval *expr, zval *expr_copy, int *use_cop
 					}
 					zval_ptr_dtor(&z);
 				}
-				zend_error(EG(exception) ? E_ERROR : E_RECOVERABLE_ERROR, "Object of class %s could not be converted to string", Z_OBJCE_P(expr)->name);
+				zend_error(EXCEPTION ? E_ERROR : E_RECOVERABLE_ERROR, "Object of class %s could not be converted to string", Z_OBJCE_P(expr)->name);
 				expr_copy->value.str.len = 0;
 				expr_copy->value.str.val = STR_EMPTY_ALLOC();
 			}
@@ -617,7 +617,9 @@ int zend_startup(zend_utility_functions *utility_functions, char **extensions, i
 	zend_compile_string = compile_string;
 	zend_execute = execute;
 	zend_execute_internal = NULL;
+#if WANT_EXCEPTIONS
 	zend_throw_exception_hook = NULL;
+#endif
 
 	zend_init_opcodes_handlers();
 
@@ -672,7 +674,9 @@ int zend_startup(zend_utility_functions *utility_functions, char **extensions, i
 	zend_startup_constants();
 	zend_set_default_compile_time_values(TSRMLS_C);
 	EG(user_error_handler) = NULL;
+#if WANT_EXCEPTIONS
 	EG(user_exception_handler) = NULL;
+#endif
 #endif
 	register_standard_class(TSRMLS_C);
 	zend_register_standard_constants(TSRMLS_C);
@@ -1056,7 +1060,7 @@ ZEND_API void zend_error(int type, const char *format, ...)
 					}
 					zval_ptr_dtor(&retval);
 				}
-			} else if (!EG(exception)) {
+			} else if (!EXCEPTION) {
 				/* The user error handler failed, use built-in error handler */
 				zend_error_cb(type, error_filename, error_lineno, format, args);
 			}
@@ -1143,12 +1147,13 @@ ZEND_API int zend_execute_scripts(int type TSRMLS_DC, zval **retval, int file_co
 		if (EG(active_op_array)) {
 			EG(return_value_ptr_ptr) = retval ? retval : &local_retval;
 			zend_execute(EG(active_op_array) TSRMLS_CC);
+#if WANT_EXCEPTIONS
 			if (EG(exception)) {
 				if (EG(user_exception_handler)) {
 					zval *orig_user_exception_handler;
 					zval ***params, *retval2, *old_exception;
 					params = (zval ***)emalloc(sizeof(zval **));
-					old_exception = EG(exception);
+					old_exception = EXCEPTION;
 					EG(exception) = NULL;
 					params[0] = &old_exception;
 					orig_user_exception_handler = EG(user_exception_handler);
@@ -1175,7 +1180,9 @@ ZEND_API int zend_execute_scripts(int type TSRMLS_DC, zval **retval, int file_co
 					zval_ptr_dtor(EG(return_value_ptr_ptr));
 					local_retval = NULL;
 				}
-			} else if (!retval && *EG(return_value_ptr_ptr)) {
+			} else 
+#endif
+			if (!retval && *EG(return_value_ptr_ptr)) {
 				zval_ptr_dtor(EG(return_value_ptr_ptr));
 				local_retval = NULL;
 			}

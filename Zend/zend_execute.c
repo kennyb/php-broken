@@ -614,7 +614,7 @@ static inline void zend_assign_to_object(znode *result, zval **object_ptr, znode
 		Z_OBJ_HT_P(object)->write_dimension(object, property_name, value TSRMLS_CC);
 	}
 
-	if (result && !RETURN_VALUE_UNUSED(result) && !EG(exception)) {
+	if (result && !RETURN_VALUE_UNUSED(result) && !EXCEPTION) {
 		T(result->u.var).var.ptr = value;
 		T(result->u.var).var.ptr_ptr = &T(result->u.var).var.ptr; /* this is so that we could use it in FETCH_DIM_R, etc. - see bug #27876 */
 		PZVAL_LOCK(value);
@@ -1384,11 +1384,11 @@ ZEND_API void execute_internal(zend_execute_data *execute_data_ptr, int return_v
 
 #define ZEND_VM_JMP(new_op) \
      CHECK_SYMBOL_TABLES() \
- 	   EX(opline) = EG(exception)?EX(opline)+1:new_op; \
+ 	   EX(opline) = EXCEPTION?EX(opline)+1:new_op; \
      ZEND_VM_CONTINUE()
 
 #define ZEND_VM_INC_OPCODE() \
-	if (!EG(exception)) { \
+	if (!EXCEPTION) { \
 		CHECK_SYMBOL_TABLES() \
 		EX(opline)++; \
 	}

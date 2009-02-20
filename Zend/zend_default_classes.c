@@ -29,7 +29,9 @@
 ZEND_API void zend_register_default_classes(TSRMLS_D)
 {
 	zend_register_interfaces(TSRMLS_C);
+#if WANT_EXCEPTIONS
 	zend_register_default_exception(TSRMLS_C);
+#endif
 	zend_register_iterator_wrapper(TSRMLS_C);
 }
 

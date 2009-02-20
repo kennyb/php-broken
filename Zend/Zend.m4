@@ -143,6 +143,13 @@ AC_ARG_ENABLE(interactive-mode,
   ZEND_INTERACTIVE_MODE=no
 ])
 
+AC_ARG_ENABLE(exceptions,
+[  --enable-exceptions Enable php exceptions],[
+  ZEND_EXCEPTIONS=$enableval
+],[
+  ZEND_EXCEPTIONS=no
+])
+
 AC_ARG_ENABLE(maintainer-zts,
 [  --enable-maintainer-zts Enable thread safety - for code maintainers only!!],[
   ZEND_MAINTAINER_ZTS=$enableval
@@ -185,6 +192,9 @@ AC_MSG_RESULT($ZEND_OPCODE_PREALLOC)
 AC_MSG_CHECKING(whether to enable interactive mode)
 AC_MSG_RESULT($ZEND_INTERACTIVE_MODE)
 
+AC_MSG_CHECKING(whether to enable exceptions)
+AC_MSG_RESULT($ZEND_EXCEPTIONS)
+
 AC_MSG_CHECKING(whether to enable thread-safety)
 AC_MSG_RESULT($ZEND_MAINTAINER_ZTS)
 
@@ -226,7 +236,11 @@ fi
 test -n "$DEBUG_CFLAGS" && CFLAGS="$CFLAGS $DEBUG_CFLAGS"
 
 if test "$ZEND_INTERACTIVE_MODE" = "yes"; then
-  AC_DEFINE(WANT_INTERACTIVE, 1, [ want to interactive mode code ])
+  AC_DEFINE(WANT_INTERACTIVE, 1, [ want to compile with interactive mode ability])
+fi
+
+if test "$ZEND_EXCEPTIONS" = "yes"; then
+  AC_DEFINE(WANT_EXCEPTIONS, 1, [ want to compile with php exceptions])
 fi
 
 if test "$ZEND_MAINTAINER_ZTS" = "yes"; then

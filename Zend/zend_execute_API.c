@@ -174,7 +174,9 @@ void init_executor(TSRMLS_D)
 
 	zend_stack_init(&EG(user_error_handlers_error_reporting));
 	zend_ptr_stack_init(&EG(user_error_handlers));
+#if WANT_EXCEPTIONS
 	zend_ptr_stack_init(&EG(user_exception_handlers));
+#endif
 
 	zend_objects_store_init(&EG(objects_store), 1024);
 
@@ -183,7 +185,9 @@ void init_executor(TSRMLS_D)
 	EG(timed_out) = 0;
 #endif
 
+#if WANT_EXCEPTIONS
 	EG(exception) = NULL;
+#endif
 
 	EG(scope) = NULL;
 
@@ -250,17 +254,21 @@ void shutdown_executor(TSRMLS_D)
 			FREE_ZVAL(zeh);
 		}
 
+#if WANT_EXCEPTIONS
 		if (EG(user_exception_handler)) {
 			zeh = EG(user_exception_handler);
 			EG(user_exception_handler) = NULL;
 			zval_dtor(zeh);
 			FREE_ZVAL(zeh);
 		}
+#endif
 
 		zend_stack_destroy(&EG(user_error_handlers_error_reporting));
 		zend_stack_init(&EG(user_error_handlers_error_reporting));
 		zend_ptr_stack_clean(&EG(user_error_handlers), ZVAL_DESTRUCTOR, 1);
+#if WANT_EXCEPTIONS
 		zend_ptr_stack_clean(&EG(user_exception_handlers), ZVAL_DESTRUCTOR, 1);
+#endif
 	} zend_end_try();
 
 	zend_try {
@@ -313,7 +321,9 @@ void shutdown_executor(TSRMLS_D)
 		zend_ptr_stack_destroy(&EG(arg_types_stack));
 		zend_stack_destroy(&EG(user_error_handlers_error_reporting));
 		zend_ptr_stack_destroy(&EG(user_error_handlers));
+#if WANT_EXCEPTIONS
 		zend_ptr_stack_destroy(&EG(user_exception_handlers));
+#endif
 		zend_objects_store_destroy(&EG(objects_store));
 		if (EG(in_autoload)) {
 			zend_hash_destroy(EG(in_autoload));
@@ -668,7 +678,7 @@ int zend_call_function(zend_fcall_info *fci, zend_fcall_info_cache *fci_cache TS
 		return FAILURE; /* executor is already inactive */
 	}
 
-	if (EG(exception)) {
+	if (EXCEPTION) {
 		return FAILURE; /* we would result in an instable executor otherwise */
 	}
 
@@ -1043,7 +1053,7 @@ int zend_call_function(zend_fcall_info *fci, zend_fcall_info_cache *fci_cache TS
 	EG(This) = current_this;
 	EG(current_execute_data) = EX(prev_execute_data);
 
-	if (EG(exception)) {
+	if (EXCEPTION) {
 		zend_throw_exception_internal(NULL TSRMLS_CC);
 	}
 	return SUCCESS;
@@ -1117,8 +1127,10 @@ ZEND_API int zend_lookup_class_ex(char *name, int name_length, int use_autoload,
 	fcall_cache.calling_scope = NULL;
 	fcall_cache.object_pp = NULL;
 
+#if WANT_EXCEPTIONS
 	exception = EG(exception);
 	EG(exception) = NULL;
+#endif
 	retval = zend_call_function(&fcall_info, &fcall_cache TSRMLS_CC);
 	EG(autoload_func) = fcall_cache.function_handler;
 
@@ -1127,19 +1139,23 @@ ZEND_API int zend_lookup_class_ex(char *name, int name_length, int use_autoload,
 	zend_hash_del(EG(in_autoload), lc_name, name_length+1);
 
 	if (retval == FAILURE) {
+#if WANT_EXCEPTIONS
 		EG(exception) = exception;
+#endif
 		free_alloca_with_limit(lc_name, use_heap);
 		return FAILURE;
 	}
 
-	if (EG(exception) && exception) {
+#if WANT_EXCEPTIONS
+	if (EXCEPTION && exception) {
 		free_alloca_with_limit(lc_name, use_heap);
-		zend_error(E_ERROR, "Function %s(%s) threw an exception of type '%s'", ZEND_AUTOLOAD_FUNC_NAME, name, Z_OBJCE_P(EG(exception))->name);
+		zend_error(E_ERROR, "Function %s(%s) threw an exception of type '%s'", ZEND_AUTOLOAD_FUNC_NAME, name, Z_OBJCE_P(EXCEPTION)->name);
 		return FAILURE;
 	}
-	if (!EG(exception)) {
-		EG(exception) = exception;
+	if (!EXCEPTION) {
+		EXCEPTION = exception;
 	}
+#endif
 	if (retval_ptr) {
 		zval_ptr_dtor(&retval_ptr);
 	}
@@ -1229,8 +1245,8 @@ ZEND_API int zend_eval_string_ex(char *str, zval *retval_ptr, char *string_name,
 	int result;
 
 	result = zend_eval_string(str, retval_ptr, string_name TSRMLS_CC);
-	if (handle_exceptions && EG(exception)) {
-		zend_exception_error(EG(exception) TSRMLS_CC);
+	if (handle_exceptions && EXCEPTION) {
+		zend_exception_error(EXCEPTION TSRMLS_CC);
 		result = FAILURE;
 	}
 	return result;
@@ -1296,8 +1312,8 @@ void execute_new_code(TSRMLS_D)
 		zval_ptr_dtor(&local_retval);
 	}
 
-	if (EG(exception)) {
-		zend_exception_error(EG(exception) TSRMLS_CC);
+	if (EXCEPTION) {
+		zend_exception_error(EXCEPTION TSRMLS_CC);
 	}
 
 	CG(active_op_array)->last -= 2;	/* get rid of that ZEND_RETURN and ZEND_HANDLE_EXCEPTION */

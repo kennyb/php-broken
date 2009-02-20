@@ -6,7 +6,7 @@ ZEND_API void {%EXECUTOR_NAME%}(zend_op_array *op_array TSRMLS_DC)
 
 	{%INTERNAL_LABELS%}
 
-	if (EG(exception)) {
+	if (EXCEPTION) {
 		return;
 	}
 

@@ -68,8 +68,10 @@ static ZEND_FUNCTION(get_class_methods);
 static ZEND_FUNCTION(trigger_error);
 static ZEND_FUNCTION(set_error_handler);
 static ZEND_FUNCTION(restore_error_handler);
+#if WANT_EXCEPTIONS
 static ZEND_FUNCTION(set_exception_handler);
 static ZEND_FUNCTION(restore_exception_handler);
+#endif
 static ZEND_FUNCTION(get_declared_classes);
 static ZEND_FUNCTION(get_declared_interfaces);
 static ZEND_FUNCTION(get_defined_functions);
@@ -134,8 +136,10 @@ static zend_function_entry builtin_functions[] = {
 	ZEND_FALIAS(user_error,		trigger_error,		NULL)
 	ZEND_FE(set_error_handler,		NULL)
 	ZEND_FE(restore_error_handler,	NULL)
+#if WANT_EXCEPTIONS
 	ZEND_FE(set_exception_handler,		NULL)
 	ZEND_FE(restore_exception_handler,	NULL)
+#endif
 	ZEND_FE(get_declared_classes, NULL)
 	ZEND_FE(get_declared_interfaces, NULL)
 	ZEND_FE(get_defined_functions, NULL)
@@ -1274,7 +1278,7 @@ ZEND_FUNCTION(restore_error_handler)
 }
 /* }}} */
 
-
+#if WANT_EXCEPTIONS
 /* {{{ proto string set_exception_handler(callable exception_handler)
    Sets a user-defined exception handler function.  Returns the previously defined exception handler, or false on error */
 ZEND_FUNCTION(set_exception_handler)
@@ -1336,6 +1340,7 @@ ZEND_FUNCTION(restore_exception_handler)
 	RETURN_TRUE;
 }
 /* }}} */
+#endif
 
 
 static int copy_class_or_interface_name(zend_class_entry **pce, int num_args, va_list args, zend_hash_key *hash_key)

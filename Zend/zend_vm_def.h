@@ -1982,7 +1982,7 @@ ZEND_VM_HELPER(zend_do_fcall_common_helper, ANY, ANY)
 		EX_T(opline->result.u.var).var.fcall_returned_reference = EG(active_op_array)->return_reference;
 
 		if (return_value_used && !EX_T(opline->result.u.var).var.ptr) {
-			if (!EG(exception)) {
+			if (!EXCEPTION) {
 				ALLOC_ZVAL(EX_T(opline->result.u.var).var.ptr);
 				INIT_ZVAL(*EX_T(opline->result.u.var).var.ptr);
 			}
@@ -2032,7 +2032,7 @@ ZEND_VM_HELPER(zend_do_fcall_common_helper, ANY, ANY)
 	ctor_opline = (zend_op*)zend_ptr_stack_pop(&EG(arg_types_stack));
 
 	if (EG(This)) {
-		if (EG(exception) && ctor_opline) {
+		if (EXCEPTION && ctor_opline) {
 			if (RETURN_VALUE_USED(ctor_opline)) {
 				EG(This)->refcount--;
 			}
@@ -2053,7 +2053,7 @@ ZEND_VM_HELPER(zend_do_fcall_common_helper, ANY, ANY)
 
 	zend_ptr_stack_clear_multiple(TSRMLS_C);
 
-	if (EG(exception)) {
+	if (EXCEPTION) {
 		zend_throw_exception_internal(NULL TSRMLS_CC);
 		if (return_value_used && EX_T(opline->result.u.var).var.ptr) {
 			zval_ptr_dtor(&EX_T(opline->result.u.var).var.ptr);
@@ -2132,7 +2132,7 @@ ZEND_VM_HANDLER(60, ZEND_DO_FCALL, CONST, ANY)
 
 		zend_ptr_stack_clear_multiple(TSRMLS_C);
 
-		if (EG(exception)) {
+		if (EXCEPTION) {
 			zend_throw_exception_internal(NULL TSRMLS_CC);
 			if (return_value_used && EX_T(opline->result.u.var).var.ptr) {
 				zval_ptr_dtor(&EX_T(opline->result.u.var).var.ptr);
@@ -2230,7 +2230,7 @@ ZEND_VM_C_LABEL(return_by_value):
 	ZEND_VM_RETURN_FROM_EXECUTE_LOOP();
 }
 
-ZEND_VM_HANDLER(108, ZEND_THROW, CONST|TMP|VAR|CV, ANY)
+ZEND_VM_HANDLER_EX(108, ZEND_THROW, CONST|TMP|VAR|CV, ANY, WANT_EXCEPTIONS)
 {
 	zend_op *opline = EX(opline);
 	zval *value;
@@ -2254,13 +2254,13 @@ ZEND_VM_HANDLER(108, ZEND_THROW, CONST|TMP|VAR|CV, ANY)
 	ZEND_VM_NEXT_OPCODE();
 }
 
-ZEND_VM_HANDLER(107, ZEND_CATCH, ANY, ANY)
+ZEND_VM_HANDLER_EX(107, ZEND_CATCH, ANY, ANY, WANT_EXCEPTIONS)
 {
 	zend_op *opline = EX(opline);
 	zend_class_entry *ce;
 
 	/* Check whether an exception has been thrown, if not, jump over code */
-	if (EG(exception) == NULL) {
+	if (EXCEPTION == NULL) {
 		ZEND_VM_SET_OPCODE(&EX(op_array)->opcodes[opline->extended_value]);
 		ZEND_VM_CONTINUE(); /* CHECK_ME */
 	}
@@ -2277,8 +2277,8 @@ ZEND_VM_HANDLER(107, ZEND_CATCH, ANY, ANY)
 	}
 
 	zend_hash_update(EG(active_symbol_table), opline->op2.u.constant.value.str.val,
-		opline->op2.u.constant.value.str.len+1, &EG(exception), sizeof(zval *), (void **) NULL);
-	EG(exception) = NULL;
+		opline->op2.u.constant.value.str.len+1, &EXCEPTION, sizeof(zval *), (void **) NULL);
+	EXCEPTION = NULL;
 	ZEND_VM_NEXT_OPCODE();
 }
 
@@ -2655,13 +2655,13 @@ ZEND_VM_HANDLER(110, ZEND_CLONE, CONST|TMP|VAR|UNUSED|CV, ANY)
 	}
 
 	EX_T(opline->result.u.var).var.ptr_ptr = &EX_T(opline->result.u.var).var.ptr;
-	if (!EG(exception)) {
+	if (!EXCEPTION) {
 		ALLOC_ZVAL(EX_T(opline->result.u.var).var.ptr);
 		Z_OBJVAL_P(EX_T(opline->result.u.var).var.ptr) = clone_call(obj TSRMLS_CC);
 		Z_TYPE_P(EX_T(opline->result.u.var).var.ptr) = IS_OBJECT;
 		EX_T(opline->result.u.var).var.ptr->refcount=1;
 		EX_T(opline->result.u.var).var.ptr->is_ref=1;
-		if (!RETURN_VALUE_USED(opline) || EG(exception)) {
+		if (!RETURN_VALUE_USED(opline) || EXCEPTION) {
 			zval_ptr_dtor(&EX_T(opline->result.u.var).var.ptr);
 		}
 	}
@@ -2986,7 +2986,7 @@ ZEND_VM_HANDLER(73, ZEND_INCLUDE_OR_EVAL, CONST|TMP|VAR|CV, ANY)
 		EG(function_state_ptr) = &EX(function_state);
 		destroy_op_array(new_op_array TSRMLS_CC);
 		efree(new_op_array);
-		if (EG(exception)) {
+		if (EXCEPTION) {
 			zend_throw_exception_internal(NULL TSRMLS_CC);
 		}
 	} else {
@@ -3249,7 +3249,7 @@ ZEND_VM_HANDLER(77, ZEND_FE_RESET, CONST|TMP|VAR|CV, ANY)
 	if (OP1_TYPE != IS_TMP_VAR && ce && ce->get_iterator) {
 		iter = ce->get_iterator(ce, array_ptr, opline->extended_value & ZEND_FE_RESET_REFERENCE TSRMLS_CC);
 
-		if (iter && !EG(exception)) {
+		if (iter && !EXCEPTION) {
 			array_ptr = zend_iterator_wrap(iter TSRMLS_CC);
 		} else {
 			if (opline->extended_value & ZEND_FE_RESET_VARIABLE) {
@@ -3257,10 +3257,14 @@ ZEND_VM_HANDLER(77, ZEND_FE_RESET, CONST|TMP|VAR|CV, ANY)
 			} else {
 				FREE_OP1_IF_VAR();
 			}
-			if (!EG(exception)) {
+#if WANT_EXCEPTIONS
+			if (!EXCEPTION) {
 				zend_throw_exception_ex(NULL, 0 TSRMLS_CC, "Object of type %s did not create an Iterator", ce->name);
 			}
 			zend_throw_exception_internal(NULL TSRMLS_CC);
+#else
+			zend_error(E_ERROR, "Object of type %s did not create an Iterator", ce->name);
+#endif
 			ZEND_VM_NEXT_OPCODE();
 		}
 	}
@@ -3273,7 +3277,7 @@ ZEND_VM_HANDLER(77, ZEND_FE_RESET, CONST|TMP|VAR|CV, ANY)
 		iter->index = 0;
 		if (iter->funcs->rewind) {
 			iter->funcs->rewind(iter TSRMLS_CC);
-			if (EG(exception)) {
+			if (EXCEPTION) {
 				array_ptr->refcount--;
 				zval_ptr_dtor(&array_ptr);
 				if (opline->extended_value & ZEND_FE_RESET_VARIABLE) {
@@ -3285,7 +3289,7 @@ ZEND_VM_HANDLER(77, ZEND_FE_RESET, CONST|TMP|VAR|CV, ANY)
 			}
 		}
 		is_empty = iter->funcs->valid(iter TSRMLS_CC) != SUCCESS;
-		if (EG(exception)) {
+		if (EXCEPTION) {
 			array_ptr->refcount--;
 			zval_ptr_dtor(&array_ptr);
 			if (opline->extended_value & ZEND_FE_RESET_VARIABLE) {
@@ -3403,7 +3407,7 @@ ZEND_VM_HANDLER(78, ZEND_FE_FETCH, VAR, ANY)
 				/* This could cause an endless loop if index becomes zero again.
 				 * In case that ever happens we need an additional flag. */
 				iter->funcs->move_forward(iter TSRMLS_CC);
-				if (EG(exception)) {
+				if (EXCEPTION) {
 					array->refcount--;
 					zval_ptr_dtor(&array);
 					ZEND_VM_NEXT_OPCODE();
@@ -3412,7 +3416,7 @@ ZEND_VM_HANDLER(78, ZEND_FE_FETCH, VAR, ANY)
 			/* If index is zero we come from FE_RESET and checked valid() already. */
 			if (!iter || (iter->index > 0 && iter->funcs->valid(iter TSRMLS_CC) == FAILURE)) {
 				/* reached end of iteration */
-				if (EG(exception)) {
+				if (EXCEPTION) {
 					array->refcount--;
 					zval_ptr_dtor(&array);
 					ZEND_VM_NEXT_OPCODE();
@@ -3420,7 +3424,7 @@ ZEND_VM_HANDLER(78, ZEND_FE_FETCH, VAR, ANY)
 				ZEND_VM_JMP(EX(op_array)->opcodes+opline->op2.u.opline_num);
 			}
 			iter->funcs->get_current_data(iter, &value TSRMLS_CC);
-			if (EG(exception)) {
+			if (EXCEPTION) {
 				array->refcount--;
 				zval_ptr_dtor(&array);
 				ZEND_VM_NEXT_OPCODE();
@@ -3432,7 +3436,7 @@ ZEND_VM_HANDLER(78, ZEND_FE_FETCH, VAR, ANY)
 			if (use_key) {
 				if (iter->funcs->get_current_key) {
 					key_type = iter->funcs->get_current_key(iter, &str_key, &str_key_len, &int_key TSRMLS_CC);
-					if (EG(exception)) {
+					if (EXCEPTION) {
 						array->refcount--;
 						zval_ptr_dtor(&array);
 						ZEND_VM_NEXT_OPCODE();
@@ -3847,7 +3851,7 @@ ZEND_VM_HANDLER(144, ZEND_ADD_INTERFACE, ANY, ANY)
 	ZEND_VM_NEXT_OPCODE();
 }
 
-ZEND_VM_HANDLER(149, ZEND_HANDLE_EXCEPTION, ANY, ANY)
+ZEND_VM_HANDLER_EX(149, ZEND_HANDLE_EXCEPTION, ANY, ANY, WANT_EXCEPTIONS)
 {
 	zend_uint op_num = EG(opline_before_exception)-EG(active_op_array)->opcodes;
 	int i;

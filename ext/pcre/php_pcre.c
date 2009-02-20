@@ -816,7 +816,7 @@ static int preg_do_repl_func(zval *function, char *subject, int *offsets, int co
 		result_len = Z_STRLEN_P(retval_ptr);
 		zval_ptr_dtor(&retval_ptr);
 	} else {
-		if (!EG(exception)) {
+		if (!EXCEPTION) {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to call custom replacement function");
 		}
 		result_len = offsets[1] - offsets[0];

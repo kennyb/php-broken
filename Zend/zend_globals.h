@@ -51,6 +51,12 @@ END_EXTERN_C()
 
 #endif
 
+#if WANT_EXCEPTIONS
+# define EXCEPTION EG(exception)
+#else
+# define EXCEPTION 0
+#endif
+
 #define SYMTABLE_CACHE_SIZE 32
 
 
@@ -216,10 +222,14 @@ struct _zend_executor_globals {
 
 	int user_error_handler_error_reporting;
 	zval *user_error_handler;
+#if WANT_EXCEPTIONS
 	zval *user_exception_handler;
+#endif
 	zend_stack user_error_handlers_error_reporting;
 	zend_ptr_stack user_error_handlers;
+#if WANT_EXCEPTIONS
 	zend_ptr_stack user_exception_handlers;
+#endif
 
 	/* timeout support */
 	int timeout_seconds;
@@ -230,8 +240,10 @@ struct _zend_executor_globals {
 	HashTable *modified_ini_directives;
 
 	zend_objects_store objects_store;
+#if WANT_EXCEPTIONS
 	zval *exception;
 	zend_op *opline_before_exception;
+#endif
 
 	struct _zend_execute_data *current_execute_data;
 

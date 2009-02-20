@@ -1777,7 +1777,7 @@ void zend_do_return(znode *expr, int do_end_vparse TSRMLS_DC)
 	SET_UNUSED(opline->op2);
 }
 
-
+#if WANT_EXCEPTIONS
 static int zend_add_try_element(zend_uint try_op TSRMLS_DC)
 {
 	int try_catch_offset = CG(active_op_array)->last_try_catch++;
@@ -1890,6 +1890,7 @@ void zend_do_throw(znode *expr TSRMLS_DC)
 	opline->op1 = *expr;
 	SET_UNUSED(opline->op2);
 }
+#endif
 
 ZEND_API void function_add_ref(zend_function *function)
 {
@@ -1958,7 +1959,7 @@ static void do_inherit_parent_constructor(zend_class_entry *ce)
 	}
 	if (ce->constructor) {
 		if (ce->parent->constructor && ce->parent->constructor->common.fn_flags & ZEND_ACC_FINAL) {
-			zend_error(E_ERROR, "Cannot override final %s::%s() with %s::%s()",
+			zend_error(E_COMPILE_ERROR, "Cannot override final %s::%s() with %s::%s()",
 				ce->parent->name, ce->parent->constructor->common.function_name,
 				ce->name, ce->constructor->common.function_name
 				);
