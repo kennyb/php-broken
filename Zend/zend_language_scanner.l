@@ -1041,24 +1041,12 @@ HEREDOC_CHARS       ("{"*([^$\n\r\\{]|("\\"[^\n\r]))|{HEREDOC_LITERAL_DOLLAR}|({
 	return T_IF;
 }
 
-<ST_IN_SCRIPTING>"elseif" {
-	return T_ELSEIF;
-}
-
-<ST_IN_SCRIPTING>"endif" {
-	return T_ENDIF;
-}
-
 <ST_IN_SCRIPTING>"else" {
 	return T_ELSE;
 }
 
 <ST_IN_SCRIPTING>"while" {
 	return T_WHILE;
-}
-
-<ST_IN_SCRIPTING>"endwhile" {
-	return T_ENDWHILE;
 }
 
 <ST_IN_SCRIPTING>"do" {
@@ -1069,24 +1057,12 @@ HEREDOC_CHARS       ("{"*([^$\n\r\\{]|("\\"[^\n\r]))|{HEREDOC_LITERAL_DOLLAR}|({
 	return T_FOR;
 }
 
-<ST_IN_SCRIPTING>"endfor" {
-	return T_ENDFOR;
-}
-
 <ST_IN_SCRIPTING>"foreach" {
 	return T_FOREACH;
 }
 
-<ST_IN_SCRIPTING>"endforeach" {
-	return T_ENDFOREACH;
-}
-
 <ST_IN_SCRIPTING>"declare" {
 	return T_DECLARE;
-}
-
-<ST_IN_SCRIPTING>"enddeclare" {
-	return T_ENDDECLARE;
 }
 
 <ST_IN_SCRIPTING>"instanceof" {
@@ -1099,10 +1075,6 @@ HEREDOC_CHARS       ("{"*([^$\n\r\\{]|("\\"[^\n\r]))|{HEREDOC_LITERAL_DOLLAR}|({
 
 <ST_IN_SCRIPTING>"switch" {
 	return T_SWITCH;
-}
-
-<ST_IN_SCRIPTING>"endswitch" {
-	return T_ENDSWITCH;
 }
 
 <ST_IN_SCRIPTING>"case" {
@@ -1600,7 +1572,7 @@ HEREDOC_CHARS       ("{"*([^$\n\r\\{]|("\\"[^\n\r]))|{HEREDOC_LITERAL_DOLLAR}|({
 	return T_INLINE_HTML;
 }
 
-<INITIAL>"<?"|"<script"{WHITESPACE}+"language"{WHITESPACE}*"="{WHITESPACE}*("php"|"\"php\""|"\'php\'"){WHITESPACE}*">" {
+<INITIAL>"<?" {
 	HANDLE_NEWLINES(yytext, yyleng);
 	if (CG(short_tags) || yyleng>2) { /* yyleng>2 means it's not <? but <script> */
 		zendlval->value.str.val = yytext; /* no copying - intentional */
@@ -1806,7 +1778,7 @@ HEREDOC_CHARS       ("{"*([^$\n\r\\{]|("\\"[^\n\r]))|{HEREDOC_LITERAL_DOLLAR}|({
 	yymore();
 }
 
-<ST_IN_SCRIPTING>("?>"|"</script"{WHITESPACE}*">"){NEWLINE}? {
+<ST_IN_SCRIPTING>"?>"{NEWLINE}? {
 	zendlval->value.str.val = yytext; /* no copying - intentional */
 	zendlval->value.str.len = yyleng;
 	zendlval->type = IS_STRING;

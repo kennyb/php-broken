@@ -47,7 +47,6 @@
 %}
 
 %pure_parser
-%expect 2
 
 %left T_INCLUDE T_INCLUDE_ONCE T_EVAL T_REQUIRE T_REQUIRE_ONCE
 %left ','
@@ -74,7 +73,6 @@
 %nonassoc T_NEW T_CLONE
 %token T_EXIT
 %token T_IF
-%left T_ELSEIF
 %left T_ELSE
 %left T_ENDIF
 %token T_LNUMBER
@@ -184,8 +182,7 @@ statement:
 
 unticked_statement:
 		'{' inner_statement_list '}'
-	|	T_IF '(' expr ')' { zend_do_if_cond(&$3, &$4 TSRMLS_CC); } statement { zend_do_if_after_statement(&$4, 1 TSRMLS_CC); } elseif_list else_single { zend_do_if_end(TSRMLS_C); }
-	|	T_IF '(' expr ')' ':' { zend_do_if_cond(&$3, &$4 TSRMLS_CC); } inner_statement_list { zend_do_if_after_statement(&$4, 1 TSRMLS_CC); } new_elseif_list new_else_single T_ENDIF ';' { zend_do_if_end(TSRMLS_C); }
+	|	T_IF '(' expr ')' { zend_do_if_cond(&$3, &$4 TSRMLS_CC); } statement { zend_do_if_after_statement(&$4, 1 TSRMLS_CC); } else_single { zend_do_if_end(TSRMLS_C); }
 	|	T_WHILE '(' { $1.u.opline_num = get_next_op_number(CG(active_op_array));  } expr  ')' { zend_do_while_cond(&$4, &$5 TSRMLS_CC); } while_statement { zend_do_while_end(&$1, &$5 TSRMLS_CC); }
 	|	T_DO { $1.u.opline_num = get_next_op_number(CG(active_op_array));  zend_do_do_while_begin(TSRMLS_C); } statement T_WHILE '(' { $5.u.opline_num = get_next_op_number(CG(active_op_array)); } expr ')' ';' { zend_do_do_while_end(&$1, &$5, &$7 TSRMLS_CC); }
 	|	T_FOR
@@ -342,19 +339,16 @@ foreach_variable:
 
 for_statement:
 		statement
-	|	':' inner_statement_list T_ENDFOR ';'
 ;
 
 
 foreach_statement:
 		statement
-	|	':' inner_statement_list T_ENDFOREACH ';'
 ;
 
 
 declare_statement:
 		statement
-	|	':' inner_statement_list T_ENDDECLARE ';'
 ;
 
 
@@ -387,32 +381,14 @@ case_separator:
 
 while_statement:
 		statement
-	|	':' inner_statement_list T_ENDWHILE ';'
 ;
 
 
-
-elseif_list:
-		/* empty */
-	|	elseif_list T_ELSEIF '(' expr ')' { zend_do_if_cond(&$4, &$5 TSRMLS_CC); } statement { zend_do_if_after_statement(&$5, 0 TSRMLS_CC); }
-;
-
-
-new_elseif_list:
-		/* empty */
-	|	new_elseif_list T_ELSEIF '(' expr ')' ':' { zend_do_if_cond(&$4, &$5 TSRMLS_CC); } inner_statement_list { zend_do_if_after_statement(&$5, 0 TSRMLS_CC); }
-;
 
 
 else_single:
 		/* empty */
 	|	T_ELSE statement
-;
-
-
-new_else_single:
-		/* empty */
-	|	T_ELSE ':' inner_statement_list
 ;
 
 
@@ -704,7 +680,7 @@ static_class_constant:
 scalar:
 		T_STRING 				{ zend_do_fetch_constant(&$$, NULL, &$1, ZEND_RT TSRMLS_CC); }
 	|	T_STRING_VARNAME		{ $$ = $1; }
-	|	class_constant	{ $$ = $1; }
+	|	class_constant  { $$ = $1; }
 	|	common_scalar			{ $$ = $1; }
 	|	'"' encaps_list '"' 	{ $$ = $2; }
 	|	T_START_HEREDOC encaps_list T_END_HEREDOC { $$ = $2; }
