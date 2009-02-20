@@ -428,10 +428,6 @@ ZEND_API void _zval_ptr_dtor(zval **zval_ptr ZEND_FILE_LINE_DC)
 	} else if ((*zval_ptr)->refcount == 1) {
 		if ((*zval_ptr)->type == IS_OBJECT) {
 			TSRMLS_FETCH();
-
-			if (EG(ze1_compatibility_mode)) {
-				return;
-			}
 		}
 		(*zval_ptr)->is_ref = 0;
 	}
