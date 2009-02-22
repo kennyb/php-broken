@@ -150,9 +150,7 @@ PHP_FUNCTION(ncurses_init)
 		c.value = *zscr;
 		zval_copy_ctor(&c.value);
 		c.flags = CONST_CS;
-		c.name = zend_strndup(ZEND_STRL("STDSCR"));
-		c.name_len = sizeof("STDSCR");
-		zend_register_constant(&c TSRMLS_CC);
+		zend_register_constant("STDSCR", sizeof("STDSCR"), &c TSRMLS_CC);
 
 		/* we need this "interesting" arrangement because the
 		 * underlying values of the ACS_XXX defines are not
@@ -163,9 +161,7 @@ PHP_FUNCTION(ncurses_init)
 		c.value = *zscr;            \
 		zval_copy_ctor(&c.value);   \
 		c.flags = CONST_CS;         \
-		c.name = zend_strndup(ZEND_STRL("NCURSES_" #x)); \
-		c.name_len = sizeof("NCURSES_" #x);                           \
-		zend_register_constant(&c TSRMLS_CC)
+		zend_register_constant("NCURSES_" #x, sizeof("NCURSES_" #x), &c TSRMLS_CC)
 		
 		PHP_NCURSES_DEF_CONST(ACS_ULCORNER);
 		PHP_NCURSES_DEF_CONST(ACS_LLCORNER);

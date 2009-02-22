@@ -308,10 +308,6 @@ void shutdown_executor(TSRMLS_D)
 	} zend_end_try();
 
 	zend_try {
-		clean_non_persistent_constants(TSRMLS_C);
-	} zend_end_try();
-
-	zend_try {
 #if 0&&ZEND_DEBUG
 	signal(SIGSEGV, original_sigsegv_handler);
 #endif
@@ -473,6 +469,7 @@ static void zval_deep_copy(zval **p)
 	*p = value;
 }
 
+/* TODO!!!! - do I need this? */
 ZEND_API int zval_update_constant_ex(zval **pp, void *arg, zend_class_entry *scope TSRMLS_DC)
 {
 	zval *p = *pp;
@@ -494,17 +491,14 @@ ZEND_API int zval_update_constant_ex(zval **pp, void *arg, zend_class_entry *sco
 		refcount = p->refcount;
 		is_ref = p->is_ref;
 
-		if (!zend_get_constant_ex(p->value.str.val, p->value.str.len, &const_value, scope TSRMLS_CC)) {
+		if (!zend_get_constant(p->value.str.val, p->value.str.len, &const_value TSRMLS_CC)) {
 			if ((colon = memchr(Z_STRVAL_P(p), ':', Z_STRLEN_P(p))) && colon[1] == ':') {
 				zend_error(E_ERROR, "Undefined class constant '%s'", Z_STRVAL_P(p));
 			}
-			zend_error(E_NOTICE, "Use of undefined constant %s - assumed '%s'",
+			zend_error(E_NOTICE, "Use of undefined constant %s - assumed NULL",
 					   p->value.str.val,
 					   p->value.str.val);
-			p->type = IS_STRING;
-			if (!inline_change) {
-				zval_copy_ctor(p);
-			}
+			p->type = IS_NULL;
 		} else {
 			if (inline_change) {
 				STR_FREE(p->value.str.val);
@@ -546,7 +540,7 @@ ZEND_API int zval_update_constant_ex(zval **pp, void *arg, zend_class_entry *sco
 				zend_hash_move_forward(Z_ARRVAL_P(p));
 				continue;
 			}
-			if (!zend_get_constant_ex(str_index, str_index_len-1, &const_value, scope TSRMLS_CC)) {
+			if (!zend_get_constant(str_index, str_index_len-1, &const_value TSRMLS_CC)) {
 				if ((colon = memchr(str_index, ':', str_index_len-1)) && colon[1] == ':') {
 					zend_error(E_ERROR, "Undefined class constant '%s'", str_index);
 				}

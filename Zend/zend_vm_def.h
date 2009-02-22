@@ -2651,51 +2651,6 @@ ZEND_VM_HANDLER(110, ZEND_CLONE, CONST|TMP|VAR|UNUSED|CV, ANY)
 	ZEND_VM_NEXT_OPCODE();
 }
 
-ZEND_VM_HANDLER(99, ZEND_FETCH_CONSTANT, CONST|UNUSED, CONST)
-{
-	zend_op *opline = EX(opline);
-	zend_class_entry *ce = NULL;
-	zval **value;
-
-	if (OP1_TYPE == IS_UNUSED) {
-/* This seems to be a reminant of namespaces
-		if (EG(scope)) {
-			ce = EG(scope);
-			if (zend_hash_find(&ce->constants_table, Z_STRVAL(opline->op2.u.constant), Z_STRLEN(opline->op2.u.constant)+1, (void **) &value) == SUCCESS) {
-				zval_update_constant(value, (void *) 1 TSRMLS_CC);
-				EX_T(opline->result.u.var).tmp_var = **value;
-				zval_copy_ctor(&EX_T(opline->result.u.var).tmp_var);
-				ZEND_VM_NEXT_OPCODE();
-			}
-		}
-*/
-		if (!zend_get_constant(opline->op2.u.constant.value.str.val, opline->op2.u.constant.value.str.len, &EX_T(opline->result.u.var).tmp_var TSRMLS_CC)) {
-			zend_error(E_NOTICE, "Use of undefined constant %s - assumed '%s'",
-						opline->op2.u.constant.value.str.val,
-						opline->op2.u.constant.value.str.val);
-			EX_T(opline->result.u.var).tmp_var = opline->op2.u.constant;
-			zval_copy_ctor(&EX_T(opline->result.u.var).tmp_var);
-		}
-		ZEND_VM_NEXT_OPCODE();
-	}
-
-	ce = EX_T(opline->op1.u.var).class_entry;
-
-	if (zend_hash_find(&ce->constants_table, opline->op2.u.constant.value.str.val, opline->op2.u.constant.value.str.len+1, (void **) &value) == SUCCESS) {
-		zend_class_entry *old_scope = EG(scope);
-
-		EG(scope) = ce;
-		zval_update_constant(value, (void *) 1 TSRMLS_CC);
-		EG(scope) = old_scope;
-		EX_T(opline->result.u.var).tmp_var = **value;
-		zval_copy_ctor(&EX_T(opline->result.u.var).tmp_var);
-	} else {
-		zend_error_noreturn(E_ERROR, "Undefined class constant '%s'", opline->op2.u.constant.value.str.val);
-	}
-
-	ZEND_VM_NEXT_OPCODE();
-}
-
 ZEND_VM_HANDLER(72, ZEND_ADD_ARRAY_ELEMENT, CONST|TMP|VAR|CV, CONST|TMP|VAR|UNUSED|CV)
 {
 	zend_op *opline = EX(opline);

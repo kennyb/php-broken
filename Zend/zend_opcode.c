@@ -191,7 +191,6 @@ ZEND_API void destroy_zend_class(zend_class_entry **pce)
 			zend_hash_destroy(&ce->default_static_members);
 			efree(ce->name);
 			zend_hash_destroy(&ce->function_table);
-			zend_hash_destroy(&ce->constants_table);
 			if (ce->num_interfaces > 0 && ce->interfaces) {
 				efree(ce->interfaces);
 			}
@@ -206,7 +205,6 @@ ZEND_API void destroy_zend_class(zend_class_entry **pce)
 			zend_hash_destroy(&ce->default_static_members);
 			free(ce->name);
 			zend_hash_destroy(&ce->function_table);
-			zend_hash_destroy(&ce->constants_table);
 			if (ce->num_interfaces > 0) {
 				free(ce->interfaces);
 			}
@@ -546,15 +544,18 @@ int pass_two(zend_op_array *op_array TSRMLS_DC)
 		int changes = 0;
 		zend_uint next_use;
 		zend_op* opline2;
+		znode* var;
 		
 		opline = op_array->opcodes;
 		end = opline + op_array->last;
 		for(cur = 0; opline < end; cur++, opline++) {
 			switch (opline->opcode) {
+#if 0
 				case ZEND_NOP:
 					/* I *hope* these are useless! */
 					printf("#%d -- Delete NOP\n", cur);
 					DELETE_OP(cur); goto PHASE1_CONTINUE;
+#endif
 				
 				case ZEND_JMP:
 					/* delete ops that jump to the next line */
@@ -644,35 +645,49 @@ OP2_JMP:
 						}
 					}
 					break;
+					/*
+				case ZEND_FETCH_CONSTANT:
+					znode zn;
+					if(opline->op1.op_type == IS_UNSED) {
+						break;
+					}
 					
+					zn.op_type = IS_CONST;
+					if (!zend_get_constant(opline->op2.u.constant.value.str.val, opline->op2.u.constant.value.str.len, &EX_T(opline->result.u.var).tmp_var TSRMLS_CC)) {
+						zend_error(E_NOTICE, "Use of undefined constant %s - assumed NULL",
+									opline->op2.u.constant.value.str.val,
+									opline->op2.u.constant.value.str.val);
+					}
+					*/
 				case ZEND_ASSIGN:
+					var = &opline->op1;
 REASSIGN_VARS:
-					next_use = var_used_again(op_array, cur, &opline->op1);
+					next_use = var_used_again(op_array, cur, var);
 					/* delete if variable is not used again */
 					/* delete if the next time the variable is used, it's a re-assignment */
-					if(next_use == 0 /* || (op_array->opcodes[next_use].opcode == ZEND_ASSIGN && op_array->opcodes[next_use].op1.u.var == opline->op1.u.var) */) {
+					if(next_use == 0 /* || (op_array->opcodes[next_use].opcode == ZEND_ASSIGN && op_array->opcodes[next_use].op1.u.var == var->u.var) */) {
 						printf("#%d -- Delete variable assignment not used again\n", cur);
 						DELETE_OP(cur); goto PHASE1_CONTINUE;
 					}
 					
 					/* now, find out how many of these assignments there are... */
 					do {
-						//printf("{%d,%d}", (op_array->opcodes[next_use].op1.u.var == opline->op1.u.var && !zend_is_valid_opcode(op_array->opcodes[next_use].opcode, opline->op2.op_type, op_array->opcodes[next_use].op2.op_type)), (op_array->opcodes[next_use].op2.u.var == opline->op1.u.var && !zend_is_valid_opcode(op_array->opcodes[next_use].opcode, op_array->opcodes[next_use].op1.op_type, opline->op2.op_type)));
+						//printf("{%d,%d}", (op_array->opcodes[next_use].op1.u.var == var->u.var && !zend_is_valid_opcode(op_array->opcodes[next_use].opcode, opline->op2.op_type, op_array->opcodes[next_use].op2.op_type)), (op_array->opcodes[next_use].op2.u.var == var->u.var && !zend_is_valid_opcode(op_array->opcodes[next_use].opcode, op_array->opcodes[next_use].op1.op_type, opline->op2.op_type)));
 						if(
-							(op_array->opcodes[next_use].op1.u.var == opline->op1.u.var && !zend_is_valid_opcode(op_array->opcodes[next_use].opcode, opline->op2.op_type, op_array->opcodes[next_use].op2.op_type)) ||
-							(op_array->opcodes[next_use].op2.u.var == opline->op1.u.var && !zend_is_valid_opcode(op_array->opcodes[next_use].opcode, op_array->opcodes[next_use].op1.op_type, opline->op2.op_type))
+							(op_array->opcodes[next_use].op1.u.var == var->u.var && !zend_is_valid_opcode(op_array->opcodes[next_use].opcode, opline->op2.op_type, op_array->opcodes[next_use].op2.op_type)) ||
+							(op_array->opcodes[next_use].op2.u.var == var->u.var && !zend_is_valid_opcode(op_array->opcodes[next_use].opcode, op_array->opcodes[next_use].op1.op_type, opline->op2.op_type))
 						) {
 							/* we must use this opcode, because there are some opcode that can't use the op2 value */
 							//printf("BAD!!%d!!", next_use);
 							goto PHASE1_CONTINUE;
 						}
 						
-						next_use = var_used_again(op_array, next_use, &opline->op1);
+						next_use = var_used_again(op_array, next_use, var);
 					} while(next_use != 0);
 					
-					next_use = var_used_again(op_array, cur, &opline->op1);
+					next_use = var_used_again(op_array, cur, var);
 					while(next_use != 0) {
-						if(op_array->opcodes[next_use].op1.u.var == opline->op1.u.var) {
+						if(op_array->opcodes[next_use].op1.u.var == var->u.var) {
 							op_array->opcodes[next_use].op1 = opline->op2;
 							printf("#%d-%d -- instead of assign, use op1 variable directly (if valid opcode)\n", cur, next_use);
 						} else {
@@ -680,7 +695,7 @@ REASSIGN_VARS:
 							printf("#%d-%d -- instead of assign, use op2 variable directly (if valid opcode)\n", cur, next_use);
 						}
 						
-						next_use = var_used_again(op_array, next_use, &opline->op1);
+						next_use = var_used_again(op_array, next_use, var);
 					}
 					
 					DELETE_OP(cur); goto PHASE1_CONTINUE;
@@ -756,6 +771,7 @@ REASSIGN_VARS:
 					//printf("cast: [%d,%d,%d]\n", opline->op2.op_type, opline->op2.u.constant.type, opline->extended_value);
 					if(opline->op2.op_type == IS_CONST) {
 						if(opline->op2.u.constant.type == opline->extended_value) {
+							var = &opline->op1;
 							goto REASSIGN_VARS;
 						} else {
 							printf("#%d -- precasting known constant\n", cur);

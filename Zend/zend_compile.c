@@ -2334,7 +2334,6 @@ ZEND_API void zend_do_inheritance(zend_class_entry *ce, zend_class_entry *parent
 	}
 	zend_hash_merge_ex(&ce->properties_info, &parent_ce->properties_info, (copy_ctor_func_t) (ce->type & ZEND_INTERNAL_CLASS ? zend_duplicate_property_info_internal : zend_duplicate_property_info), sizeof(zend_property_info), (merge_checker_func_t) do_inherit_property_access_check, ce);
 
-	zend_hash_merge(&ce->constants_table, &parent_ce->constants_table, (void (*)(void *)) zval_add_ref, NULL, sizeof(zval *), 0);
 	zend_hash_merge_ex(&ce->function_table, &parent_ce->function_table, (copy_ctor_func_t) do_inherit_method, sizeof(zend_function), (merge_checker_func_t) do_inherit_method_check, ce);
 	do_inherit_parent_constructor(ce);
 
@@ -2388,7 +2387,6 @@ ZEND_API void zend_do_implement_interface(zend_class_entry *ce, zend_class_entry
 		}
 		ce->interfaces[ce->num_interfaces++] = iface;
 	
-		zend_hash_merge_ex(&ce->constants_table, &iface->constants_table, (copy_ctor_func_t) zval_add_ref, sizeof(zval *), (merge_checker_func_t) do_inherit_constant_check, iface);
 		zend_hash_merge_ex(&ce->function_table, &iface->function_table, (copy_ctor_func_t) do_inherit_method, sizeof(zend_function), (merge_checker_func_t) do_inherit_method_check, ce);
 	
 		do_implement_interface(ce, iface TSRMLS_CC);
@@ -2497,7 +2495,6 @@ ZEND_API zend_class_entry *do_bind_inherited_class(zend_op *opline, HashTable *c
 		zend_hash_destroy(&ce->default_properties);
 		zend_hash_destroy(&ce->properties_info);
 		zend_hash_destroy(&ce->default_static_members);
-		zend_hash_destroy(&ce->constants_table);
 		return NULL;
 	}
 	return ce;
@@ -3102,18 +3099,14 @@ void zend_do_declare_property(znode *var_name, znode *value, zend_uint access_ty
 void zend_do_declare_class_constant(znode *var_name, znode *value TSRMLS_DC)
 {
 	zval *property;
-
-	if(Z_TYPE(value->u.constant) == IS_CONSTANT_ARRAY) {
-		zend_error(E_COMPILE_ERROR, "Arrays are not allowed in class constants");
-	}
-
 	ALLOC_ZVAL(property);
 	*property = value->u.constant;
-
-	if (zend_hash_add(&CG(active_class_entry)->constants_table, var_name->u.constant.value.str.val, var_name->u.constant.value.str.len+1, &property, sizeof(zval *), NULL)==FAILURE) {
+	
+	if(zend_declare_class_constant(CG(active_class_entry), var_name->u.constant.value.str.val, var_name->u.constant.value.str.len, property TSRMLS_CC) == FAILURE) {
 		FREE_ZVAL(property);
 		zend_error(E_COMPILE_ERROR, "Cannot redefine class constant %s::%s", CG(active_class_entry)->name, var_name->u.constant.value.str.val);
 	}
+	
 	FREE_PNODE(var_name);
 }
 
@@ -3268,63 +3261,31 @@ void zend_do_end_new_object(znode *result, znode *new_token, znode *argument_lis
 	*result = CG(active_op_array)->opcodes[new_token->u.opline_num].result;
 }
 
-static int zend_constant_ct_subst(znode *result, zval *const_name TSRMLS_DC)
+void zend_do_fetch_constant(znode *result, znode *constant_container, znode *constant_name, int mode TSRMLS_DC)
 {
+	char* name = Z_STRVAL(constant_name->u.constant);
+	int name_len = Z_STRLEN(constant_name->u.constant);
+	
 	zend_constant *c = NULL;
-
-	if (zend_hash_find(EG(zend_constants), Z_STRVAL_P(const_name), Z_STRLEN_P(const_name)+1, (void **) &c) == FAILURE) {
-		char *lookup_name = zend_str_tolower_dup(Z_STRVAL_P(const_name), Z_STRLEN_P(const_name));
-		 
-		if (zend_hash_find(EG(zend_constants), lookup_name, Z_STRLEN_P(const_name)+1, (void **) &c)==SUCCESS) {
-			if ((c->flags & CONST_CS) && memcmp(c->name, Z_STRVAL_P(const_name), Z_STRLEN_P(const_name))!=0) {
-				c = NULL;
-			}
-		} else {
-			c = NULL;
-		}
-		efree(lookup_name);
+	
+	if(constant_container) {
+		name_len = const_name(name, name_len, Z_STRVAL(constant_container->u.constant), Z_STRLEN(constant_container->u.constant), &name);
 	}
-	if (c && (c->flags & CONST_CT_SUBST)) {
-		zval_dtor(const_name);
+	
+	if (zend_hash_find(EG(zend_constants), name, name_len+1, (void **) &c) == FAILURE) {
+		zend_error_noreturn(E_ERROR, "Undefined constant '%.*s'", name_len, name);
+	}
+	
+	if(c) {
+		zval_dtor(&constant_name->u.constant);
 		result->op_type = IS_CONST;
 		result->u.constant = c->value;
 		zval_copy_ctor(&result->u.constant);
 		INIT_PZVAL(&result->u.constant);
-		return 1;
 	}
-	return 0;
-}
-
-void zend_do_fetch_constant(znode *result, znode *constant_container, znode *constant_name, int mode TSRMLS_DC)
-{
-	switch (mode) {
-		case ZEND_CT:
-			if (constant_container) {
-				zend_do_fetch_class_name(NULL, constant_container, constant_name TSRMLS_CC);
-				*result = *constant_container;
-				result->u.constant.type = IS_CONSTANT;
-			} else if (!zend_constant_ct_subst(result, &constant_name->u.constant TSRMLS_CC)) {
-				*result = *constant_name;
-				result->u.constant.type = IS_CONSTANT;
-			}
-			break;
-		case ZEND_RT:
-			if (constant_container ||
-			    !zend_constant_ct_subst(result, &constant_name->u.constant TSRMLS_CC)) {
-				zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
-
-				opline->opcode = ZEND_FETCH_CONSTANT;
-				opline->result.op_type = IS_TMP_VAR;
-				opline->result.u.var = get_temporary_variable(CG(active_op_array));
-				if (constant_container) {
-					opline->op1 = *constant_container;
-				} else {
-					SET_UNUSED(opline->op1);
-				}
-				opline->op2 = *constant_name;
-				*result = opline->result;
-			}
-			break;
+	
+	if(constant_container) {
+		efree(name);
 	}
 }
 
@@ -4230,7 +4191,6 @@ ZEND_API void zend_initialize_class_data(zend_class_entry *ce, zend_bool nullify
 	zend_hash_init_ex(&ce->default_properties, 0, NULL, zval_ptr_dtor_func, persistent_hashes, 0);
 	zend_hash_init_ex(&ce->properties_info, 0, NULL, (dtor_func_t) (persistent_hashes ? zend_destroy_property_info_internal : zend_destroy_property_info), persistent_hashes, 0);
 	zend_hash_init_ex(&ce->default_static_members, 0, NULL, zval_ptr_dtor_func, persistent_hashes, 0);
-	zend_hash_init_ex(&ce->constants_table, 0, NULL, zval_ptr_dtor_func, persistent_hashes, 0);
 	zend_hash_init_ex(&ce->function_table, 0, NULL, ZEND_FUNCTION_DTOR, persistent_hashes, 0);
 
 	if (ce->type == ZEND_INTERNAL_CLASS) {

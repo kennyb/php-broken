@@ -164,6 +164,7 @@ PHPAPI int php_com_import_typelib(ITypeLib *TL, int mode, int codepage TSRMLS_DC
 	zend_constant c;
 	zval exists, results, value;
 	char *const_name;
+	int const_name_len;
 
 	if (TL == NULL) {
 		return FAILURE;
@@ -184,14 +185,11 @@ PHPAPI int php_com_import_typelib(ITypeLib *TL, int mode, int codepage TSRMLS_DC
 					continue;
 				}
 
-				const_name = php_com_olestring_to_string(bstr_ids, &c.name_len, codepage TSRMLS_CC);
-				c.name = zend_strndup(const_name, c.name_len);
-				efree(const_name);
-				c.name_len++; /* include NUL */
+				const_name = php_com_olestring_to_string(bstr_ids, &const_name_len, codepage TSRMLS_CC);
 				SysFreeString(bstr_ids);
 
 				/* sanity check for the case where the constant is already defined */
-				if (zend_get_constant(c.name, c.name_len - 1, &exists TSRMLS_CC)) {
+				if (zend_get_constant(const_name, const_name_len, &exists TSRMLS_CC)) {
 					if (COMG(autoreg_verbose) && !compare_function(&results, &c.value, &exists TSRMLS_CC)) {
 						php_error_docref(NULL TSRMLS_CC, E_WARNING, "Type library constant %s is already defined", c.name);
 					}
@@ -207,8 +205,10 @@ PHPAPI int php_com_import_typelib(ITypeLib *TL, int mode, int codepage TSRMLS_DC
 					c.value.type = IS_LONG;
 					c.value.value.lval = Z_LVAL(value);
 					c.module_number = 0;
-					zend_register_constant(&c TSRMLS_CC);
+					zend_register_constant(const_name, c.name_len+1, &c TSRMLS_CC);
 				}
+				
+				efree(const_name);
 				ITypeInfo_ReleaseVarDesc(TypeInfo, pVarDesc);
 			}
 			ITypeInfo_Release(TypeInfo);

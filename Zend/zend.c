@@ -463,12 +463,12 @@ static void compiler_globals_ctor(zend_compiler_globals *compiler_globals TSRMLS
 	compiler_globals->compiled_filename = NULL;
 
 	compiler_globals->function_table = (HashTable *) malloc(sizeof(HashTable));
-    zend_hash_init_ex(compiler_globals->function_table, 100, NULL, ZEND_FUNCTION_DTOR, 1, 0);
-    zend_hash_copy(compiler_globals->function_table, global_function_table, NULL, &tmp_func, sizeof(zend_function));
+	zend_hash_init_ex(compiler_globals->function_table, 100, NULL, ZEND_FUNCTION_DTOR, 1, 0);
+	zend_hash_copy(compiler_globals->function_table, global_function_table, NULL, &tmp_func, sizeof(zend_function));
 
-    compiler_globals->class_table = (HashTable *) malloc(sizeof(HashTable));
-    zend_hash_init_ex(compiler_globals->class_table, 10, NULL, ZEND_CLASS_DTOR, 1, 0);
-    zend_hash_copy(compiler_globals->class_table, global_class_table, (copy_ctor_func_t) zend_class_add_ref, &tmp_class, sizeof(zend_class_entry *));
+	compiler_globals->class_table = (HashTable *) malloc(sizeof(HashTable));
+	zend_hash_init_ex(compiler_globals->class_table, 10, NULL, ZEND_CLASS_DTOR, 1, 0);
+	zend_hash_copy(compiler_globals->class_table, global_class_table, (copy_ctor_func_t) zend_class_add_ref, &tmp_class, sizeof(zend_class_entry *));
 
 	zend_set_default_compile_time_values(TSRMLS_C);
 
@@ -513,7 +513,10 @@ static void compiler_globals_dtor(zend_compiler_globals *compiler_globals TSRMLS
 static void executor_globals_ctor(zend_executor_globals *executor_globals TSRMLS_DC)
 {
 	zend_startup_constants(TSRMLS_C);
-	zend_copy_constants(EG(zend_constants), GLOBAL_CONSTANTS_TABLE);
+	if(EG(zend_constants) != GLOBAL_CONSTANTS_TABLE) {
+		zend_copy_constants(EG(zend_constants), GLOBAL_CONSTANTS_TABLE);
+	}
+	
 	zend_init_rsrc_plist(TSRMLS_C);
 	EG(lambda_count)=0;
 	EG(user_error_handler) = NULL;
@@ -645,7 +648,7 @@ int zend_startup(zend_utility_functions *utility_functions, char **extensions, i
 	zval_used_for_init.type = IS_NULL;
 
 #ifdef ZTS
-	zend_hash_init_ex(GLOBAL_CONSTANTS_TABLE, 20, NULL, ZEND_CONSTANT_DTOR, 1, 0);
+	zend_hash_init_ex(GLOBAL_CONSTANTS_TABLE, 256, NULL, NULL, 1, 0);
 	zend_hash_init_ex(GLOBAL_AUTO_GLOBALS_TABLE, 8, NULL, (dtor_func_t) zend_auto_global_dtor, 1, 0);
 	ts_allocate_id(&compiler_globals_id, sizeof(zend_compiler_globals), (ts_allocate_ctor) compiler_globals_ctor, (ts_allocate_dtor) compiler_globals_dtor);
 	ts_allocate_id(&executor_globals_id, sizeof(zend_executor_globals), (ts_allocate_ctor) executor_globals_ctor, (ts_allocate_dtor) executor_globals_dtor);

@@ -44,7 +44,6 @@ static ZEND_FUNCTION(strncasecmp);
 static ZEND_FUNCTION(each);
 #endif
 static ZEND_FUNCTION(error_reporting);
-static ZEND_FUNCTION(define);
 static ZEND_FUNCTION(defined);
 static ZEND_FUNCTION(get_class);
 static ZEND_FUNCTION(get_parent_class);
@@ -81,7 +80,6 @@ static ZEND_FUNCTION(get_resource_type);
 static ZEND_FUNCTION(get_loaded_extensions);
 static ZEND_FUNCTION(extension_loaded);
 static ZEND_FUNCTION(get_extension_funcs);
-static ZEND_FUNCTION(get_defined_constants);
 static ZEND_FUNCTION(debug_backtrace);
 static ZEND_FUNCTION(debug_print_backtrace);
 #if ZEND_DEBUG
@@ -110,7 +108,6 @@ static zend_function_entry builtin_functions[] = {
 	ZEND_FE(each,				first_arg_force_ref)
 #endif
 	ZEND_FE(error_reporting,	NULL)
-	ZEND_FE(define,				NULL)
 	ZEND_FE(defined,			NULL)
 	ZEND_FE(get_class,			NULL)
 	ZEND_FE(get_parent_class,	NULL)
@@ -149,7 +146,6 @@ static zend_function_entry builtin_functions[] = {
 	ZEND_FE(get_loaded_extensions,		NULL)
 	ZEND_FE(extension_loaded,			NULL)
 	ZEND_FE(get_extension_funcs,		NULL)
-	ZEND_FE(get_defined_constants,		NULL)
 	ZEND_FE(debug_backtrace, NULL)
 	ZEND_FE(debug_print_backtrace, NULL)
 #if ZEND_DEBUG
@@ -460,87 +456,6 @@ ZEND_FUNCTION(error_reporting)
 	}
 
 	RETVAL_LONG(old_error_reporting);
-}
-/* }}} */
-
-
-/* {{{ proto bool define(string constant_name, mixed value, boolean case_sensitive=true)
-   Define a new constant */
-ZEND_FUNCTION(define)
-{
-	zval **var, **val, **non_cs, *val_free = NULL;
-	int case_sensitive;
-	zend_constant c;
-
-	switch (ZEND_NUM_ARGS()) {
-		case 2:
-			if (zend_get_parameters_ex(2, &var, &val)==FAILURE) {
-				RETURN_FALSE;
-			}
-			case_sensitive = CONST_CS;
-			break;
-		case 3:
-			if (zend_get_parameters_ex(3, &var, &val, &non_cs)==FAILURE) {
-				RETURN_FALSE;
-			}
-			convert_to_long_ex(non_cs);
-			if (Z_LVAL_PP(non_cs)) {
-				case_sensitive = 0;
-			} else {
-				case_sensitive = CONST_CS;
-			}
-			break;
-		default:
-			ZEND_WRONG_PARAM_COUNT();
-			break;
-	}
-
-repeat:
-	switch (Z_TYPE_PP(val)) {
-		case IS_LONG:
-		case IS_DOUBLE:
-		case IS_STRING:
-		case IS_BOOL:
-		case IS_RESOURCE:
-		case IS_NULL:
-			break;
-		case IS_OBJECT:
-			if (!val_free) {
-				if (Z_OBJ_HT_PP(val)->get) {
-					val_free = *val = Z_OBJ_HT_PP(val)->get(*val TSRMLS_CC);
-					goto repeat;
-				} else if (Z_OBJ_HT_PP(val)->cast_object) {
-					ALLOC_INIT_ZVAL(val_free);
-					if (Z_OBJ_HT_PP(val)->cast_object(*val, val_free, IS_STRING TSRMLS_CC) == SUCCESS) {
-						val = &val_free;
-						break;
-					}
-				}
-			}
-			/* no break */
-		default:
-			zend_error(E_WARNING,"Constants may only evaluate to scalar values");
-			if (val_free) {
-				zval_ptr_dtor(&val_free);
-			}
-			RETURN_FALSE;
-	}
-	convert_to_string_ex(var);
-	
-	c.value = **val;
-	zval_copy_ctor(&c.value);
-	if (val_free) {
-		zval_ptr_dtor(&val_free);
-	}
-	c.flags = case_sensitive; /* non persistent */
-	c.name = zend_strndup(Z_STRVAL_PP(var), Z_STRLEN_PP(var));
-	c.name_len = Z_STRLEN_PP(var)+1;
-	c.module_number = PHP_USER_CONSTANT;
-	if (zend_register_constant(&c TSRMLS_CC) == SUCCESS) {
-		RETURN_TRUE;
-	} else {
-		RETURN_FALSE;
-	}
 }
 /* }}} */
 
@@ -1576,19 +1491,6 @@ static int add_zendext_info(zend_extension *ext, void *arg TSRMLS_DC)
 	return 0;
 }
 
-static int add_constant_info(zend_constant *constant, void *arg TSRMLS_DC)
-{
-	zval *name_array = (zval *)arg;
-	zval *const_val;
-
-	MAKE_STD_ZVAL(const_val);
-	*const_val = constant->value;
-	zval_copy_ctor(const_val);
-	INIT_PZVAL(const_val);
-	add_assoc_zval_ex(name_array, constant->name, constant->name_len, const_val);
-	return 0;
-}
-
 
 /* {{{ proto array get_loaded_extensions([bool zend_extensions]) U
    Return an array containing names of loaded extensions */
@@ -1609,76 +1511,6 @@ ZEND_FUNCTION(get_loaded_extensions)
 	}
 }
 /* }}} */
-
-
-/* {{{ proto array get_defined_constants([mixed categorize])
-   Return an array containing the names and values of all defined constants */
-ZEND_FUNCTION(get_defined_constants)
-{
-	int argc = ZEND_NUM_ARGS();
-
-	if (argc != 0 && argc != 1) {
-		ZEND_WRONG_PARAM_COUNT();
-	}
-
-	array_init(return_value);
-
-	if (argc) {
-		HashPosition pos;
-		zend_constant *val;
-		int module_number;
-		zval **modules;
-		char **module_names;
-		zend_module_entry *module;
-		int i = 1;
-
-		modules = ecalloc(zend_hash_num_elements(&module_registry) + 2, sizeof(zval *));
-		module_names = emalloc((zend_hash_num_elements(&module_registry) + 2) * sizeof(char *));
-
-		module_names[0] = "internal";
-		zend_hash_internal_pointer_reset_ex(&module_registry, &pos);
-		while (zend_hash_get_current_data_ex(&module_registry, (void *) &module, &pos) != FAILURE) {
-			module_names[i++] = module->name;
-			zend_hash_move_forward_ex(&module_registry, &pos);
-		}
-		module_names[i] = "user";
-
-		zend_hash_internal_pointer_reset_ex(EG(zend_constants), &pos);
-		while (zend_hash_get_current_data_ex(EG(zend_constants), (void **) &val, &pos) != FAILURE) {
-			zval *const_val;
-
-			if (val->module_number == PHP_USER_CONSTANT) {
-				module_number = i;
-			} else if (val->module_number > i || val->module_number < 0) {
-				/* should not happen */
-				goto bad_module_id;
-			} else {
-				module_number = val->module_number;
-			}
-
-			if (!modules[module_number]) {
-				MAKE_STD_ZVAL(modules[module_number]);
-				array_init(modules[module_number]);
-				add_assoc_zval(return_value, module_names[module_number], modules[module_number]);
-			}
-
-			MAKE_STD_ZVAL(const_val);
-			*const_val = val->value;
-			zval_copy_ctor(const_val);
-			INIT_PZVAL(const_val);
-
-			add_assoc_zval_ex(modules[module_number], val->name, val->name_len, const_val);
-bad_module_id:
-			zend_hash_move_forward_ex(EG(zend_constants), &pos);
-		}
-		efree(module_names);
-		efree(modules);
-	} else {
-		zend_hash_apply_with_argument(EG(zend_constants), (apply_func_arg_t) add_constant_info, return_value TSRMLS_CC);
-	}
-}
-/* }}} */
-
 
 static zval *debug_backtrace_get_args(void ***curpos TSRMLS_DC)
 {

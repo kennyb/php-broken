@@ -20,6 +20,7 @@
 /* $Id: zend_hash.c,v 1.121.2.4.2.9 2007/12/31 07:20:02 sebastian Exp $ */
 
 #include "zend.h"
+#include "zend_globals.h"
 
 #define CONNECT_TO_BUCKET_DLLIST(element, list_head)		\
 	(element)->pNext = (list_head);							\
@@ -231,6 +232,7 @@ ZEND_API int _zend_hash_add_or_update(HashTable *ht, char *arKey, uint nKeyLengt
 				}
 #endif
 				if (ht->pDestructor) {
+					if(ht == EG(zend_constants)) printf("!3\n");
 					ht->pDestructor(p->pData);
 				}
 				UPDATE_DATA(ht, p, pData, nDataSize);
@@ -296,6 +298,7 @@ ZEND_API int _zend_hash_quick_add_or_update(HashTable *ht, char *arKey, uint nKe
 				}
 #endif
 				if (ht->pDestructor) {
+					if(ht == EG(zend_constants)) printf("!4\n");
 					ht->pDestructor(p->pData);
 				}
 				UPDATE_DATA(ht, p, pData, nDataSize);
@@ -371,6 +374,7 @@ ZEND_API int _zend_hash_index_update_or_next_insert(HashTable *ht, ulong h, void
 			}
 #endif
 			if (ht->pDestructor) {
+				if(ht == EG(zend_constants)) printf("!5\n");
 				ht->pDestructor(p->pData);
 			}
 			UPDATE_DATA(ht, p, pData, nDataSize);
@@ -494,6 +498,7 @@ ZEND_API int zend_hash_del_key_or_index(HashTable *ht, char *arKey, uint nKeyLen
 				ht->pInternalPointer = p->pListNext;
 			}
 			if (ht->pDestructor) {
+				if(ht == EG(zend_constants)) printf("!6\n");
 				ht->pDestructor(p->pData);
 			}
 			if (p->pData != &p->pDataPtr) {
@@ -514,6 +519,10 @@ ZEND_API void zend_hash_destroy(HashTable *ht)
 {
 	Bucket *p, *q;
 
+	if(ht == EG(zend_constants)) {
+		//asm("int3");
+	}
+
 	IS_CONSISTENT(ht);
 
 	SET_INCONSISTENT(HT_IS_DESTROYING);
@@ -523,6 +532,7 @@ ZEND_API void zend_hash_destroy(HashTable *ht)
 		q = p;
 		p = p->pListNext;
 		if (ht->pDestructor) {
+			//if(ht == EG(zend_constants)) asm("int3");//printf("!7\n");
 			ht->pDestructor(q->pData);
 		}
 		if (q->pData != &q->pDataPtr) {
@@ -539,7 +549,7 @@ ZEND_API void zend_hash_destroy(HashTable *ht)
 ZEND_API void zend_hash_clean(HashTable *ht)
 {
 	Bucket *p, *q;
-
+	
 	IS_CONSISTENT(ht);
 
 	SET_INCONSISTENT(HT_CLEANING);
@@ -549,6 +559,7 @@ ZEND_API void zend_hash_clean(HashTable *ht)
 		q = p;
 		p = p->pListNext;
 		if (ht->pDestructor) {
+			if(ht == EG(zend_constants)) printf("!1\n");
 			ht->pDestructor(q->pData);
 		}
 		if (q->pData != &q->pDataPtr) {
@@ -608,6 +619,7 @@ static Bucket *zend_hash_apply_deleter(HashTable *ht, Bucket *p)
 	HANDLE_UNBLOCK_INTERRUPTIONS();
 
 	if (ht->pDestructor) {
+		if(ht == EG(zend_constants)) asm("int3");//printf("!2\n");
 		ht->pDestructor(p->pData);
 	}
 	if (p->pData != &p->pDataPtr) {

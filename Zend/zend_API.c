@@ -847,7 +847,6 @@ ZEND_API void zend_update_class_constants(zend_class_entry *class_type TSRMLS_DC
 		zend_class_entry *old_scope = *scope;
 
 		*scope = class_type;
-		zend_hash_apply_with_argument(&class_type->constants_table, (apply_func_arg_t) zval_update_constant, (void*)1 TSRMLS_CC);
 		zend_hash_apply_with_argument(&class_type->default_properties, (apply_func_arg_t) zval_update_constant, (void *) 1 TSRMLS_CC);
 
 		if (!CE_STATIC_MEMBERS(class_type)) {
@@ -2644,9 +2643,24 @@ ZEND_API int zend_declare_property_stringl(zend_class_entry *ce, char *name, int
 	return zend_declare_property(ce, name, name_length, property, access_type TSRMLS_CC);
 }
 
-ZEND_API int zend_declare_class_constant(zend_class_entry *ce, char *name, size_t name_length, zval *value TSRMLS_DC)
+ZEND_API int zend_declare_class_constant(zend_class_entry *ce, char *name, size_t name_len, zval *value TSRMLS_DC)
 {
-	return zend_hash_update(&ce->constants_table, name, name_length+1, &value, sizeof(zval *), NULL);
+	zend_constant c;
+	
+	c.module_number = PHP_USER_CONSTANT;
+	c.value = *value;
+	
+	if(ce) {
+		name_len = const_name(name, name_len, ce->name, ce->name_length, &name);
+	}
+	
+	int retval = zend_register_constant(name, name_len+1, &c);
+	
+	if(ce) {
+		efree(name);
+	}
+	
+	return retval;
 }
 
 ZEND_API int zend_declare_class_constant_null(zend_class_entry *ce, char *name, size_t name_length TSRMLS_DC)

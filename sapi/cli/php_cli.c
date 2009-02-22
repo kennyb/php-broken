@@ -491,7 +491,7 @@ static void cli_register_file_handles(TSRMLS_D) /* {{{ */
 	zval *zin, *zout, *zerr;
 	php_stream *s_in, *s_out, *s_err;
 	php_stream_context *sc_in=NULL, *sc_out=NULL, *sc_err=NULL;
-	zend_constant ic, oc, ec;
+	zend_constant c;
 	
 	MAKE_STD_ZVAL(zin);
 	MAKE_STD_ZVAL(zout);
@@ -523,26 +523,16 @@ static void cli_register_file_handles(TSRMLS_D) /* {{{ */
 	php_stream_to_zval(s_out, zout);
 	php_stream_to_zval(s_err, zerr);
 	
-	ic.value = *zin;
-	ic.flags = CONST_CS;
-	ic.name = zend_strndup(ZEND_STRL("STDIN"));
-	ic.name_len = sizeof("STDIN");
-	ic.module_number = 0;
-	zend_register_constant(&ic TSRMLS_CC);
+	c.module_number = 0;
+	
+	c.value = *zin;
+	zend_register_constant("STDIN", sizeof("STDIN"), &c TSRMLS_CC);
 
-	oc.value = *zout;
-	oc.flags = CONST_CS;
-	oc.name = zend_strndup(ZEND_STRL("STDOUT"));
-	oc.name_len = sizeof("STDOUT");
-	oc.module_number = 0;
-	zend_register_constant(&oc TSRMLS_CC);
+	c.value = *zout;
+	zend_register_constant("STDOUT", sizeof("STDOUT"), &c TSRMLS_CC);
 
-	ec.value = *zerr;
-	ec.flags = CONST_CS;
-	ec.name = zend_strndup(ZEND_STRL("STDERR"));
-	ec.name_len = sizeof("STDERR");
-	ec.module_number = 0;
-	zend_register_constant(&ec TSRMLS_CC);
+	c.value = *zerr;
+	zend_register_constant("STDERR", sizeof("STDERR"), &c TSRMLS_CC);
 
 	FREE_ZVAL(zin);
 	FREE_ZVAL(zout);

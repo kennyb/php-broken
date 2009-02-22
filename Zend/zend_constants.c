@@ -27,21 +27,9 @@
 #include "zend_globals.h"
 
 
-void free_zend_constant(zend_constant *c)
-{
-	if (!(c->flags & CONST_PERSISTENT)) {
-		zval_dtor(&c->value);
-	}
-	free(c->name);
-}
-
-
 void copy_zend_constant(zend_constant *c)
 {
-	c->name = zend_strndup(c->name, c->name_len - 1);
-	if (!(c->flags & CONST_PERSISTENT)) {
-		zval_copy_ctor(&c->value);
-	}
+	zval_copy_ctor(&c->value);
 }
 
 
@@ -50,18 +38,6 @@ void zend_copy_constants(HashTable *target, HashTable *source)
 	zend_constant tmp_constant;
 
 	zend_hash_copy(target, source, (copy_ctor_func_t) copy_zend_constant, &tmp_constant, sizeof(zend_constant));
-}
-
-
-static int clean_non_persistent_constant(zend_constant *c TSRMLS_DC)
-{
-	return (c->flags & CONST_PERSISTENT) ? ZEND_HASH_APPLY_STOP : ZEND_HASH_APPLY_REMOVE;
-}
-
-
-static int clean_non_persistent_constant_full(zend_constant *c TSRMLS_DC)
-{
-	return (c->flags & CONST_PERSISTENT) ? 0 : 1;
 }
 
 
@@ -85,7 +61,7 @@ int zend_startup_constants(TSRMLS_D)
 {
 	EG(zend_constants) = (HashTable *) malloc(sizeof(HashTable));
 
-	if (zend_hash_init(EG(zend_constants), 20, NULL, ZEND_CONSTANT_DTOR, 1)==FAILURE) {
+	if (zend_hash_init(EG(zend_constants), 20, NULL, NULL, 1)==FAILURE) {
 		return FAILURE;
 	}
 	return SUCCESS;
@@ -115,51 +91,23 @@ void zend_register_standard_constants(TSRMLS_D)
 	{
 		zend_constant c;
 	
-		c.flags = CONST_PERSISTENT | CONST_CT_SUBST;
 		c.module_number = 0;
 
-		c.name = zend_strndup(ZEND_STRL("TRUE"));
-		c.name_len = sizeof("TRUE");
 		c.value.value.lval = 1;
 		c.value.type = IS_BOOL;
-		zend_register_constant(&c TSRMLS_CC);
+		zend_register_constant("true", sizeof("true"), &c TSRMLS_CC);
 		
-		c.name = zend_strndup(ZEND_STRL("FALSE"));
-		c.name_len = sizeof("FALSE");
 		c.value.value.lval = 0;
 		c.value.type = IS_BOOL;
-		zend_register_constant(&c TSRMLS_CC);
+		zend_register_constant("false", sizeof("false"), &c TSRMLS_CC);
 
-		c.name = zend_strndup(ZEND_STRL("NULL"));
-		c.name_len = sizeof("NULL");
 		c.value.type = IS_NULL;
-		zend_register_constant(&c TSRMLS_CC);
+		zend_register_constant("null", sizeof("null"), &c TSRMLS_CC);
+		zend_register_constant("NULL", sizeof("NULL"), &c TSRMLS_CC);
 
-		c.flags = CONST_PERSISTENT;
-
-		c.name = zend_strndup(ZEND_STRL("ZEND_THREAD_SAFE"));
-		c.name_len = sizeof("ZEND_THREAD_SAFE");
 		c.value.value.lval = ZTS_V;
 		c.value.type = IS_BOOL;
-		zend_register_constant(&c TSRMLS_CC);
-	}
-}
-
-
-int zend_shutdown_constants(TSRMLS_D)
-{
-	zend_hash_destroy(EG(zend_constants));
-	free(EG(zend_constants));
-	return SUCCESS;
-}
-
-
-void clean_non_persistent_constants(TSRMLS_D)
-{
-	if (EG(full_tables_cleanup)) {
-		zend_hash_apply(EG(zend_constants), (apply_func_t) clean_non_persistent_constant_full TSRMLS_CC);
-	} else {
-		zend_hash_reverse_apply(EG(zend_constants), (apply_func_t) clean_non_persistent_constant TSRMLS_CC);
+		zend_register_constant("ZEND_THREAD_SAFE", sizeof("ZEND_THREAD_SAFE"), &c TSRMLS_CC);
 	}
 }
 
@@ -170,11 +118,8 @@ ZEND_API void zend_register_long_constant(char *name, uint name_len, long lval, 
 	
 	c.value.type = IS_LONG;
 	c.value.value.lval = lval;
-	c.flags = flags;
-	c.name = zend_strndup(name, name_len-1);
-	c.name_len = name_len;
 	c.module_number = module_number;
-	zend_register_constant(&c TSRMLS_CC);
+	zend_register_constant(name, name_len, &c TSRMLS_CC);
 }
 
 
@@ -184,11 +129,8 @@ ZEND_API void zend_register_double_constant(char *name, uint name_len, double dv
 	
 	c.value.type = IS_DOUBLE;
 	c.value.value.dval = dval;
-	c.flags = flags;
-	c.name = zend_strndup(name, name_len-1);
-	c.name_len = name_len;
 	c.module_number = module_number;
-	zend_register_constant(&c TSRMLS_CC);
+	zend_register_constant(name, name_len, &c TSRMLS_CC);
 }
 
 
@@ -199,11 +141,8 @@ ZEND_API void zend_register_stringl_constant(char *name, uint name_len, char *st
 	c.value.type = IS_STRING;
 	c.value.value.str.val = strval;
 	c.value.value.str.len = strlen;
-	c.flags = flags;
-	c.name = zend_strndup(name, name_len-1);
-	c.name_len = name_len;
 	c.module_number = module_number;
-	zend_register_constant(&c TSRMLS_CC);
+	zend_register_constant(name, name_len, &c TSRMLS_CC);
 }
 
 
@@ -212,108 +151,76 @@ ZEND_API void zend_register_string_constant(char *name, uint name_len, char *str
 	zend_register_stringl_constant(name, name_len, strval, strlen(strval), flags, module_number TSRMLS_CC);
 }
 
+ZEND_API int const_name(char* name, int name_len, char* scope, int scope_len, char** out)
+{
+	int lookup_name_len = scope_len + 2 + name_len;
+	char* lookup_name = emalloc(lookup_name_len + 1);
+	
+	memcpy(lookup_name, scope, scope_len);
+	memcpy((lookup_name + (scope_len + 2)), name, name_len);
+	
+	lookup_name[scope_len++] = ':';
+	lookup_name[scope_len] = ':';
+	lookup_name[lookup_name_len] = 0;
+	*out = lookup_name;
+	
+	return lookup_name_len;
+}
 
-ZEND_API int zend_get_constant_ex(char *name, uint name_len, zval *result, zend_class_entry *scope TSRMLS_DC)
+ZEND_API int zend_get_constant(char *name, uint name_len, zval *result TSRMLS_DC)
 {
 	zend_constant *c;
 	int retval = 1;
 	char *lookup_name;
+	int lookup_name_len;
 	char *colon;
 
 	if ((colon = memchr(name, ':', name_len)) && colon[1] == ':') {
 		/* class constant */
-		zend_class_entry **ce = NULL;
 		int class_name_len = colon-name;
 		int const_name_len = name_len - class_name_len - 2;
 		char *constant_name = colon+2;
 		zval **ret_constant;
 		char *class_name;
 
-		if (!scope) {
-			if (EG(in_execution)) {
-				scope = EG(scope);
-			} else {
-				scope = CG(active_class_entry);
-			}
-		}
-	
 		class_name = estrndup(name, class_name_len);
-
 		if (class_name_len == sizeof("self")-1 && strcmp(class_name, "self") == 0) {
-			if (scope) {
-				ce = &scope;
+			if (CG(active_class_entry)) {
+				efree(class_name);
+				class_name_len = CG(active_class_entry)->name_length;
+				class_name = estrndup(CG(active_class_entry)->name, class_name_len);
 			} else {
 				zend_error(E_ERROR, "Cannot access self:: when no class scope is active");
 				retval = 0;
 			}
 		} else if (class_name_len == sizeof("parent")-1 && strcmp(class_name, "parent") == 0) {
-			if (!scope) {   	 
+			if (!CG(active_class_entry)) {
 				zend_error(E_ERROR, "Cannot access parent:: when no class scope is active");
-			} else if (!scope->parent) { 	 
+			} else if (!CG(active_class_entry)->parent) { 	 
 				zend_error(E_ERROR, "Cannot access parent:: when current class scope has no parent"); 	 
 			} else {
-				ce = &scope->parent;
-			}
-		} else {
-			if (zend_lookup_class(class_name, class_name_len, &ce TSRMLS_CC) != SUCCESS) {
-				retval = 0;
+				efree(class_name);
+				class_name_len = CG(active_class_entry)->parent->name_length;
+				class_name = estrndup(CG(active_class_entry)->parent->name, class_name_len);
 			}
 		}
-
-		if (retval && ce) {
-			if (zend_hash_find(&((*ce)->constants_table), constant_name, const_name_len+1, (void **) &ret_constant) != SUCCESS) {
-				retval = 0;
-			}
-		} else {
-			zend_error(E_ERROR, "Class '%s' not found", class_name);
-			retval = 0;
-		}
+		
+		lookup_name_len = const_name(name, name_len, class_name, class_name_len, &lookup_name);
 		efree(class_name);
-
-		if (retval) {
-			zval_update_constant_ex(ret_constant, (void*)1, *ce TSRMLS_CC);
-			*result = **ret_constant;
-			zval_copy_ctor(result);
-			INIT_PZVAL(result);
-		}
-
-		return retval;
+	} else {
+		lookup_name = name;
+		lookup_name_len = name_len;
 	}
 
-	if (zend_hash_find(EG(zend_constants), name, name_len+1, (void **) &c) == FAILURE) {
-		lookup_name = estrndup(name, name_len);
-		zend_str_tolower(lookup_name, name_len);
-		 
-		if (zend_hash_find(EG(zend_constants), lookup_name, name_len+1, (void **) &c)==SUCCESS) {
-			if ((c->flags & CONST_CS) && memcmp(c->name, name, name_len)!=0) {
-				retval=0;
-			}
-		} else {
-			char haltoff[] = "__COMPILER_HALT_OFFSET__";
-			if (!EG(in_execution)) {
-				retval = 0;
-			} else if (name_len == sizeof("__COMPILER_HALT_OFFSET__") - 1 && memcmp(haltoff, name, name_len) == 0) {
-				char *cfilename, *haltname;
-				int len, clen;
-				cfilename = zend_get_executed_filename(TSRMLS_C);
-				clen = strlen(cfilename);
-				/* check for __COMPILER_HALT_OFFSET__ */
-				zend_mangle_property_name(&haltname, &len, haltoff,
-					sizeof("__COMPILER_HALT_OFFSET__") - 1, cfilename, clen, 0);
-				if (zend_hash_find(EG(zend_constants), haltname, len+1, (void **) &c) == SUCCESS) {
-					retval = 1;
-				} else {
-					retval=0;
-				}
-				pefree(haltname, 0);
-			} else {
-				retval = 0;
-			}
-		}
+	if (zend_hash_find(EG(zend_constants), lookup_name, lookup_name_len + 1, (void **) &c) == FAILURE) {
+		retval = 0;
+	}
+	
+	if(name != lookup_name) {
 		efree(lookup_name);
 	}
 
-	if (retval) {
+	if(retval) {
 		*result = c->value;
 		zval_copy_ctor(result);
 		result->refcount = 1;
@@ -323,42 +230,25 @@ ZEND_API int zend_get_constant_ex(char *name, uint name_len, zval *result, zend_
 	return retval;
 }
 
-ZEND_API int zend_get_constant(char *name, uint name_len, zval *result TSRMLS_DC)
+ZEND_API int zend_register_constant(char* name, int name_len, zend_constant *c TSRMLS_DC)
 {
-    return zend_get_constant_ex(name, name_len, result, NULL TSRMLS_CC);
-}
-
-ZEND_API int zend_register_constant(zend_constant *c TSRMLS_DC)
-{
-	char *lowercase_name = NULL;
-	char *name;
 	int ret = SUCCESS;
+	char* hash_name = estrndup(name, name_len);
 
 #if 0
-	printf("Registering constant for module %d\n", c->module_number);
+	printf("Registering '%.*s' for module %d\n", name_len, hash_name, c->module_number);
 #endif
 
-	if (!(c->flags & CONST_CS)) {
-		/* keep in mind that c->name_len already contains the '\0' */
-		lowercase_name = estrndup(c->name, c->name_len-1);
-		zend_str_tolower(lowercase_name, c->name_len-1);
-		name = lowercase_name;
-	} else {
-		name = c->name;
-	}
-
-	if ((strncmp(name, "__COMPILER_HALT_OFFSET__", sizeof("__COMPILER_HALT_OFFSET__") - 1) == 0) ||
-			zend_hash_add(EG(zend_constants), name, c->name_len, (void *) c, sizeof(zend_constant), NULL)==FAILURE) {
+	if(
+#if 0
+		(strncmp(name, "__COMPILER_HALT_OFFSET__", sizeof("__COMPILER_HALT_OFFSET__") - 1) == 0) ||
+#endif
+		zend_hash_add(EG(zend_constants), hash_name, name_len, (void *) c, sizeof(zend_constant), NULL) == FAILURE) {
 		zend_error(E_NOTICE,"Constant %s already defined", name);
-		free(c->name);
-		if (!(c->flags & CONST_PERSISTENT)) {
-			zval_dtor(&c->value);
-		}
 		ret = FAILURE;
 	}
-	if (lowercase_name) {
-		efree(lowercase_name);
-	}
+	
+	efree(hash_name);
 	return ret;
 }
 
