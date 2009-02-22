@@ -454,12 +454,6 @@ static int ZEND_BEGIN_SILENCE_SPEC_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	ZEND_VM_NEXT_OPCODE();
 }
 
-static int ZEND_RAISE_ABSTRACT_ERROR_SPEC_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
-{
-	zend_error_noreturn(E_ERROR, "Cannot call abstract method %s::%s()", EG(scope)->name, EX(op_array)->function_name);
-	ZEND_VM_NEXT_OPCODE(); /* Never reached */
-}
-
 static int ZEND_EXT_STMT_SPEC_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 {
 	if (!EG(no_extensions)) {
@@ -1933,138 +1927,6 @@ static int ZEND_CLONE_SPEC_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 		}
 	}
 
-	ZEND_VM_NEXT_OPCODE();
-}
-
-static int ZEND_INCLUDE_OR_EVAL_SPEC_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
-{
-	zend_op *opline = EX(opline);
-	zend_op_array *new_op_array=NULL;
-	zval **original_return_value = EG(return_value_ptr_ptr);
-	int return_value_used;
-
-	zval *inc_filename = &opline->op1.u.constant;
-	zval tmp_inc_filename;
-	zend_bool failure_retval=0;
-
-	if (inc_filename->type!=IS_STRING) {
-		tmp_inc_filename = *inc_filename;
-		zval_copy_ctor(&tmp_inc_filename);
-		convert_to_string(&tmp_inc_filename);
-		inc_filename = &tmp_inc_filename;
-	}
-
-	return_value_used = RETURN_VALUE_USED(opline);
-
-	switch (Z_LVAL(opline->op2.u.constant)) {
-		case ZEND_INCLUDE_ONCE:
-		case ZEND_REQUIRE_ONCE: {
-				zend_file_handle file_handle;
-
-				if (IS_ABSOLUTE_PATH(Z_STRVAL_P(inc_filename), Z_STRLEN_P(inc_filename))) {
-					cwd_state state;
-
-					state.cwd_length = 0;
-					state.cwd = malloc(1);
-					state.cwd[0] = 0;
-
-					failure_retval = (!virtual_file_ex(&state, Z_STRVAL_P(inc_filename), NULL, 1) &&
-						zend_hash_exists(&EG(included_files), state.cwd, state.cwd_length+1));
-
-					free(state.cwd);
-				}
-
-				if (failure_retval) {
-					/* do nothing */
-				} else if (SUCCESS == zend_stream_open(Z_STRVAL_P(inc_filename), &file_handle TSRMLS_CC)) {
-
-					if (!file_handle.opened_path) {
-						file_handle.opened_path = estrndup(Z_STRVAL_P(inc_filename), Z_STRLEN_P(inc_filename));
-					}
-
-					if (zend_hash_add_empty_element(&EG(included_files), file_handle.opened_path, strlen(file_handle.opened_path)+1)==SUCCESS) {
-						new_op_array = zend_compile_file(&file_handle, (Z_LVAL(opline->op2.u.constant)==ZEND_INCLUDE_ONCE?ZEND_INCLUDE:ZEND_REQUIRE) TSRMLS_CC);
-						zend_destroy_file_handle(&file_handle TSRMLS_CC);
-					} else {
-						zend_file_handle_dtor(&file_handle);
-						failure_retval=1;
-					}
-				} else {
-					if (Z_LVAL(opline->op2.u.constant)==ZEND_INCLUDE_ONCE) {
-						zend_message_dispatcher(ZMSG_FAILED_INCLUDE_FOPEN, Z_STRVAL_P(inc_filename));
-					} else {
-						zend_message_dispatcher(ZMSG_FAILED_REQUIRE_FOPEN, Z_STRVAL_P(inc_filename));
-					}
-				}
-			}
-			break;
-		case ZEND_INCLUDE:
-		case ZEND_REQUIRE:
-			new_op_array = compile_filename(Z_LVAL(opline->op2.u.constant), inc_filename TSRMLS_CC);
-			break;
-		case ZEND_EVAL: {
-				char *eval_desc = zend_make_compiled_string_description("eval()'d code" TSRMLS_CC);
-
-				new_op_array = zend_compile_string(inc_filename, eval_desc TSRMLS_CC);
-				efree(eval_desc);
-			}
-			break;
-		EMPTY_SWITCH_DEFAULT_CASE()
-	}
-	if (inc_filename==&tmp_inc_filename) {
-		zval_dtor(&tmp_inc_filename);
-	}
-	EX_T(opline->result.u.var).var.ptr_ptr = &EX_T(opline->result.u.var).var.ptr;
-	if (new_op_array) {
-		zval *saved_object;
-		zend_function *saved_function;
-
-		EG(return_value_ptr_ptr) = EX_T(opline->result.u.var).var.ptr_ptr;
-		EG(active_op_array) = new_op_array;
-		EX_T(opline->result.u.var).var.ptr = NULL;
-
-		saved_object = EX(object);
-		saved_function = EX(function_state).function;
-
-		EX(function_state).function = (zend_function *) new_op_array;
-		EX(object) = NULL;
-
-		zend_execute(new_op_array TSRMLS_CC);
-
-		EX(function_state).function = saved_function;
-		EX(object) = saved_object;
-
-		if (!return_value_used) {
-			if (EX_T(opline->result.u.var).var.ptr) {
-				zval_ptr_dtor(&EX_T(opline->result.u.var).var.ptr);
-			}
-		} else { /* return value is used */
-			if (!EX_T(opline->result.u.var).var.ptr) { /* there was no return statement */
-				ALLOC_ZVAL(EX_T(opline->result.u.var).var.ptr);
-				INIT_PZVAL(EX_T(opline->result.u.var).var.ptr);
-				Z_LVAL_P(EX_T(opline->result.u.var).var.ptr) = 1;
-				Z_TYPE_P(EX_T(opline->result.u.var).var.ptr) = IS_BOOL;
-			}
-		}
-
-		EG(opline_ptr) = &EX(opline);
-		EG(active_op_array) = EX(op_array);
-		EG(function_state_ptr) = &EX(function_state);
-		destroy_op_array(new_op_array TSRMLS_CC);
-		efree(new_op_array);
-		if (EXCEPTION) {
-			zend_throw_exception_internal(NULL TSRMLS_CC);
-		}
-	} else {
-		if (return_value_used) {
-			ALLOC_ZVAL(EX_T(opline->result.u.var).var.ptr);
-			INIT_ZVAL(*EX_T(opline->result.u.var).var.ptr);
-			Z_LVAL_P(EX_T(opline->result.u.var).var.ptr) = failure_retval;
-			Z_TYPE_P(EX_T(opline->result.u.var).var.ptr) = IS_BOOL;
-		}
-	}
-
-	EG(return_value_ptr_ptr) = original_return_value;
 	ZEND_VM_NEXT_OPCODE();
 }
 
@@ -4400,138 +4262,6 @@ static int ZEND_CLONE_SPEC_TMP_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	ZEND_VM_NEXT_OPCODE();
 }
 
-static int ZEND_INCLUDE_OR_EVAL_SPEC_TMP_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
-{
-	zend_op *opline = EX(opline);
-	zend_op_array *new_op_array=NULL;
-	zval **original_return_value = EG(return_value_ptr_ptr);
-	int return_value_used;
-	zend_free_op free_op1;
-	zval *inc_filename = _get_zval_ptr_tmp(&opline->op1, EX(Ts), &free_op1 TSRMLS_CC);
-	zval tmp_inc_filename;
-	zend_bool failure_retval=0;
-
-	if (inc_filename->type!=IS_STRING) {
-		tmp_inc_filename = *inc_filename;
-		zval_copy_ctor(&tmp_inc_filename);
-		convert_to_string(&tmp_inc_filename);
-		inc_filename = &tmp_inc_filename;
-	}
-
-	return_value_used = RETURN_VALUE_USED(opline);
-
-	switch (Z_LVAL(opline->op2.u.constant)) {
-		case ZEND_INCLUDE_ONCE:
-		case ZEND_REQUIRE_ONCE: {
-				zend_file_handle file_handle;
-
-				if (IS_ABSOLUTE_PATH(Z_STRVAL_P(inc_filename), Z_STRLEN_P(inc_filename))) {
-					cwd_state state;
-
-					state.cwd_length = 0;
-					state.cwd = malloc(1);
-					state.cwd[0] = 0;
-
-					failure_retval = (!virtual_file_ex(&state, Z_STRVAL_P(inc_filename), NULL, 1) &&
-						zend_hash_exists(&EG(included_files), state.cwd, state.cwd_length+1));
-
-					free(state.cwd);
-				}
-
-				if (failure_retval) {
-					/* do nothing */
-				} else if (SUCCESS == zend_stream_open(Z_STRVAL_P(inc_filename), &file_handle TSRMLS_CC)) {
-
-					if (!file_handle.opened_path) {
-						file_handle.opened_path = estrndup(Z_STRVAL_P(inc_filename), Z_STRLEN_P(inc_filename));
-					}
-
-					if (zend_hash_add_empty_element(&EG(included_files), file_handle.opened_path, strlen(file_handle.opened_path)+1)==SUCCESS) {
-						new_op_array = zend_compile_file(&file_handle, (Z_LVAL(opline->op2.u.constant)==ZEND_INCLUDE_ONCE?ZEND_INCLUDE:ZEND_REQUIRE) TSRMLS_CC);
-						zend_destroy_file_handle(&file_handle TSRMLS_CC);
-					} else {
-						zend_file_handle_dtor(&file_handle);
-						failure_retval=1;
-					}
-				} else {
-					if (Z_LVAL(opline->op2.u.constant)==ZEND_INCLUDE_ONCE) {
-						zend_message_dispatcher(ZMSG_FAILED_INCLUDE_FOPEN, Z_STRVAL_P(inc_filename));
-					} else {
-						zend_message_dispatcher(ZMSG_FAILED_REQUIRE_FOPEN, Z_STRVAL_P(inc_filename));
-					}
-				}
-			}
-			break;
-		case ZEND_INCLUDE:
-		case ZEND_REQUIRE:
-			new_op_array = compile_filename(Z_LVAL(opline->op2.u.constant), inc_filename TSRMLS_CC);
-			break;
-		case ZEND_EVAL: {
-				char *eval_desc = zend_make_compiled_string_description("eval()'d code" TSRMLS_CC);
-
-				new_op_array = zend_compile_string(inc_filename, eval_desc TSRMLS_CC);
-				efree(eval_desc);
-			}
-			break;
-		EMPTY_SWITCH_DEFAULT_CASE()
-	}
-	if (inc_filename==&tmp_inc_filename) {
-		zval_dtor(&tmp_inc_filename);
-	}
-	EX_T(opline->result.u.var).var.ptr_ptr = &EX_T(opline->result.u.var).var.ptr;
-	if (new_op_array) {
-		zval *saved_object;
-		zend_function *saved_function;
-
-		EG(return_value_ptr_ptr) = EX_T(opline->result.u.var).var.ptr_ptr;
-		EG(active_op_array) = new_op_array;
-		EX_T(opline->result.u.var).var.ptr = NULL;
-
-		saved_object = EX(object);
-		saved_function = EX(function_state).function;
-
-		EX(function_state).function = (zend_function *) new_op_array;
-		EX(object) = NULL;
-
-		zend_execute(new_op_array TSRMLS_CC);
-
-		EX(function_state).function = saved_function;
-		EX(object) = saved_object;
-
-		if (!return_value_used) {
-			if (EX_T(opline->result.u.var).var.ptr) {
-				zval_ptr_dtor(&EX_T(opline->result.u.var).var.ptr);
-			}
-		} else { /* return value is used */
-			if (!EX_T(opline->result.u.var).var.ptr) { /* there was no return statement */
-				ALLOC_ZVAL(EX_T(opline->result.u.var).var.ptr);
-				INIT_PZVAL(EX_T(opline->result.u.var).var.ptr);
-				Z_LVAL_P(EX_T(opline->result.u.var).var.ptr) = 1;
-				Z_TYPE_P(EX_T(opline->result.u.var).var.ptr) = IS_BOOL;
-			}
-		}
-
-		EG(opline_ptr) = &EX(opline);
-		EG(active_op_array) = EX(op_array);
-		EG(function_state_ptr) = &EX(function_state);
-		destroy_op_array(new_op_array TSRMLS_CC);
-		efree(new_op_array);
-		if (EXCEPTION) {
-			zend_throw_exception_internal(NULL TSRMLS_CC);
-		}
-	} else {
-		if (return_value_used) {
-			ALLOC_ZVAL(EX_T(opline->result.u.var).var.ptr);
-			INIT_ZVAL(*EX_T(opline->result.u.var).var.ptr);
-			Z_LVAL_P(EX_T(opline->result.u.var).var.ptr) = failure_retval;
-			Z_TYPE_P(EX_T(opline->result.u.var).var.ptr) = IS_BOOL;
-		}
-	}
-	zval_dtor(free_op1.var);
-	EG(return_value_ptr_ptr) = original_return_value;
-	ZEND_VM_NEXT_OPCODE();
-}
-
 static int ZEND_UNSET_VAR_SPEC_TMP_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 {
 	zend_op *opline = EX(opline);
@@ -5121,18 +4851,6 @@ static int ZEND_FETCH_DIM_TMP_VAR_SPEC_TMP_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARG
 
 	}
 	AI_USE_PTR(EX_T(opline->result.u.var).var);
-	ZEND_VM_NEXT_OPCODE();
-}
-
-static int ZEND_ADD_CHAR_SPEC_TMP_CONST_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
-{
-	zend_op *opline = EX(opline);
-	zend_free_op free_op1;
-
-	add_char_to_string(&EX_T(opline->result.u.var).tmp_var,
-		_get_zval_ptr_tmp(&opline->op1, EX(Ts), &free_op1 TSRMLS_CC),
-		&opline->op2.u.constant);
-	/* FREE_OP is missing intentionally here - we're always working on the same temporary variable */
 	ZEND_VM_NEXT_OPCODE();
 }
 
@@ -7728,138 +7446,6 @@ static int ZEND_CLONE_SPEC_VAR_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 		}
 	}
 	if (free_op1.var) {zval_ptr_dtor(&free_op1.var);};
-	ZEND_VM_NEXT_OPCODE();
-}
-
-static int ZEND_INCLUDE_OR_EVAL_SPEC_VAR_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
-{
-	zend_op *opline = EX(opline);
-	zend_op_array *new_op_array=NULL;
-	zval **original_return_value = EG(return_value_ptr_ptr);
-	int return_value_used;
-	zend_free_op free_op1;
-	zval *inc_filename = _get_zval_ptr_var(&opline->op1, EX(Ts), &free_op1 TSRMLS_CC);
-	zval tmp_inc_filename;
-	zend_bool failure_retval=0;
-
-	if (inc_filename->type!=IS_STRING) {
-		tmp_inc_filename = *inc_filename;
-		zval_copy_ctor(&tmp_inc_filename);
-		convert_to_string(&tmp_inc_filename);
-		inc_filename = &tmp_inc_filename;
-	}
-
-	return_value_used = RETURN_VALUE_USED(opline);
-
-	switch (Z_LVAL(opline->op2.u.constant)) {
-		case ZEND_INCLUDE_ONCE:
-		case ZEND_REQUIRE_ONCE: {
-				zend_file_handle file_handle;
-
-				if (IS_ABSOLUTE_PATH(Z_STRVAL_P(inc_filename), Z_STRLEN_P(inc_filename))) {
-					cwd_state state;
-
-					state.cwd_length = 0;
-					state.cwd = malloc(1);
-					state.cwd[0] = 0;
-
-					failure_retval = (!virtual_file_ex(&state, Z_STRVAL_P(inc_filename), NULL, 1) &&
-						zend_hash_exists(&EG(included_files), state.cwd, state.cwd_length+1));
-
-					free(state.cwd);
-				}
-
-				if (failure_retval) {
-					/* do nothing */
-				} else if (SUCCESS == zend_stream_open(Z_STRVAL_P(inc_filename), &file_handle TSRMLS_CC)) {
-
-					if (!file_handle.opened_path) {
-						file_handle.opened_path = estrndup(Z_STRVAL_P(inc_filename), Z_STRLEN_P(inc_filename));
-					}
-
-					if (zend_hash_add_empty_element(&EG(included_files), file_handle.opened_path, strlen(file_handle.opened_path)+1)==SUCCESS) {
-						new_op_array = zend_compile_file(&file_handle, (Z_LVAL(opline->op2.u.constant)==ZEND_INCLUDE_ONCE?ZEND_INCLUDE:ZEND_REQUIRE) TSRMLS_CC);
-						zend_destroy_file_handle(&file_handle TSRMLS_CC);
-					} else {
-						zend_file_handle_dtor(&file_handle);
-						failure_retval=1;
-					}
-				} else {
-					if (Z_LVAL(opline->op2.u.constant)==ZEND_INCLUDE_ONCE) {
-						zend_message_dispatcher(ZMSG_FAILED_INCLUDE_FOPEN, Z_STRVAL_P(inc_filename));
-					} else {
-						zend_message_dispatcher(ZMSG_FAILED_REQUIRE_FOPEN, Z_STRVAL_P(inc_filename));
-					}
-				}
-			}
-			break;
-		case ZEND_INCLUDE:
-		case ZEND_REQUIRE:
-			new_op_array = compile_filename(Z_LVAL(opline->op2.u.constant), inc_filename TSRMLS_CC);
-			break;
-		case ZEND_EVAL: {
-				char *eval_desc = zend_make_compiled_string_description("eval()'d code" TSRMLS_CC);
-
-				new_op_array = zend_compile_string(inc_filename, eval_desc TSRMLS_CC);
-				efree(eval_desc);
-			}
-			break;
-		EMPTY_SWITCH_DEFAULT_CASE()
-	}
-	if (inc_filename==&tmp_inc_filename) {
-		zval_dtor(&tmp_inc_filename);
-	}
-	EX_T(opline->result.u.var).var.ptr_ptr = &EX_T(opline->result.u.var).var.ptr;
-	if (new_op_array) {
-		zval *saved_object;
-		zend_function *saved_function;
-
-		EG(return_value_ptr_ptr) = EX_T(opline->result.u.var).var.ptr_ptr;
-		EG(active_op_array) = new_op_array;
-		EX_T(opline->result.u.var).var.ptr = NULL;
-
-		saved_object = EX(object);
-		saved_function = EX(function_state).function;
-
-		EX(function_state).function = (zend_function *) new_op_array;
-		EX(object) = NULL;
-
-		zend_execute(new_op_array TSRMLS_CC);
-
-		EX(function_state).function = saved_function;
-		EX(object) = saved_object;
-
-		if (!return_value_used) {
-			if (EX_T(opline->result.u.var).var.ptr) {
-				zval_ptr_dtor(&EX_T(opline->result.u.var).var.ptr);
-			}
-		} else { /* return value is used */
-			if (!EX_T(opline->result.u.var).var.ptr) { /* there was no return statement */
-				ALLOC_ZVAL(EX_T(opline->result.u.var).var.ptr);
-				INIT_PZVAL(EX_T(opline->result.u.var).var.ptr);
-				Z_LVAL_P(EX_T(opline->result.u.var).var.ptr) = 1;
-				Z_TYPE_P(EX_T(opline->result.u.var).var.ptr) = IS_BOOL;
-			}
-		}
-
-		EG(opline_ptr) = &EX(opline);
-		EG(active_op_array) = EX(op_array);
-		EG(function_state_ptr) = &EX(function_state);
-		destroy_op_array(new_op_array TSRMLS_CC);
-		efree(new_op_array);
-		if (EXCEPTION) {
-			zend_throw_exception_internal(NULL TSRMLS_CC);
-		}
-	} else {
-		if (return_value_used) {
-			ALLOC_ZVAL(EX_T(opline->result.u.var).var.ptr);
-			INIT_ZVAL(*EX_T(opline->result.u.var).var.ptr);
-			Z_LVAL_P(EX_T(opline->result.u.var).var.ptr) = failure_retval;
-			Z_TYPE_P(EX_T(opline->result.u.var).var.ptr) = IS_BOOL;
-		}
-	}
-	if (free_op1.var) {zval_ptr_dtor(&free_op1.var);};
-	EG(return_value_ptr_ptr) = original_return_value;
 	ZEND_VM_NEXT_OPCODE();
 }
 
@@ -20395,138 +19981,6 @@ static int ZEND_CLONE_SPEC_CV_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 	ZEND_VM_NEXT_OPCODE();
 }
 
-static int ZEND_INCLUDE_OR_EVAL_SPEC_CV_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
-{
-	zend_op *opline = EX(opline);
-	zend_op_array *new_op_array=NULL;
-	zval **original_return_value = EG(return_value_ptr_ptr);
-	int return_value_used;
-
-	zval *inc_filename = _get_zval_ptr_cv(&opline->op1, EX(Ts), BP_VAR_R TSRMLS_CC);
-	zval tmp_inc_filename;
-	zend_bool failure_retval=0;
-
-	if (inc_filename->type!=IS_STRING) {
-		tmp_inc_filename = *inc_filename;
-		zval_copy_ctor(&tmp_inc_filename);
-		convert_to_string(&tmp_inc_filename);
-		inc_filename = &tmp_inc_filename;
-	}
-
-	return_value_used = RETURN_VALUE_USED(opline);
-
-	switch (Z_LVAL(opline->op2.u.constant)) {
-		case ZEND_INCLUDE_ONCE:
-		case ZEND_REQUIRE_ONCE: {
-				zend_file_handle file_handle;
-
-				if (IS_ABSOLUTE_PATH(Z_STRVAL_P(inc_filename), Z_STRLEN_P(inc_filename))) {
-					cwd_state state;
-
-					state.cwd_length = 0;
-					state.cwd = malloc(1);
-					state.cwd[0] = 0;
-
-					failure_retval = (!virtual_file_ex(&state, Z_STRVAL_P(inc_filename), NULL, 1) &&
-						zend_hash_exists(&EG(included_files), state.cwd, state.cwd_length+1));
-
-					free(state.cwd);
-				}
-
-				if (failure_retval) {
-					/* do nothing */
-				} else if (SUCCESS == zend_stream_open(Z_STRVAL_P(inc_filename), &file_handle TSRMLS_CC)) {
-
-					if (!file_handle.opened_path) {
-						file_handle.opened_path = estrndup(Z_STRVAL_P(inc_filename), Z_STRLEN_P(inc_filename));
-					}
-
-					if (zend_hash_add_empty_element(&EG(included_files), file_handle.opened_path, strlen(file_handle.opened_path)+1)==SUCCESS) {
-						new_op_array = zend_compile_file(&file_handle, (Z_LVAL(opline->op2.u.constant)==ZEND_INCLUDE_ONCE?ZEND_INCLUDE:ZEND_REQUIRE) TSRMLS_CC);
-						zend_destroy_file_handle(&file_handle TSRMLS_CC);
-					} else {
-						zend_file_handle_dtor(&file_handle);
-						failure_retval=1;
-					}
-				} else {
-					if (Z_LVAL(opline->op2.u.constant)==ZEND_INCLUDE_ONCE) {
-						zend_message_dispatcher(ZMSG_FAILED_INCLUDE_FOPEN, Z_STRVAL_P(inc_filename));
-					} else {
-						zend_message_dispatcher(ZMSG_FAILED_REQUIRE_FOPEN, Z_STRVAL_P(inc_filename));
-					}
-				}
-			}
-			break;
-		case ZEND_INCLUDE:
-		case ZEND_REQUIRE:
-			new_op_array = compile_filename(Z_LVAL(opline->op2.u.constant), inc_filename TSRMLS_CC);
-			break;
-		case ZEND_EVAL: {
-				char *eval_desc = zend_make_compiled_string_description("eval()'d code" TSRMLS_CC);
-
-				new_op_array = zend_compile_string(inc_filename, eval_desc TSRMLS_CC);
-				efree(eval_desc);
-			}
-			break;
-		EMPTY_SWITCH_DEFAULT_CASE()
-	}
-	if (inc_filename==&tmp_inc_filename) {
-		zval_dtor(&tmp_inc_filename);
-	}
-	EX_T(opline->result.u.var).var.ptr_ptr = &EX_T(opline->result.u.var).var.ptr;
-	if (new_op_array) {
-		zval *saved_object;
-		zend_function *saved_function;
-
-		EG(return_value_ptr_ptr) = EX_T(opline->result.u.var).var.ptr_ptr;
-		EG(active_op_array) = new_op_array;
-		EX_T(opline->result.u.var).var.ptr = NULL;
-
-		saved_object = EX(object);
-		saved_function = EX(function_state).function;
-
-		EX(function_state).function = (zend_function *) new_op_array;
-		EX(object) = NULL;
-
-		zend_execute(new_op_array TSRMLS_CC);
-
-		EX(function_state).function = saved_function;
-		EX(object) = saved_object;
-
-		if (!return_value_used) {
-			if (EX_T(opline->result.u.var).var.ptr) {
-				zval_ptr_dtor(&EX_T(opline->result.u.var).var.ptr);
-			}
-		} else { /* return value is used */
-			if (!EX_T(opline->result.u.var).var.ptr) { /* there was no return statement */
-				ALLOC_ZVAL(EX_T(opline->result.u.var).var.ptr);
-				INIT_PZVAL(EX_T(opline->result.u.var).var.ptr);
-				Z_LVAL_P(EX_T(opline->result.u.var).var.ptr) = 1;
-				Z_TYPE_P(EX_T(opline->result.u.var).var.ptr) = IS_BOOL;
-			}
-		}
-
-		EG(opline_ptr) = &EX(opline);
-		EG(active_op_array) = EX(op_array);
-		EG(function_state_ptr) = &EX(function_state);
-		destroy_op_array(new_op_array TSRMLS_CC);
-		efree(new_op_array);
-		if (EXCEPTION) {
-			zend_throw_exception_internal(NULL TSRMLS_CC);
-		}
-	} else {
-		if (return_value_used) {
-			ALLOC_ZVAL(EX_T(opline->result.u.var).var.ptr);
-			INIT_ZVAL(*EX_T(opline->result.u.var).var.ptr);
-			Z_LVAL_P(EX_T(opline->result.u.var).var.ptr) = failure_retval;
-			Z_TYPE_P(EX_T(opline->result.u.var).var.ptr) = IS_BOOL;
-		}
-	}
-
-	EG(return_value_ptr_ptr) = original_return_value;
-	ZEND_VM_NEXT_OPCODE();
-}
-
 static int ZEND_UNSET_VAR_SPEC_CV_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 {
 	zend_op *opline = EX(opline);
@@ -29018,26 +28472,26 @@ void zend_init_opcodes_handlers(void)
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
-  	ZEND_ADD_CHAR_SPEC_TMP_CONST_HANDLER,
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
+  	ZEND_ISSET_ISEMPTY_PROP_OBJ_SPEC_VAR_CONST_HANDLER,
+  	ZEND_ISSET_ISEMPTY_PROP_OBJ_SPEC_VAR_TMP_HANDLER,
+  	ZEND_ISSET_ISEMPTY_PROP_OBJ_SPEC_VAR_VAR_HANDLER,
   	ZEND_NULL_HANDLER,
+  	ZEND_ISSET_ISEMPTY_PROP_OBJ_SPEC_VAR_CV_HANDLER,
+  	ZEND_ISSET_ISEMPTY_PROP_OBJ_SPEC_UNUSED_CONST_HANDLER,
+  	ZEND_ISSET_ISEMPTY_PROP_OBJ_SPEC_UNUSED_TMP_HANDLER,
+  	ZEND_ISSET_ISEMPTY_PROP_OBJ_SPEC_UNUSED_VAR_HANDLER,
   	ZEND_NULL_HANDLER,
+  	ZEND_ISSET_ISEMPTY_PROP_OBJ_SPEC_UNUSED_CV_HANDLER,
+  	ZEND_ISSET_ISEMPTY_PROP_OBJ_SPEC_CV_CONST_HANDLER,
+  	ZEND_ISSET_ISEMPTY_PROP_OBJ_SPEC_CV_TMP_HANDLER,
+  	ZEND_ISSET_ISEMPTY_PROP_OBJ_SPEC_CV_VAR_HANDLER,
   	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
+  	ZEND_ISSET_ISEMPTY_PROP_OBJ_SPEC_CV_CV_HANDLER,
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
@@ -29393,26 +28847,26 @@ void zend_init_opcodes_handlers(void)
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
+  	ZEND_INIT_METHOD_CALL_SPEC_TMP_CONST_HANDLER,
+  	ZEND_INIT_METHOD_CALL_SPEC_TMP_TMP_HANDLER,
+  	ZEND_INIT_METHOD_CALL_SPEC_TMP_VAR_HANDLER,
   	ZEND_NULL_HANDLER,
+  	ZEND_INIT_METHOD_CALL_SPEC_TMP_CV_HANDLER,
+  	ZEND_INIT_METHOD_CALL_SPEC_VAR_CONST_HANDLER,
+  	ZEND_INIT_METHOD_CALL_SPEC_VAR_TMP_HANDLER,
+  	ZEND_INIT_METHOD_CALL_SPEC_VAR_VAR_HANDLER,
   	ZEND_NULL_HANDLER,
+  	ZEND_INIT_METHOD_CALL_SPEC_VAR_CV_HANDLER,
+  	ZEND_INIT_METHOD_CALL_SPEC_UNUSED_CONST_HANDLER,
+  	ZEND_INIT_METHOD_CALL_SPEC_UNUSED_TMP_HANDLER,
+  	ZEND_INIT_METHOD_CALL_SPEC_UNUSED_VAR_HANDLER,
   	ZEND_NULL_HANDLER,
+  	ZEND_INIT_METHOD_CALL_SPEC_UNUSED_CV_HANDLER,
+  	ZEND_INIT_METHOD_CALL_SPEC_CV_CONST_HANDLER,
+  	ZEND_INIT_METHOD_CALL_SPEC_CV_TMP_HANDLER,
+  	ZEND_INIT_METHOD_CALL_SPEC_CV_VAR_HANDLER,
   	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
+  	ZEND_INIT_METHOD_CALL_SPEC_CV_CV_HANDLER,
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
@@ -29488,31 +28942,31 @@ void zend_init_opcodes_handlers(void)
   	ZEND_ADD_ARRAY_ELEMENT_SPEC_CV_VAR_HANDLER,
   	ZEND_ADD_ARRAY_ELEMENT_SPEC_CV_UNUSED_HANDLER,
   	ZEND_ADD_ARRAY_ELEMENT_SPEC_CV_CV_HANDLER,
-  	ZEND_INCLUDE_OR_EVAL_SPEC_CONST_HANDLER,
-  	ZEND_INCLUDE_OR_EVAL_SPEC_CONST_HANDLER,
-  	ZEND_INCLUDE_OR_EVAL_SPEC_CONST_HANDLER,
-  	ZEND_INCLUDE_OR_EVAL_SPEC_CONST_HANDLER,
-  	ZEND_INCLUDE_OR_EVAL_SPEC_CONST_HANDLER,
-  	ZEND_INCLUDE_OR_EVAL_SPEC_TMP_HANDLER,
-  	ZEND_INCLUDE_OR_EVAL_SPEC_TMP_HANDLER,
-  	ZEND_INCLUDE_OR_EVAL_SPEC_TMP_HANDLER,
-  	ZEND_INCLUDE_OR_EVAL_SPEC_TMP_HANDLER,
-  	ZEND_INCLUDE_OR_EVAL_SPEC_TMP_HANDLER,
-  	ZEND_INCLUDE_OR_EVAL_SPEC_VAR_HANDLER,
-  	ZEND_INCLUDE_OR_EVAL_SPEC_VAR_HANDLER,
-  	ZEND_INCLUDE_OR_EVAL_SPEC_VAR_HANDLER,
-  	ZEND_INCLUDE_OR_EVAL_SPEC_VAR_HANDLER,
-  	ZEND_INCLUDE_OR_EVAL_SPEC_VAR_HANDLER,
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
-  	ZEND_INCLUDE_OR_EVAL_SPEC_CV_HANDLER,
-  	ZEND_INCLUDE_OR_EVAL_SPEC_CV_HANDLER,
-  	ZEND_INCLUDE_OR_EVAL_SPEC_CV_HANDLER,
-  	ZEND_INCLUDE_OR_EVAL_SPEC_CV_HANDLER,
-  	ZEND_INCLUDE_OR_EVAL_SPEC_CV_HANDLER,
+  	ZEND_NULL_HANDLER,
+  	ZEND_NULL_HANDLER,
+  	ZEND_NULL_HANDLER,
+  	ZEND_NULL_HANDLER,
+  	ZEND_NULL_HANDLER,
+  	ZEND_ASSIGN_DIM_SPEC_VAR_CONST_HANDLER,
+  	ZEND_ASSIGN_DIM_SPEC_VAR_TMP_HANDLER,
+  	ZEND_ASSIGN_DIM_SPEC_VAR_VAR_HANDLER,
+  	ZEND_ASSIGN_DIM_SPEC_VAR_UNUSED_HANDLER,
+  	ZEND_ASSIGN_DIM_SPEC_VAR_CV_HANDLER,
+  	ZEND_NULL_HANDLER,
+  	ZEND_NULL_HANDLER,
+  	ZEND_NULL_HANDLER,
+  	ZEND_NULL_HANDLER,
+  	ZEND_NULL_HANDLER,
+  	ZEND_ASSIGN_DIM_SPEC_CV_CONST_HANDLER,
+  	ZEND_ASSIGN_DIM_SPEC_CV_TMP_HANDLER,
+  	ZEND_ASSIGN_DIM_SPEC_CV_VAR_HANDLER,
+  	ZEND_ASSIGN_DIM_SPEC_CV_UNUSED_HANDLER,
+  	ZEND_ASSIGN_DIM_SPEC_CV_CV_HANDLER,
   	ZEND_UNSET_VAR_SPEC_CONST_HANDLER,
   	ZEND_UNSET_VAR_SPEC_CONST_HANDLER,
   	ZEND_UNSET_VAR_SPEC_CONST_HANDLER,
@@ -30138,81 +29592,6 @@ void zend_init_opcodes_handlers(void)
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_EXT_STMT_SPEC_HANDLER,
-  	ZEND_EXT_STMT_SPEC_HANDLER,
-  	ZEND_EXT_STMT_SPEC_HANDLER,
-  	ZEND_EXT_STMT_SPEC_HANDLER,
-  	ZEND_EXT_STMT_SPEC_HANDLER,
-  	ZEND_EXT_STMT_SPEC_HANDLER,
-  	ZEND_EXT_STMT_SPEC_HANDLER,
-  	ZEND_EXT_STMT_SPEC_HANDLER,
-  	ZEND_EXT_STMT_SPEC_HANDLER,
-  	ZEND_EXT_STMT_SPEC_HANDLER,
-  	ZEND_EXT_STMT_SPEC_HANDLER,
-  	ZEND_EXT_STMT_SPEC_HANDLER,
-  	ZEND_EXT_STMT_SPEC_HANDLER,
-  	ZEND_EXT_STMT_SPEC_HANDLER,
-  	ZEND_EXT_STMT_SPEC_HANDLER,
-  	ZEND_EXT_STMT_SPEC_HANDLER,
-  	ZEND_EXT_STMT_SPEC_HANDLER,
-  	ZEND_EXT_STMT_SPEC_HANDLER,
-  	ZEND_EXT_STMT_SPEC_HANDLER,
-  	ZEND_EXT_STMT_SPEC_HANDLER,
-  	ZEND_EXT_STMT_SPEC_HANDLER,
-  	ZEND_EXT_STMT_SPEC_HANDLER,
-  	ZEND_EXT_STMT_SPEC_HANDLER,
-  	ZEND_EXT_STMT_SPEC_HANDLER,
-  	ZEND_EXT_STMT_SPEC_HANDLER,
   	ZEND_EXT_FCALL_BEGIN_SPEC_HANDLER,
   	ZEND_EXT_FCALL_BEGIN_SPEC_HANDLER,
   	ZEND_EXT_FCALL_BEGIN_SPEC_HANDLER,
@@ -30263,6 +29642,81 @@ void zend_init_opcodes_handlers(void)
   	ZEND_EXT_FCALL_END_SPEC_HANDLER,
   	ZEND_EXT_FCALL_END_SPEC_HANDLER,
   	ZEND_EXT_FCALL_END_SPEC_HANDLER,
+  	ZEND_EXT_STMT_SPEC_HANDLER,
+  	ZEND_EXT_STMT_SPEC_HANDLER,
+  	ZEND_EXT_STMT_SPEC_HANDLER,
+  	ZEND_EXT_STMT_SPEC_HANDLER,
+  	ZEND_EXT_STMT_SPEC_HANDLER,
+  	ZEND_EXT_STMT_SPEC_HANDLER,
+  	ZEND_EXT_STMT_SPEC_HANDLER,
+  	ZEND_EXT_STMT_SPEC_HANDLER,
+  	ZEND_EXT_STMT_SPEC_HANDLER,
+  	ZEND_EXT_STMT_SPEC_HANDLER,
+  	ZEND_EXT_STMT_SPEC_HANDLER,
+  	ZEND_EXT_STMT_SPEC_HANDLER,
+  	ZEND_EXT_STMT_SPEC_HANDLER,
+  	ZEND_EXT_STMT_SPEC_HANDLER,
+  	ZEND_EXT_STMT_SPEC_HANDLER,
+  	ZEND_EXT_STMT_SPEC_HANDLER,
+  	ZEND_EXT_STMT_SPEC_HANDLER,
+  	ZEND_EXT_STMT_SPEC_HANDLER,
+  	ZEND_EXT_STMT_SPEC_HANDLER,
+  	ZEND_EXT_STMT_SPEC_HANDLER,
+  	ZEND_EXT_STMT_SPEC_HANDLER,
+  	ZEND_EXT_STMT_SPEC_HANDLER,
+  	ZEND_EXT_STMT_SPEC_HANDLER,
+  	ZEND_EXT_STMT_SPEC_HANDLER,
+  	ZEND_EXT_STMT_SPEC_HANDLER,
+  	ZEND_NULL_HANDLER,
+  	ZEND_NULL_HANDLER,
+  	ZEND_NULL_HANDLER,
+  	ZEND_NULL_HANDLER,
+  	ZEND_NULL_HANDLER,
+  	ZEND_INSTANCEOF_SPEC_TMP_HANDLER,
+  	ZEND_INSTANCEOF_SPEC_TMP_HANDLER,
+  	ZEND_INSTANCEOF_SPEC_TMP_HANDLER,
+  	ZEND_INSTANCEOF_SPEC_TMP_HANDLER,
+  	ZEND_INSTANCEOF_SPEC_TMP_HANDLER,
+  	ZEND_INSTANCEOF_SPEC_VAR_HANDLER,
+  	ZEND_INSTANCEOF_SPEC_VAR_HANDLER,
+  	ZEND_INSTANCEOF_SPEC_VAR_HANDLER,
+  	ZEND_INSTANCEOF_SPEC_VAR_HANDLER,
+  	ZEND_INSTANCEOF_SPEC_VAR_HANDLER,
+  	ZEND_NULL_HANDLER,
+  	ZEND_NULL_HANDLER,
+  	ZEND_NULL_HANDLER,
+  	ZEND_NULL_HANDLER,
+  	ZEND_NULL_HANDLER,
+  	ZEND_INSTANCEOF_SPEC_CV_HANDLER,
+  	ZEND_INSTANCEOF_SPEC_CV_HANDLER,
+  	ZEND_INSTANCEOF_SPEC_CV_HANDLER,
+  	ZEND_INSTANCEOF_SPEC_CV_HANDLER,
+  	ZEND_INSTANCEOF_SPEC_CV_HANDLER,
+  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
+  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
+  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
+  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
+  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
+  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
+  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
+  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
+  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
+  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
+  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
+  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
+  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
+  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
+  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
+  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
+  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
+  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
+  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
+  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
+  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
+  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
+  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
+  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
+  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
   	ZEND_EXT_NOP_SPEC_HANDLER,
   	ZEND_EXT_NOP_SPEC_HANDLER,
   	ZEND_EXT_NOP_SPEC_HANDLER,
@@ -30618,6 +30072,31 @@ void zend_init_opcodes_handlers(void)
   	ZEND_CLONE_SPEC_CV_HANDLER,
   	ZEND_CLONE_SPEC_CV_HANDLER,
   	ZEND_CLONE_SPEC_CV_HANDLER,
+  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
+  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
+  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
+  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
+  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
+  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
+  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
+  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
+  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
+  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
+  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
+  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
+  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
+  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
+  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
+  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
+  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
+  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
+  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
+  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
+  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
+  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
+  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
+  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
+  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
@@ -30628,46 +30107,21 @@ void zend_init_opcodes_handlers(void)
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
+  	ZEND_PRE_DEC_OBJ_SPEC_VAR_CONST_HANDLER,
+  	ZEND_PRE_DEC_OBJ_SPEC_VAR_TMP_HANDLER,
+  	ZEND_PRE_DEC_OBJ_SPEC_VAR_VAR_HANDLER,
   	ZEND_NULL_HANDLER,
+  	ZEND_PRE_DEC_OBJ_SPEC_VAR_CV_HANDLER,
+  	ZEND_PRE_DEC_OBJ_SPEC_UNUSED_CONST_HANDLER,
+  	ZEND_PRE_DEC_OBJ_SPEC_UNUSED_TMP_HANDLER,
+  	ZEND_PRE_DEC_OBJ_SPEC_UNUSED_VAR_HANDLER,
   	ZEND_NULL_HANDLER,
+  	ZEND_PRE_DEC_OBJ_SPEC_UNUSED_CV_HANDLER,
+  	ZEND_PRE_DEC_OBJ_SPEC_CV_CONST_HANDLER,
+  	ZEND_PRE_DEC_OBJ_SPEC_CV_TMP_HANDLER,
+  	ZEND_PRE_DEC_OBJ_SPEC_CV_VAR_HANDLER,
   	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_INIT_METHOD_CALL_SPEC_TMP_CONST_HANDLER,
-  	ZEND_INIT_METHOD_CALL_SPEC_TMP_TMP_HANDLER,
-  	ZEND_INIT_METHOD_CALL_SPEC_TMP_VAR_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_INIT_METHOD_CALL_SPEC_TMP_CV_HANDLER,
-  	ZEND_INIT_METHOD_CALL_SPEC_VAR_CONST_HANDLER,
-  	ZEND_INIT_METHOD_CALL_SPEC_VAR_TMP_HANDLER,
-  	ZEND_INIT_METHOD_CALL_SPEC_VAR_VAR_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_INIT_METHOD_CALL_SPEC_VAR_CV_HANDLER,
-  	ZEND_INIT_METHOD_CALL_SPEC_UNUSED_CONST_HANDLER,
-  	ZEND_INIT_METHOD_CALL_SPEC_UNUSED_TMP_HANDLER,
-  	ZEND_INIT_METHOD_CALL_SPEC_UNUSED_VAR_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_INIT_METHOD_CALL_SPEC_UNUSED_CV_HANDLER,
-  	ZEND_INIT_METHOD_CALL_SPEC_CV_CONST_HANDLER,
-  	ZEND_INIT_METHOD_CALL_SPEC_CV_TMP_HANDLER,
-  	ZEND_INIT_METHOD_CALL_SPEC_CV_VAR_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_INIT_METHOD_CALL_SPEC_CV_CV_HANDLER,
+  	ZEND_PRE_DEC_OBJ_SPEC_CV_CV_HANDLER,
   	ZEND_INIT_STATIC_METHOD_CALL_SPEC_CONST_HANDLER,
   	ZEND_INIT_STATIC_METHOD_CALL_SPEC_TMP_HANDLER,
   	ZEND_INIT_STATIC_METHOD_CALL_SPEC_VAR_HANDLER,
@@ -30753,406 +30207,6 @@ void zend_init_opcodes_handlers(void)
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
   	ZEND_PRE_INC_OBJ_SPEC_VAR_CONST_HANDLER,
   	ZEND_PRE_INC_OBJ_SPEC_VAR_TMP_HANDLER,
   	ZEND_PRE_INC_OBJ_SPEC_VAR_VAR_HANDLER,
@@ -31168,31 +30222,6 @@ void zend_init_opcodes_handlers(void)
   	ZEND_PRE_INC_OBJ_SPEC_CV_VAR_HANDLER,
   	ZEND_NULL_HANDLER,
   	ZEND_PRE_INC_OBJ_SPEC_CV_CV_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_PRE_DEC_OBJ_SPEC_VAR_CONST_HANDLER,
-  	ZEND_PRE_DEC_OBJ_SPEC_VAR_TMP_HANDLER,
-  	ZEND_PRE_DEC_OBJ_SPEC_VAR_VAR_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_PRE_DEC_OBJ_SPEC_VAR_CV_HANDLER,
-  	ZEND_PRE_DEC_OBJ_SPEC_UNUSED_CONST_HANDLER,
-  	ZEND_PRE_DEC_OBJ_SPEC_UNUSED_TMP_HANDLER,
-  	ZEND_PRE_DEC_OBJ_SPEC_UNUSED_VAR_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_PRE_DEC_OBJ_SPEC_UNUSED_CV_HANDLER,
-  	ZEND_PRE_DEC_OBJ_SPEC_CV_CONST_HANDLER,
-  	ZEND_PRE_DEC_OBJ_SPEC_CV_TMP_HANDLER,
-  	ZEND_PRE_DEC_OBJ_SPEC_CV_VAR_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_PRE_DEC_OBJ_SPEC_CV_CV_HANDLER,
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
   	ZEND_NULL_HANDLER,
@@ -31268,81 +30297,6 @@ void zend_init_opcodes_handlers(void)
   	ZEND_ASSIGN_OBJ_SPEC_CV_VAR_HANDLER,
   	ZEND_NULL_HANDLER,
   	ZEND_ASSIGN_OBJ_SPEC_CV_CV_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_INSTANCEOF_SPEC_TMP_HANDLER,
-  	ZEND_INSTANCEOF_SPEC_TMP_HANDLER,
-  	ZEND_INSTANCEOF_SPEC_TMP_HANDLER,
-  	ZEND_INSTANCEOF_SPEC_TMP_HANDLER,
-  	ZEND_INSTANCEOF_SPEC_TMP_HANDLER,
-  	ZEND_INSTANCEOF_SPEC_VAR_HANDLER,
-  	ZEND_INSTANCEOF_SPEC_VAR_HANDLER,
-  	ZEND_INSTANCEOF_SPEC_VAR_HANDLER,
-  	ZEND_INSTANCEOF_SPEC_VAR_HANDLER,
-  	ZEND_INSTANCEOF_SPEC_VAR_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_INSTANCEOF_SPEC_CV_HANDLER,
-  	ZEND_INSTANCEOF_SPEC_CV_HANDLER,
-  	ZEND_INSTANCEOF_SPEC_CV_HANDLER,
-  	ZEND_INSTANCEOF_SPEC_CV_HANDLER,
-  	ZEND_INSTANCEOF_SPEC_CV_HANDLER,
-  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
-  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
-  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
-  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
-  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
-  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
-  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
-  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
-  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
-  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
-  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
-  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
-  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
-  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
-  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
-  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
-  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
-  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
-  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
-  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
-  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
-  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
-  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
-  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
-  	ZEND_DECLARE_CLASS_SPEC_HANDLER,
   	ZEND_DECLARE_INHERITED_CLASS_SPEC_HANDLER,
   	ZEND_DECLARE_INHERITED_CLASS_SPEC_HANDLER,
   	ZEND_DECLARE_INHERITED_CLASS_SPEC_HANDLER,
@@ -31393,106 +30347,31 @@ void zend_init_opcodes_handlers(void)
   	ZEND_DECLARE_FUNCTION_SPEC_HANDLER,
   	ZEND_DECLARE_FUNCTION_SPEC_HANDLER,
   	ZEND_DECLARE_FUNCTION_SPEC_HANDLER,
-  	ZEND_RAISE_ABSTRACT_ERROR_SPEC_HANDLER,
-  	ZEND_RAISE_ABSTRACT_ERROR_SPEC_HANDLER,
-  	ZEND_RAISE_ABSTRACT_ERROR_SPEC_HANDLER,
-  	ZEND_RAISE_ABSTRACT_ERROR_SPEC_HANDLER,
-  	ZEND_RAISE_ABSTRACT_ERROR_SPEC_HANDLER,
-  	ZEND_RAISE_ABSTRACT_ERROR_SPEC_HANDLER,
-  	ZEND_RAISE_ABSTRACT_ERROR_SPEC_HANDLER,
-  	ZEND_RAISE_ABSTRACT_ERROR_SPEC_HANDLER,
-  	ZEND_RAISE_ABSTRACT_ERROR_SPEC_HANDLER,
-  	ZEND_RAISE_ABSTRACT_ERROR_SPEC_HANDLER,
-  	ZEND_RAISE_ABSTRACT_ERROR_SPEC_HANDLER,
-  	ZEND_RAISE_ABSTRACT_ERROR_SPEC_HANDLER,
-  	ZEND_RAISE_ABSTRACT_ERROR_SPEC_HANDLER,
-  	ZEND_RAISE_ABSTRACT_ERROR_SPEC_HANDLER,
-  	ZEND_RAISE_ABSTRACT_ERROR_SPEC_HANDLER,
-  	ZEND_RAISE_ABSTRACT_ERROR_SPEC_HANDLER,
-  	ZEND_RAISE_ABSTRACT_ERROR_SPEC_HANDLER,
-  	ZEND_RAISE_ABSTRACT_ERROR_SPEC_HANDLER,
-  	ZEND_RAISE_ABSTRACT_ERROR_SPEC_HANDLER,
-  	ZEND_RAISE_ABSTRACT_ERROR_SPEC_HANDLER,
-  	ZEND_RAISE_ABSTRACT_ERROR_SPEC_HANDLER,
-  	ZEND_RAISE_ABSTRACT_ERROR_SPEC_HANDLER,
-  	ZEND_RAISE_ABSTRACT_ERROR_SPEC_HANDLER,
-  	ZEND_RAISE_ABSTRACT_ERROR_SPEC_HANDLER,
-  	ZEND_RAISE_ABSTRACT_ERROR_SPEC_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
-  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
-  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
-  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
-  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
-  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
-  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
-  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
-  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
-  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
-  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
-  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
-  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
-  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
-  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
-  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
-  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
-  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
-  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
-  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
-  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
-  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
-  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
-  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
-  	ZEND_ADD_INTERFACE_SPEC_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
+  	ZEND_USER_OPCODE_SPEC_HANDLER,
+  	ZEND_USER_OPCODE_SPEC_HANDLER,
+  	ZEND_USER_OPCODE_SPEC_HANDLER,
+  	ZEND_USER_OPCODE_SPEC_HANDLER,
+  	ZEND_USER_OPCODE_SPEC_HANDLER,
+  	ZEND_USER_OPCODE_SPEC_HANDLER,
+  	ZEND_USER_OPCODE_SPEC_HANDLER,
+  	ZEND_USER_OPCODE_SPEC_HANDLER,
+  	ZEND_USER_OPCODE_SPEC_HANDLER,
+  	ZEND_USER_OPCODE_SPEC_HANDLER,
+  	ZEND_USER_OPCODE_SPEC_HANDLER,
+  	ZEND_USER_OPCODE_SPEC_HANDLER,
+  	ZEND_USER_OPCODE_SPEC_HANDLER,
+  	ZEND_USER_OPCODE_SPEC_HANDLER,
+  	ZEND_USER_OPCODE_SPEC_HANDLER,
+  	ZEND_USER_OPCODE_SPEC_HANDLER,
+  	ZEND_USER_OPCODE_SPEC_HANDLER,
+  	ZEND_USER_OPCODE_SPEC_HANDLER,
+  	ZEND_USER_OPCODE_SPEC_HANDLER,
+  	ZEND_USER_OPCODE_SPEC_HANDLER,
+  	ZEND_USER_OPCODE_SPEC_HANDLER,
+  	ZEND_USER_OPCODE_SPEC_HANDLER,
+  	ZEND_USER_OPCODE_SPEC_HANDLER,
+  	ZEND_USER_OPCODE_SPEC_HANDLER,
+  	ZEND_USER_OPCODE_SPEC_HANDLER,
   	ZEND_VERIFY_ABSTRACT_CLASS_SPEC_HANDLER,
   	ZEND_VERIFY_ABSTRACT_CLASS_SPEC_HANDLER,
   	ZEND_VERIFY_ABSTRACT_CLASS_SPEC_HANDLER,
@@ -31518,56 +30397,6 @@ void zend_init_opcodes_handlers(void)
   	ZEND_VERIFY_ABSTRACT_CLASS_SPEC_HANDLER,
   	ZEND_VERIFY_ABSTRACT_CLASS_SPEC_HANDLER,
   	ZEND_VERIFY_ABSTRACT_CLASS_SPEC_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_ASSIGN_DIM_SPEC_VAR_CONST_HANDLER,
-  	ZEND_ASSIGN_DIM_SPEC_VAR_TMP_HANDLER,
-  	ZEND_ASSIGN_DIM_SPEC_VAR_VAR_HANDLER,
-  	ZEND_ASSIGN_DIM_SPEC_VAR_UNUSED_HANDLER,
-  	ZEND_ASSIGN_DIM_SPEC_VAR_CV_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_ASSIGN_DIM_SPEC_CV_CONST_HANDLER,
-  	ZEND_ASSIGN_DIM_SPEC_CV_TMP_HANDLER,
-  	ZEND_ASSIGN_DIM_SPEC_CV_VAR_HANDLER,
-  	ZEND_ASSIGN_DIM_SPEC_CV_UNUSED_HANDLER,
-  	ZEND_ASSIGN_DIM_SPEC_CV_CV_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_ISSET_ISEMPTY_PROP_OBJ_SPEC_VAR_CONST_HANDLER,
-  	ZEND_ISSET_ISEMPTY_PROP_OBJ_SPEC_VAR_TMP_HANDLER,
-  	ZEND_ISSET_ISEMPTY_PROP_OBJ_SPEC_VAR_VAR_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_ISSET_ISEMPTY_PROP_OBJ_SPEC_VAR_CV_HANDLER,
-  	ZEND_ISSET_ISEMPTY_PROP_OBJ_SPEC_UNUSED_CONST_HANDLER,
-  	ZEND_ISSET_ISEMPTY_PROP_OBJ_SPEC_UNUSED_TMP_HANDLER,
-  	ZEND_ISSET_ISEMPTY_PROP_OBJ_SPEC_UNUSED_VAR_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_ISSET_ISEMPTY_PROP_OBJ_SPEC_UNUSED_CV_HANDLER,
-  	ZEND_ISSET_ISEMPTY_PROP_OBJ_SPEC_CV_CONST_HANDLER,
-  	ZEND_ISSET_ISEMPTY_PROP_OBJ_SPEC_CV_TMP_HANDLER,
-  	ZEND_ISSET_ISEMPTY_PROP_OBJ_SPEC_CV_VAR_HANDLER,
-  	ZEND_NULL_HANDLER,
-  	ZEND_ISSET_ISEMPTY_PROP_OBJ_SPEC_CV_CV_HANDLER,
 #if WANT_EXCEPTIONS
   	ZEND_HANDLE_EXCEPTION_SPEC_HANDLER,
 #else
@@ -31693,31 +30522,6 @@ void zend_init_opcodes_handlers(void)
 #else
   	ZEND_NULL_HANDLER,
 #endif
-  	ZEND_USER_OPCODE_SPEC_HANDLER,
-  	ZEND_USER_OPCODE_SPEC_HANDLER,
-  	ZEND_USER_OPCODE_SPEC_HANDLER,
-  	ZEND_USER_OPCODE_SPEC_HANDLER,
-  	ZEND_USER_OPCODE_SPEC_HANDLER,
-  	ZEND_USER_OPCODE_SPEC_HANDLER,
-  	ZEND_USER_OPCODE_SPEC_HANDLER,
-  	ZEND_USER_OPCODE_SPEC_HANDLER,
-  	ZEND_USER_OPCODE_SPEC_HANDLER,
-  	ZEND_USER_OPCODE_SPEC_HANDLER,
-  	ZEND_USER_OPCODE_SPEC_HANDLER,
-  	ZEND_USER_OPCODE_SPEC_HANDLER,
-  	ZEND_USER_OPCODE_SPEC_HANDLER,
-  	ZEND_USER_OPCODE_SPEC_HANDLER,
-  	ZEND_USER_OPCODE_SPEC_HANDLER,
-  	ZEND_USER_OPCODE_SPEC_HANDLER,
-  	ZEND_USER_OPCODE_SPEC_HANDLER,
-  	ZEND_USER_OPCODE_SPEC_HANDLER,
-  	ZEND_USER_OPCODE_SPEC_HANDLER,
-  	ZEND_USER_OPCODE_SPEC_HANDLER,
-  	ZEND_USER_OPCODE_SPEC_HANDLER,
-  	ZEND_USER_OPCODE_SPEC_HANDLER,
-  	ZEND_USER_OPCODE_SPEC_HANDLER,
-  	ZEND_USER_OPCODE_SPEC_HANDLER,
-  	ZEND_USER_OPCODE_SPEC_HANDLER,
   	ZEND_NULL_HANDLER
   };
   zend_opcode_handlers = (opcode_handler_t*)labels;
