@@ -1020,28 +1020,23 @@ ZEND_API int shift_right_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
 }
 
 
-
-/* must support result==op1 */
-ZEND_API int add_char_to_string(zval *result, zval *op1, zval *op2)
-{
-	result->value.str.len = op1->value.str.len + 1;
-	result->value.str.val = (char *) erealloc(op1->value.str.val, result->value.str.len+1);
-	result->value.str.val[result->value.str.len - 1] = (char) op2->value.lval;
-	result->value.str.val[result->value.str.len] = 0;
-	result->type = IS_STRING;
-	return SUCCESS;
-}
-
-
 /* must support result==op1 */
 ZEND_API int add_string_to_string(zval *result, zval *op1, zval *op2)
 {
-	int length = op1->value.str.len + op2->value.str.len;
+	int length;
+	if(op1->value.str.len == 1) {
+		length = ++result->value.str.len;
+		result->value.str.val = (char *) erealloc(op1->value.str.val, length+1);
+		result->value.str.val[length - 1] = (char) op2->value.str.val[0];
+	} else {
+		length = op1->value.str.len + op2->value.str.len;
+		result->value.str.val = (char *) erealloc(op1->value.str.val, length+1);
+		memcpy(result->value.str.val+op1->value.str.len, op2->value.str.val, op2->value.str.len);
+		result->value.str.len = length;
+	}
 
-	result->value.str.val = (char *) erealloc(op1->value.str.val, length+1);
-	memcpy(result->value.str.val+op1->value.str.len, op2->value.str.val, op2->value.str.len);
 	result->value.str.val[length] = 0;
-	result->value.str.len = length;
+	
 	result->type = IS_STRING;
 	return SUCCESS;
 }

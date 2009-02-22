@@ -1626,8 +1626,7 @@ ZEND_FUNCTION(debug_print_backtrace)
 		    skip->prev_execute_data &&
 		    skip->prev_execute_data->opline &&
 		    skip->prev_execute_data->opline->opcode != ZEND_DO_FCALL &&
-		    skip->prev_execute_data->opline->opcode != ZEND_DO_FCALL_BY_NAME &&
-		    skip->prev_execute_data->opline->opcode != ZEND_INCLUDE_OR_EVAL) {
+		    skip->prev_execute_data->opline->opcode != ZEND_DO_FCALL_BY_NAME) {
 		  skip = skip->prev_execute_data;
 		}
 
@@ -1673,34 +1672,10 @@ ZEND_FUNCTION(debug_print_backtrace)
 			/* i know this is kinda ugly, but i'm trying to avoid extra cycles in the main execution loop */
 			zend_bool build_filename_arg = 1;
 
-			if (!ptr->opline || ptr->opline->opcode != ZEND_INCLUDE_OR_EVAL) {
+			function_name = "unknown";
+			if (!ptr->opline) {
 				/* can happen when calling eval from a custom sapi */
-				function_name = "unknown";
 				build_filename_arg = 0;
-			} else
-			switch (Z_LVAL(ptr->opline->op2.u.constant)) {
-				case ZEND_EVAL:
-					function_name = "eval";
-					build_filename_arg = 0;
-					break;
-				case ZEND_INCLUDE:
-					function_name = "include";
-					break;
-				case ZEND_REQUIRE:
-					function_name = "require";
-					break;
-				case ZEND_INCLUDE_ONCE:
-					function_name = "include_once";
-					break;
-				case ZEND_REQUIRE_ONCE:
-					function_name = "require_once";
-					break;
-				default:
-					/* this can actually happen if you use debug_backtrace() in your error_handler and 
-					 * you're in the top-scope */
-					function_name = "unknown"; 
-					build_filename_arg = 0;
-					break;
 			}
 
 			if (build_filename_arg && include_filename) {
@@ -1818,8 +1793,7 @@ ZEND_API void zend_fetch_debug_backtrace(zval *return_value, int skip_last, int 
 		    skip->prev_execute_data &&
 		    skip->prev_execute_data->opline &&
 		    skip->prev_execute_data->opline->opcode != ZEND_DO_FCALL &&
-		    skip->prev_execute_data->opline->opcode != ZEND_DO_FCALL_BY_NAME &&
-		    skip->prev_execute_data->opline->opcode != ZEND_INCLUDE_OR_EVAL) {
+		    skip->prev_execute_data->opline->opcode != ZEND_DO_FCALL_BY_NAME) {
 			skip = skip->prev_execute_data;
 		}
 
@@ -1887,34 +1861,10 @@ ZEND_API void zend_fetch_debug_backtrace(zval *return_value, int skip_last, int 
 			/* i know this is kinda ugly, but i'm trying to avoid extra cycles in the main execution loop */
 			zend_bool build_filename_arg = 1;
 
-			if (!ptr->opline || ptr->opline->opcode != ZEND_INCLUDE_OR_EVAL) {
+			function_name = "unknown";
+			if (!ptr->opline) {
 				/* can happen when calling eval from a custom sapi */
-				function_name = "unknown";
 				build_filename_arg = 0;
-			} else
-			switch (ptr->opline->op2.u.constant.value.lval) {
-				case ZEND_EVAL:
-					function_name = "eval";
-					build_filename_arg = 0;
-					break;
-				case ZEND_INCLUDE:
-					function_name = "include";
-					break;
-				case ZEND_REQUIRE:
-					function_name = "require";
-					break;
-				case ZEND_INCLUDE_ONCE:
-					function_name = "include_once";
-					break;
-				case ZEND_REQUIRE_ONCE:
-					function_name = "require_once";
-					break;
-				default:
-					/* this can actually happen if you use debug_backtrace() in your error_handler and 
-					 * you're in the top-scope */
-					function_name = "unknown"; 
-					build_filename_arg = 0;
-					break;
 			}
 
 			if (build_filename_arg && include_filename) {

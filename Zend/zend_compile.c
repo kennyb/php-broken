@@ -511,11 +511,7 @@ void zend_do_abstract_method(znode *function_name, znode *modifiers, znode *body
 			zend_error(E_COMPILE_ERROR, "%s function %s::%s() cannot be declared private", method_type, CG(active_class_entry)->name, function_name->u.constant.value.str.val);
 		}
 		if (Z_LVAL(body->u.constant) == ZEND_ACC_ABSTRACT) {
-			zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
-
-			opline->opcode = ZEND_RAISE_ABSTRACT_ERROR;
-			SET_UNUSED(opline->op1);
-			SET_UNUSED(opline->op2);
+			zend_error(E_COMPILE_ERROR, "%s function %s::%s() cannot be called", method_type, CG(active_class_entry)->name, function_name->u.constant.value.str.val);
 		} else {
 			/* we had code in the function body */
 			zend_error(E_COMPILE_ERROR, "%s function %s::%s() cannot contain body", method_type, CG(active_class_entry)->name, function_name->u.constant.value.str.val);
@@ -985,16 +981,7 @@ void zend_do_add_string(znode *result, znode *op1, znode *op2 TSRMLS_DC)
 	if (Z_STRLEN(op2->u.constant) > 0) {
 		opline = get_next_op(CG(active_op_array) TSRMLS_CC);
 		opline->opcode = ZEND_ADD_STRING;
-	}/* else if (Z_STRLEN(op2->u.constant) == 1) {
-		int ch = *Z_STRVAL(op2->u.constant);*/
-	
-		/* Free memory and use ZEND_ADD_CHAR in case of 1 character strings */
-		/*
-		efree(Z_STRVAL(op2->u.constant));
-		ZVAL_LONG(&op2->u.constant, ch);
-		opline = get_next_op(CG(active_op_array) TSRMLS_CC);
-		opline->opcode = ZEND_ADD_CHAR;
-	}*/ else { /* String can be empty after a variable at the end of a heredoc */
+	} else { /* String can be empty after a variable at the end of a heredoc */
 		efree(Z_STRVAL(op2->u.constant));
 		return;
 	}
@@ -1265,6 +1252,7 @@ void zend_do_begin_function_declaration(znode *function_token, znode *function_n
 	}
 }
 
+#if WANT_EXCEPTIONS
 void zend_do_handle_exception(TSRMLS_D)
 {
 	zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
@@ -1273,6 +1261,7 @@ void zend_do_handle_exception(TSRMLS_D)
 	SET_UNUSED(opline->op1);
 	SET_UNUSED(opline->op2);
 }
+#endif
 
 
 void zend_do_end_function_declaration(znode *function_token TSRMLS_DC)
@@ -3585,21 +3574,8 @@ void zend_do_cast(znode *result, znode *expr, int type TSRMLS_DC)
 }
 
 
-void zend_do_include_or_eval(int type, znode *result, znode *op1 TSRMLS_DC)
+void zend_do_include(int type, znode *result, znode *op1 TSRMLS_DC)
 {
-	switch(type) {
-		case ZEND_EVAL:
-			zend_error(E_COMPILE_ERROR, "sorry, eval is no longer supported");
-			zend_bailout();
-		
-		case ZEND_REQUIRE_ONCE:
-			type = ZEND_INCLUDE_ONCE;
-			break;
-		
-		case ZEND_REQUIRE:
-			type = ZEND_INCLUDE;
-	}
-	
 	compile_inline_filename(&op1->u.constant, type TSRMLS_CC);
 }
 

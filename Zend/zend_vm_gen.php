@@ -54,7 +54,13 @@ echo "rebuilding ini scanner...\n";
 system("flex -B -8 -L -Sflex.skl -Pini_ -ozend_ini_scanner.c zend_ini_scanner.l");
 
 echo "rebuilding language scanner...\n";
-system("flex -B -i -8 -L -Sflex.skl -Pzend -ozend_language_scanner.c zend_language_scanner.l");
+system("flex -B -8 -L -Sflex.skl -Pzend -ozend_language_scanner.c zend_language_scanner.l"); //-i
+
+echo "rebuilding language parser...\n";
+system("yacc -l -p zend -d zend_language_parser.y -o zend_language_parser.c");
+
+echo "rebuilding ini parser...\n";
+system("yacc -l -p ini_ -d zend_ini_parser.y -o zend_ini_parser.c");
 //exit;
 
 define("ZEND_VM_KIND_CALL",   1);
@@ -1233,6 +1239,12 @@ function gen_vm($def, $skel) {
 
 	// Insert header
 	out($f, $GLOBALS['header_text']);
+
+	for($i = 0; $i < $max_opcode; $i++) {
+		if(empty($opcodes[$i])) {
+			echo "op #$i ($max_opcode) is available\n";
+		}
+	}
 
 	foreach ($opcodes as $code => $dsc) {
 		$code = str_pad((string)$code,$code_len," ",STR_PAD_LEFT);

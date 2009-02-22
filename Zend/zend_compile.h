@@ -416,14 +416,15 @@ void zend_do_fetch_class_name(znode *result, znode *class_entry, znode *class_na
 void zend_do_begin_class_member_function_call(znode *class_name, znode *method_name TSRMLS_DC);
 void zend_do_end_function_call(znode *function_name, znode *result, znode *argument_list, int is_method, int is_dynamic_fcall TSRMLS_DC);
 void zend_do_return(znode *expr, int do_end_vparse TSRMLS_DC);
-void zend_do_handle_exception(TSRMLS_D);
 
 #if WANT_EXCEPTIONS
+void zend_do_handle_exception(TSRMLS_D);
 void zend_do_try(znode *try_token TSRMLS_DC);
 void zend_do_begin_catch(znode *try_token, znode *catch_class, znode *catch_var, zend_bool first_catch TSRMLS_DC);
 void zend_do_end_catch(znode *try_token TSRMLS_DC);
 void zend_do_throw(znode *expr TSRMLS_DC);
 #else
+# define zend_do_handle_exception(a)
 # define zend_do_try(a)
 # define zend_do_begin_catch(a,b,c,d)
 # define zend_do_end_catch(a)
@@ -487,7 +488,7 @@ void zend_do_new_list_begin(TSRMLS_D);
 void zend_do_new_list_end(TSRMLS_D);
 
 void zend_do_cast(znode *result, znode *expr, int type TSRMLS_DC);
-void zend_do_include_or_eval(int type, znode *result, znode *op1 TSRMLS_DC);
+void zend_do_include(int type, znode *result, znode *op1 TSRMLS_DC);
 
 void zend_do_unset(znode *variable TSRMLS_DC);
 void zend_do_isset_or_isempty(int type, znode *result, znode *variable TSRMLS_DC);
