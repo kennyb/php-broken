@@ -19,7 +19,6 @@
 /* $Id: filestat.c,v 1.136.2.8.2.16 2007/12/31 07:20:12 sebastian Exp $ */
 
 #include "php.h"
-#include "safe_mode.h"
 #include "fopen_wrappers.h"
 #include "php_globals.h"
 
@@ -240,10 +239,6 @@ PHP_FUNCTION(disk_total_space)
 		return;
 	}
 
-	if (php_check_open_basedir(path TSRMLS_CC)) {
-		RETURN_FALSE;
-	}
-
 	if (php_disk_total_space(path, &bytestotal TSRMLS_CC) == SUCCESS) {
 		RETURN_DOUBLE(bytestotal);
 	}
@@ -375,10 +370,6 @@ PHP_FUNCTION(disk_free_space)
 		return;
 	}
 
-	if (php_check_open_basedir(path TSRMLS_CC)) {
-		RETURN_FALSE;
-	}
-
 	if (php_disk_free_space(path, &bytesfree TSRMLS_CC) == SUCCESS) {
 		RETURN_DOUBLE(bytesfree);
 	}
@@ -428,15 +419,6 @@ static void php_do_chgrp(INTERNAL_FUNCTION_PARAMETERS, int do_lchgrp) /* {{{ */
 	} else {
 		convert_to_long_ex(group);
 		gid = Z_LVAL_PP(group);
-	}
-
-	if (SAFE_MODE &&(!php_checkuid(Z_STRVAL_PP(filename), NULL, CHECKUID_ALLOW_FILE_NOT_EXISTS))) {
-		RETURN_FALSE;
-	}
-
-	/* Check the basedir */
-	if (php_check_open_basedir(Z_STRVAL_PP(filename) TSRMLS_CC)) {
-		RETURN_FALSE;
 	}
 
 	if (do_lchgrp) {
@@ -527,15 +509,6 @@ static void php_do_chown(INTERNAL_FUNCTION_PARAMETERS, int do_lchown) /* {{{ */
 		uid = Z_LVAL_PP(user);
 	}
 
-	if (SAFE_MODE &&(!php_checkuid(Z_STRVAL_PP(filename), NULL, CHECKUID_ALLOW_FILE_NOT_EXISTS))) {
-		RETURN_FALSE;
-	}
-
-	/* Check the basedir */
-	if (php_check_open_basedir(Z_STRVAL_PP(filename) TSRMLS_CC)) {
-		RETURN_FALSE;
-	}
-
 	if (do_lchown) {
 #if HAVE_LCHOWN
 		ret = VCWD_LCHOWN(Z_STRVAL_PP(filename), uid, -1);
@@ -595,37 +568,11 @@ PHP_FUNCTION(chmod)
 	convert_to_string_ex(filename);
 	convert_to_long_ex(mode);
 
-	if (SAFE_MODE &&(!php_checkuid(Z_STRVAL_PP(filename), NULL, CHECKUID_ALLOW_FILE_NOT_EXISTS))) {
-		RETURN_FALSE;
-	}
-
-	/* Check the basedir */
-	if (php_check_open_basedir(Z_STRVAL_PP(filename) TSRMLS_CC)) {
-		RETURN_FALSE;
-	}
-
 	imode = (mode_t) Z_LVAL_PP(mode);
 	/* in safe mode, do not allow to setuid files.
 	   Setuiding files could allow users to gain privileges
 	   that safe mode doesn't give them.
 	*/
-
-	if(SAFE_MODE) {
-		php_stream_statbuf ssb;
-		if (php_stream_stat_path_ex(Z_STRVAL_PP(filename), 0, &ssb, NULL)) {
-			php_error_docref(NULL TSRMLS_CC, E_WARNING, "stat failed for %s", Z_STRVAL_PP(filename));
-			RETURN_FALSE;
-		}
-		if ((imode & 04000) != 0 && (ssb.sb.st_mode & 04000) == 0) {
-			imode ^= 04000;
-		}
-		if ((imode & 02000) != 0 && (ssb.sb.st_mode & 02000) == 0) {
-			imode ^= 02000;
-		}
-		if ((imode & 01000) != 0 && (ssb.sb.st_mode & 01000) == 0) {
-			imode ^= 01000;
-		}
-	}
 
 	ret = VCWD_CHMOD(Z_STRVAL_PP(filename), imode);
 	if (ret == -1) {
@@ -668,15 +615,6 @@ PHP_FUNCTION(touch)
 		WRONG_PARAM_COUNT;
 	}
 	convert_to_string_ex(filename);
-
-	if (SAFE_MODE &&(!php_checkuid(Z_STRVAL_PP(filename), NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
-		RETURN_FALSE;
-	}
-
-	/* Check the basedir */
-	if (php_check_open_basedir(Z_STRVAL_PP(filename) TSRMLS_CC)) {
-		RETURN_FALSE;
-	}
 
 	/* create the file if it doesn't exist already */
 	if (VCWD_ACCESS(Z_STRVAL_PP(filename), F_OK) != 0) {
@@ -743,29 +681,12 @@ PHPAPI void php_stat(const char *filename, php_stat_len filename_length, int typ
 			      "size", "atime", "mtime", "ctime", "blksize", "blocks"};
 	char *local;
 	php_stream_wrapper *wrapper;
-	char safe_mode_buf[MAXPATHLEN];
-
+	
 	if (!filename_length) {
 		RETURN_FALSE;
 	}
 
-	if ((wrapper = php_stream_locate_url_wrapper(filename, &local, 0 TSRMLS_CC)) == &php_plain_files_wrapper) {
-		if (php_check_open_basedir(local TSRMLS_CC)) {
-			RETURN_FALSE;
-		} else if (SAFE_MODE) {
-			if (type == FS_IS_X) {
-				if (strstr(local, "..")) {
-					RETURN_FALSE;
-				} else {
-					char *b = strrchr(local, PHP_DIR_SEPARATOR);
-					snprintf(safe_mode_buf, MAXPATHLEN, "%s%s%s", SAFE_MODE_EXEC_DIR, (b ? "" : "/"), (b ? b : local));
-					local = (char *)&safe_mode_buf;
-				}
-			} else if (!php_checkuid_ex(local, NULL, CHECKUID_ALLOW_FILE_NOT_EXISTS, CHECKUID_NO_ERRORS)) {
-				RETURN_FALSE;
-			}
-		}
-	}
+	wrapper = php_stream_locate_url_wrapper(filename, &local, 0 TSRMLS_CC);
 
 	if (IS_ACCESS_CHECK(type)) {
 		if (wrapper == &php_plain_files_wrapper) {

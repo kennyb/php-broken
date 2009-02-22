@@ -1862,9 +1862,7 @@ consult the installation file that came with this distribution, or visit \n\
 		*/
 		retval = FAILURE;
 		if (cgi || SG(request_info).path_translated) {
-			if (!php_check_open_basedir(SG(request_info).path_translated TSRMLS_CC)) {
-				retval = php_fopen_primary_script(&file_handle TSRMLS_CC);
-			}
+			retval = php_fopen_primary_script(&file_handle TSRMLS_CC);
 		}
 		/* 
 			if we are unable to open path_translated and we are not

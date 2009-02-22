@@ -699,10 +699,6 @@ int php_oci_lob_import (php_oci_descriptor *descriptor, char *filename TSRMLS_DC
 	char buf[8192];
 	ub4 offset = 1;
 	
-	if ((SAFE_MODE && (!php_checkuid(filename, NULL, CHECKUID_CHECK_FILE_AND_DIR))) || php_check_open_basedir(filename TSRMLS_CC)) {
-		return 1;
-	}
-	
 	if ((fp = VCWD_OPEN(filename, O_RDONLY|O_BINARY)) == -1) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Can't open file %s", filename);
 		return 1;

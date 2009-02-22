@@ -262,10 +262,6 @@ int php_init_config(TSRMLS_D)
 {
 	char *php_ini_file_name = NULL;
 	char *php_ini_search_path = NULL;
-#if PHP_SAFE_MODE
-	int safe_mode_state;
-#endif
-	char *open_basedir;
 	int free_ini_search_path = 0;
 	zend_file_handle fh;
 	struct stat sb;
@@ -286,11 +282,6 @@ int php_init_config(TSRMLS_D)
 	zend_llist_init(&extension_lists.engine, sizeof(char *), (llist_dtor_func_t) free_estring, 1);
 	zend_llist_init(&extension_lists.functions, sizeof(zval), (llist_dtor_func_t) ZVAL_DESTRUCTOR, 1);
 	zend_llist_init(&scanned_ini_list, sizeof(char *), (llist_dtor_func_t) free_estring, 1);
-
-#if PHP_SAFE_MODE
-	safe_mode_state = PG(safe_mode);
-#endif
-	open_basedir = PG(open_basedir);
 
 	if (sapi_module.php_ini_path_override) {
 		php_ini_file_name = sapi_module.php_ini_path_override;
@@ -451,11 +442,6 @@ int php_init_config(TSRMLS_D)
 #endif
 	}
 
-#if PHP_SAFE_MODE
-	PG(safe_mode) = 0;
-#endif
-	PG(open_basedir) = NULL;
-
 	memset(&fh, 0, sizeof(fh));
 	/* Check if php_ini_path_override is a file */
 	if (!sapi_module.php_ini_ignore) {
@@ -494,11 +480,6 @@ int php_init_config(TSRMLS_D)
 	if (free_ini_search_path) {
 		efree(php_ini_search_path);
 	}
-
-#if PHP_SAFE_MODE
-	PG(safe_mode) = safe_mode_state;
-#endif
-	PG(open_basedir) = open_basedir;
 
 	if (fh.handle.fp) {
 		fh.type = ZEND_HANDLE_FP;

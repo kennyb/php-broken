@@ -1020,19 +1020,6 @@ PHP_FUNCTION(odbc_execute)
 				filename[strlen(filename)] = '\0';
 
 				/* Check for safe mode. */
-				if (SAFE_MODE && (!php_checkuid(filename, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
-					efree(filename);
-					efree(params);
-					RETURN_FALSE;
-				}
-
-				/* Check the basedir */
-				if (php_check_open_basedir(filename TSRMLS_CC)) {
-					efree(filename);
-					efree(params);
-					RETURN_FALSE;
-				}
-
 				if ((params[i-1].fp = open(filename,O_RDONLY)) == -1) {
 					php_error_docref(NULL TSRMLS_CC, E_WARNING,"Can't open file %s", filename);
 					SQLFreeStmt(result->stmt, SQL_RESET_PARAMS);

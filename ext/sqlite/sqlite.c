@@ -732,45 +732,6 @@ static void php_sqlite_agg_fini_function_callback(sqlite_func *func)
 }
 /* }}} */
 
-/* {{{ Authorization Callback */
-static int php_sqlite_authorizer(void *autharg, int access_type, const char *arg3, const char *arg4,
-		const char *arg5, const char *arg6)
-{
-	switch (access_type) {
-		case SQLITE_COPY:
-			if (strncmp(arg4, ":memory:", sizeof(":memory:") - 1)) {
-				TSRMLS_FETCH();
-				if (SAFE_MODE && (!php_checkuid(arg4, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
-					return SQLITE_DENY;
-				}
-
-				if (php_check_open_basedir(arg4 TSRMLS_CC)) {
-					return SQLITE_DENY;
-				}
-			}
-			return SQLITE_OK;
-#ifdef SQLITE_ATTACH
-		case SQLITE_ATTACH:
-			if (strncmp(arg3, ":memory:", sizeof(":memory:") - 1)) {
-				TSRMLS_FETCH();
-				if (SAFE_MODE && (!php_checkuid(arg3, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
-					return SQLITE_DENY;
-				}
-
-				if (php_check_open_basedir(arg3 TSRMLS_CC)) {
-					return SQLITE_DENY;
-				}
-			}
-			return SQLITE_OK;
-#endif
-
-		default:
-			/* access allowed */
-			return SQLITE_OK;
-	}
-}
-/* }}} */
-
 /* {{{ OO init/structure stuff */
 #define REGISTER_SQLITE_CLASS(name, c_name, parent) \
 	{ \
@@ -1186,10 +1147,6 @@ static struct php_sqlite_db *php_sqlite_open(char *filename, int mode, char *per
 	/* authorizer hook so we can enforce safe mode
 	 * Note: the declaration of php_sqlite_authorizer is correct for 2.8.2 of libsqlite,
 	 * and IS backwards binary compatible with earlier versions */
-	if (SAFE_MODE || (PG(open_basedir) && *PG(open_basedir))) {
-		sqlite_set_authorizer(sdb, php_sqlite_authorizer, NULL);
-	}
-
 	db->rsrc_id = ZEND_REGISTER_RESOURCE(object ? NULL : return_value, db, persistent_id ? le_sqlite_pdb : le_sqlite_db);
 	if (object) {
 		/* if object is not an object then we're called from the factory() function */
@@ -1239,12 +1196,6 @@ PHP_FUNCTION(sqlite_popen)
 	if (strncmp(filename, ":memory:", sizeof(":memory:") - 1)) {
 		/* resolve the fully-qualified path name to use as the hash key */
 		if (!(fullpath = expand_filepath(filename, NULL TSRMLS_CC))) {
-			RETURN_FALSE;
-		}
-
-		if ((SAFE_MODE && (!php_checkuid(fullpath, NULL, CHECKUID_CHECK_FILE_AND_DIR))) || 
-				php_check_open_basedir(fullpath TSRMLS_CC)) {
-			efree(fullpath);
 			RETURN_FALSE;
 		}
 	} else {
@@ -1322,17 +1273,6 @@ PHP_FUNCTION(sqlite_open)
 				RETURN_FALSE;
 			}
 		}
-
-		if ((SAFE_MODE && (!php_checkuid(fullpath, NULL, CHECKUID_CHECK_FILE_AND_DIR))) ||
-				php_check_open_basedir(fullpath TSRMLS_CC)) {
-			php_std_error_handling();
-			efree(fullpath);
-			if (object) {
-				RETURN_NULL();
-			} else {
-				RETURN_FALSE;
-			}
-		}
 	}
 
 	php_sqlite_open(fullpath ? fullpath : filename, (int)mode, NULL, return_value, errmsg, object TSRMLS_CC);
@@ -1367,13 +1307,6 @@ PHP_FUNCTION(sqlite_factory)
 	if (strncmp(filename, ":memory:", sizeof(":memory:") - 1)) {
 		/* resolve the fully-qualified path name to use as the hash key */
 		if (!(fullpath = expand_filepath(filename, NULL TSRMLS_CC))) {
-			php_std_error_handling();
-			RETURN_NULL();
-		}
-
-		if ((SAFE_MODE && (!php_checkuid(fullpath, NULL, CHECKUID_CHECK_FILE_AND_DIR))) ||
-				php_check_open_basedir(fullpath TSRMLS_CC)) {
-			efree(fullpath);
 			php_std_error_handling();
 			RETURN_NULL();
 		}

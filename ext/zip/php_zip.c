@@ -175,7 +175,7 @@ static int php_zip_extract_file(struct zip * za, char *dest, char *file, int fil
 		return 0;
 	}
 
-	stream = php_stream_open_wrapper(fullpath, "w+b", REPORT_ERRORS|ENFORCE_SAFE_MODE, NULL);
+	stream = php_stream_open_wrapper(fullpath, "w+b", REPORT_ERRORS, NULL);
 	n = 0;
 	if (stream) {
 		while ((n=zip_fread(zf, b, sizeof(b))) > 0) php_stream_write(stream, b, n);

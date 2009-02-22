@@ -674,10 +674,6 @@ PHP_FUNCTION(posix_mkfifo)
 		RETURN_FALSE;
 	}
 
-	if (SAFE_MODE && (!php_checkuid(path, NULL, CHECKUID_ALLOW_ONLY_DIR))) {
-		RETURN_FALSE;
-	}
-
 	result = mkfifo(path, mode);
 	if (result < 0) {
 		POSIX_G(last_error) = errno;
@@ -705,11 +701,6 @@ PHP_FUNCTION(posix_mknod)
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sl|ll", &path, &path_len,
 			&mode, &major, &minor) == FAILURE) {
-		RETURN_FALSE;
-	}
-
-	if (php_check_open_basedir_ex(path, 0 TSRMLS_CC) ||
-			(SAFE_MDOE && (!php_checkuid(path, NULL, CHECKUID_ALLOW_ONLY_DIR)))) {
 		RETURN_FALSE;
 	}
 
@@ -789,13 +780,6 @@ PHP_FUNCTION(posix_access)
 	path = expand_filepath(filename, NULL TSRMLS_CC);
 	if (!path) {
 		POSIX_G(last_error) = EIO;
-		RETURN_FALSE;
-	}
-
-	if (php_check_open_basedir_ex(path, 0 TSRMLS_CC) ||
-			(SAFE_MODE && (!php_checkuid_ex(filename, NULL, CHECKUID_CHECK_FILE_AND_DIR, CHECKUID_NO_ERRORS)))) {
-		efree(path);
-		POSIX_G(last_error) = EPERM;
 		RETURN_FALSE;
 	}
 

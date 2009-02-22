@@ -646,15 +646,6 @@ static char *make_filename_safe(const char *filename TSRMLS_DC)
 			return NULL;
 		}
 
-		if (SAFE_MODE && (!php_checkuid(fullpath, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
-			efree(fullpath);
-			return NULL;
-		}
-
-		if (php_check_open_basedir(fullpath TSRMLS_CC)) {
-			efree(fullpath);
-			return NULL;
-		}
 		return fullpath;
 	}
 	return estrdup(filename);
@@ -708,7 +699,7 @@ static int pdo_sqlite_handle_factory(pdo_dbh_t *dbh, zval *driver_options TSRMLS
 
 	if (!filename) {
 		zend_throw_exception_ex(php_pdo_get_exception(), 0 TSRMLS_CC,
-			"safe_mode/open_basedir prohibits opening %s",
+			"something prohibits opening %s",
 			dbh->data_source);
 		goto cleanup;
 	}
@@ -719,10 +710,6 @@ static int pdo_sqlite_handle_factory(pdo_dbh_t *dbh, zval *driver_options TSRMLS
 	if (i != SQLITE_OK) {
 		pdo_sqlite_error(dbh);
 		goto cleanup;
-	}
-
-	if (SAFE_MODE || (PG(open_basedir) && *PG(open_basedir))) {
-		sqlite3_set_authorizer(H->db, authorizer, NULL);
 	}
 
 	if (driver_options) {

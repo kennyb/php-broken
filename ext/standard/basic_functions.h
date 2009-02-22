@@ -69,6 +69,7 @@ PHP_FUNCTION(putenv);
 
 PHP_FUNCTION(getopt);
 
+PHPAPI char *php_get_current_user(void);
 PHP_FUNCTION(get_current_user);
 
 PHP_FUNCTION(get_cfg_var);
@@ -234,11 +235,6 @@ typedef struct {
 	int key_len;
 } putenv_entry;
 #endif
-
-/* Values are comma-delimited
- */
-#define SAFE_MODE_PROTECTED_ENV_VARS	"LD_LIBRARY_PATH"
-#define SAFE_MODE_ALLOWED_ENV_VARS		"PHP_"
 
 PHPAPI double php_get_nan(void);
 PHPAPI double php_get_inf(void);

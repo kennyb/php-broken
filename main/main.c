@@ -127,78 +127,6 @@ static PHP_INI_MH(OnChangeMemoryLimit)
 /* }}} */
 
 
-/* {{{ php_disable_functions
- */
-static void php_disable_functions(TSRMLS_D)
-{
-	char *s = NULL, *e;
-
-	if (!*(INI_STR("disable_functions"))) {
-		return;
-	}
-
-	e = PG(disable_functions) = strdup(INI_STR("disable_functions"));
-
-	while (*e) {
-		switch (*e) {
-			case ' ':
-			case ',':
-				if (s) {
-					*e = '\0';
-					zend_disable_function(s, e-s TSRMLS_CC);
-					s = NULL;
-				}
-				break;
-			default:
-				if (!s) {
-					s = e;
-				}
-				break;
-		}
-		e++;
-	}
-	if (s) {
-		zend_disable_function(s, e-s TSRMLS_CC);
-	}
-}
-/* }}} */
-
-/* {{{ php_disable_classes
- */
-static void php_disable_classes(TSRMLS_D)
-{
-	char *s = NULL, *e;
-
-	if (!*(INI_STR("disable_classes"))) {
-		return;
-	}
-
-	e = PG(disable_classes) = strdup(INI_STR("disable_classes"));
-
-	while (*e) {
-		switch (*e) {
-			case ' ':
-			case ',':
-				if (s) {
-					*e = '\0';
-					zend_disable_class(s, e-s TSRMLS_CC);
-					s = NULL;
-				}
-				break;
-			default:
-				if (!s) {
-					s = e;
-				}
-				break;
-		}
-		e++;
-	}
-	if (s) {
-		zend_disable_class(s, e-s TSRMLS_CC);
-	}
-}
-/* }}} */
-
 /* {{{ php_get_display_errors_mode() helper function
  */
 static int php_get_display_errors_mode(char *value, int value_length)
@@ -292,18 +220,6 @@ static PHP_INI_DISP(display_errors_mode)
  */
 static PHP_INI_MH(OnUpdateErrorLog)
 {
-	/* Only do the safemode/open_basedir check at runtime */
-	if ((stage == PHP_INI_STAGE_RUNTIME || stage == PHP_INI_STAGE_HTACCESS) &&
-		strcmp(new_value, "syslog")) {
-		if (SAFE_MODE && (!php_checkuid(new_value, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
-			return FAILURE;
-		}
-
-		if (PG(open_basedir) && php_check_open_basedir(new_value TSRMLS_CC)) {
-			return FAILURE;
-		}
-
-	}
 	OnUpdateString(entry, new_value, new_value_length, mh_arg1, mh_arg2, mh_arg3, stage TSRMLS_CC);
 	return SUCCESS;
 }
@@ -322,20 +238,13 @@ static PHP_INI_MH(OnChangeMailForceExtra)
 /* }}} */
 
 
-/* Need to convert to strings and make use of:
- * PHP_SAFE_MODE
- *
- * Need to be read from the environment (?):
+/* Need to be read from the environment (?):
  * PHP_AUTO_PREPEND_FILE
  * PHP_AUTO_APPEND_FILE
  * PHP_DOCUMENT_ROOT
  * PHP_USER_DIR
  * PHP_INCLUDE_PATH
  */
-
-#ifndef PHP_SAFE_MODE_EXEC_DIR
-#	define PHP_SAFE_MODE_EXEC_DIR ""
-#endif
 
 /* Windows and Netware use the internal mail */
 #if defined(PHP_WIN32) || defined(NETWARE)
@@ -375,13 +284,6 @@ PHP_INI_BEGIN()
 	STD_PHP_INI_ENTRY("output_handler",			NULL,		PHP_INI_PERDIR|PHP_INI_SYSTEM,	OnUpdateString,	output_handler,		php_core_globals,	core_globals)
 	STD_PHP_INI_BOOLEAN("register_argc_argv",	"1",		PHP_INI_PERDIR|PHP_INI_SYSTEM,	OnUpdateBool,	register_argc_argv,		php_core_globals,	core_globals)
 	STD_PHP_INI_BOOLEAN("auto_globals_jit",		"1",		PHP_INI_PERDIR|PHP_INI_SYSTEM,	OnUpdateBool,	auto_globals_jit,	php_core_globals,	core_globals)
-#if PHP_SAFE_MODE
-	STD_PHP_INI_BOOLEAN("safe_mode",			"1",		PHP_INI_SYSTEM,		OnUpdateBool,			safe_mode,				php_core_globals,	core_globals)
-	STD_PHP_INI_ENTRY("safe_mode_include_dir",	NULL,		PHP_INI_SYSTEM,		OnUpdateString,			safe_mode_include_dir,	php_core_globals,	core_globals)
-	STD_PHP_INI_BOOLEAN("safe_mode_gid",		"0",		PHP_INI_SYSTEM,		OnUpdateBool,			safe_mode_gid,			php_core_globals,	core_globals)
-	STD_PHP_INI_BOOLEAN("sql.safe_mode",		"0",		PHP_INI_SYSTEM,		OnUpdateBool,			sql_safe_mode,			php_core_globals,	core_globals)
-	STD_PHP_INI_ENTRY("safe_mode_exec_dir",		PHP_SAFE_MODE_EXEC_DIR,	PHP_INI_SYSTEM,		OnUpdateString,			safe_mode_exec_dir,		php_core_globals,	core_globals)
-#endif
 	STD_PHP_INI_BOOLEAN("track_errors",			"0",		PHP_INI_ALL,		OnUpdateBool,			track_errors,			php_core_globals,	core_globals)
 	
 	STD_PHP_INI_ENTRY("unserialize_callback_func",	NULL,	PHP_INI_ALL,		OnUpdateString,			unserialize_callback_func,	php_core_globals,	core_globals)
@@ -397,8 +299,7 @@ PHP_INI_BEGIN()
 	STD_PHP_INI_ENTRY("error_log",				NULL,		PHP_INI_ALL,		OnUpdateErrorLog,			error_log,				php_core_globals,	core_globals)
 	STD_PHP_INI_ENTRY("extension_dir",			PHP_EXTENSION_DIR,		PHP_INI_SYSTEM,		OnUpdateStringUnempty,	extension_dir,			php_core_globals,	core_globals)
 	STD_PHP_INI_ENTRY("include_path",			PHP_INCLUDE_PATH,		PHP_INI_ALL,		OnUpdateStringUnempty,	include_path,			php_core_globals,	core_globals)
-	STD_PHP_INI_ENTRY("open_basedir",			NULL,		PHP_INI_SYSTEM,		OnUpdateString,			open_basedir,			php_core_globals,	core_globals)
-
+	
 	STD_PHP_INI_BOOLEAN("file_uploads",			"1",		PHP_INI_SYSTEM,		OnUpdateBool,			file_uploads,			php_core_globals,	core_globals)
 	STD_PHP_INI_ENTRY("upload_max_filesize",	"2M",		PHP_INI_SYSTEM|PHP_INI_PERDIR,		OnUpdateLong,			upload_max_filesize,	php_core_globals,	core_globals)
 	STD_PHP_INI_ENTRY("post_max_size",			"8M",		PHP_INI_SYSTEM|PHP_INI_PERDIR,		OnUpdateLong,			post_max_size,			sapi_globals_struct,sapi_globals)
@@ -419,9 +320,7 @@ PHP_INI_BEGIN()
 	PHP_INI_ENTRY("sendmail_from",				NULL,		PHP_INI_ALL,		NULL)
 	PHP_INI_ENTRY("sendmail_path",	DEFAULT_SENDMAIL_PATH,	PHP_INI_SYSTEM,		NULL)
 	PHP_INI_ENTRY("mail.force_extra_parameters",NULL,		PHP_INI_SYSTEM|PHP_INI_PERDIR,		OnChangeMailForceExtra)
-	PHP_INI_ENTRY("disable_functions",			"",			PHP_INI_SYSTEM,		NULL)
-	PHP_INI_ENTRY("disable_classes",			"",			PHP_INI_SYSTEM,		NULL)
-
+	
 	STD_PHP_INI_BOOLEAN("allow_url_fopen",		"1",		PHP_INI_SYSTEM,		OnUpdateBool,		allow_url_fopen,		php_core_globals,	core_globals)
 	STD_PHP_INI_BOOLEAN("allow_url_include",	"0",		PHP_INI_SYSTEM,		OnUpdateBool,		allow_url_include,		php_core_globals,	core_globals)
 	STD_PHP_INI_BOOLEAN("always_populate_raw_post_data",	"0",	PHP_INI_SYSTEM|PHP_INI_PERDIR,	OnUpdateBool,	always_populate_raw_post_data,	php_core_globals,	core_globals)
@@ -968,7 +867,7 @@ static FILE *php_fopen_wrapper_for_zend(const char *filename, char **opened_path
 {
 	TSRMLS_FETCH();
 
-	return php_stream_open_wrapper_as_file((char *)filename, "rb", ENFORCE_SAFE_MODE|USE_PATH|IGNORE_URL_WIN|REPORT_ERRORS|STREAM_OPEN_FOR_INCLUDE, opened_path);
+	return php_stream_open_wrapper_as_file((char *)filename, "rb", USE_PATH|IGNORE_URL_WIN|REPORT_ERRORS|STREAM_OPEN_FOR_INCLUDE, opened_path);
 }
 /* }}} */
 
@@ -986,7 +885,7 @@ static long stream_fteller_for_zend(void *handle TSRMLS_DC) /* {{{ */
 
 static int php_stream_open_for_zend(const char *filename, zend_file_handle *handle TSRMLS_DC) /* {{{ */
 {
-	return php_stream_open_for_zend_ex(filename, handle, ENFORCE_SAFE_MODE|USE_PATH|REPORT_ERRORS|STREAM_OPEN_FOR_INCLUDE TSRMLS_CC);
+	return php_stream_open_for_zend_ex(filename, handle, USE_PATH|REPORT_ERRORS|STREAM_OPEN_FOR_INCLUDE TSRMLS_CC);
 }
 /* }}} */
 
@@ -1185,11 +1084,6 @@ int php_request_startup(TSRMLS_D)
 
 		zend_activate(TSRMLS_C);
 		sapi_activate(TSRMLS_C);
-
-		/* Disable realpath cache if safe_mode or open_basedir are set */
-		if (SAFE_MODE || (PG(open_basedir) && *PG(open_basedir))) {
-			CWDG(realpath_cache_size_limit) = 0;
-		}
 
 		if (PG(output_handler) && PG(output_handler)[0]) {
 			php_start_ob_buffer_named(PG(output_handler), 0, 1 TSRMLS_CC);
@@ -1458,12 +1352,6 @@ static void core_globals_dtor(php_core_globals *core_globals TSRMLS_DC)
 	if (core_globals->last_error_file) {
 		free(core_globals->last_error_file);
 	}
-	if (core_globals->disable_functions) {
-		free(core_globals->disable_functions);
-	}
-	if (core_globals->disable_classes) {
-		free(core_globals->disable_classes);
-	}
 }
 /* }}} */
 
@@ -1609,9 +1497,7 @@ int php_module_startup(sapi_module_struct *sf, zend_module_entry *additional_mod
 	PG(last_error_file) = NULL;
 	PG(last_error_lineno) = 0;
 	PG(error_handling) = EH_NORMAL;
-	PG(disable_functions) = NULL;
-	PG(disable_classes) = NULL;
-
+	
 #if HAVE_SETLOCALE
 	setlocale(LC_CTYPE, "");
 	zend_update_current_locale();
@@ -1643,11 +1529,6 @@ int php_module_startup(sapi_module_struct *sf, zend_module_entry *additional_mod
 
 	/* Register Zend ini entries */
 	zend_register_standard_ini_entries(TSRMLS_C);
-
-	/* Disable realpath cache if safe_mode or open_basedir are set */
-	if (SAFE_MODE || (PG(open_basedir) && *PG(open_basedir))) {
-		CWDG(realpath_cache_size_limit) = 0;
-	}
 
 	/* initialize stream wrappers registry
 	 * (this uses configuration parameters from php.ini)
@@ -1721,10 +1602,6 @@ int php_module_startup(sapi_module_struct *sf, zend_module_entry *additional_mod
 	 */
 	php_ini_register_extensions(TSRMLS_C);
 	zend_startup_modules(TSRMLS_C);
-
-	/* disable certain classes and functions as requested by php.ini */
-	php_disable_functions(TSRMLS_C);
-	php_disable_classes(TSRMLS_C);
 
 	/* start Zend extensions */
 	zend_startup_extensions();

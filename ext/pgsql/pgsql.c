@@ -2468,7 +2468,7 @@ PHP_FUNCTION(pg_trace)
 	ZEND_FETCH_RESOURCE2(pgsql, PGconn *, pgsql_link, id, "PostgreSQL link", le_link, le_plink);
 	convert_to_string_ex(z_filename);
 
-	stream = php_stream_open_wrapper(Z_STRVAL_PP(z_filename), mode, ENFORCE_SAFE_MODE|REPORT_ERRORS, NULL);
+	stream = php_stream_open_wrapper(Z_STRVAL_PP(z_filename), mode, REPORT_ERRORS, NULL);
 
 	if (!stream) {
 		RETURN_FALSE;
@@ -2922,14 +2922,6 @@ PHP_FUNCTION(pg_lo_import)
 		WRONG_PARAM_COUNT;
 	}
 
-	if (SAFE_MODE &&(!php_checkuid(file_in, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
-		RETURN_FALSE;
-	}
-	
-	if (php_check_open_basedir(file_in TSRMLS_CC)) {
-		RETURN_FALSE;
-	}
-
 	if (pgsql_link == NULL && id == -1) {
 		RETURN_FALSE;
 	}	
@@ -3017,14 +3009,6 @@ PHP_FUNCTION(pg_lo_export)
 	}
 	else {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Requires 2 or 3 arguments");
-		RETURN_FALSE;
-	}
-
-	if (SAFE_MODE &&(!php_checkuid(file_out, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
-		RETURN_FALSE;
-	}
-	
-	if (php_check_open_basedir(file_out TSRMLS_CC)) {
 		RETURN_FALSE;
 	}
 

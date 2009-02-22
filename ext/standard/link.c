@@ -47,7 +47,6 @@
 #include <errno.h>
 #include <ctype.h>
 
-#include "safe_mode.h"
 #include "php_link.h"
 
 /* {{{ proto string readlink(string filename)
@@ -62,14 +61,6 @@ PHP_FUNCTION(readlink)
 		WRONG_PARAM_COUNT;
 	}
 	convert_to_string_ex(filename);
-
-	if (SAFE_MODE && !php_checkuid(Z_STRVAL_PP(filename), NULL, CHECKUID_CHECK_FILE_AND_DIR)) {
-		RETURN_FALSE;
-	}
-
-	if (php_check_open_basedir(Z_STRVAL_PP(filename) TSRMLS_CC)) {
-		RETURN_FALSE;
-	}
 
 	ret = readlink(Z_STRVAL_PP(filename), buff, MAXPATHLEN-1);
 
@@ -134,22 +125,6 @@ PHP_FUNCTION(symlink)
 		RETURN_FALSE;
 	}
 
-	if (SAFE_MODE && !php_checkuid(dest_p, NULL, CHECKUID_CHECK_FILE_AND_DIR)) {
-		RETURN_FALSE;
-	}
-
-	if (SAFE_MODE && !php_checkuid(source_p, NULL, CHECKUID_CHECK_FILE_AND_DIR)) {
-		RETURN_FALSE;
-	}
-
-	if (php_check_open_basedir(dest_p TSRMLS_CC)) {
-		RETURN_FALSE;
-	}
-
-	if (php_check_open_basedir(source_p TSRMLS_CC)) {
-		RETURN_FALSE;
-	}
-
 #ifndef ZTS
 	ret = symlink(Z_STRVAL_PP(topath), Z_STRVAL_PP(frompath));
 #else 
@@ -188,22 +163,6 @@ PHP_FUNCTION(link)
 		php_stream_locate_url_wrapper(dest_p, NULL, STREAM_LOCATE_WRAPPERS_ONLY TSRMLS_CC) ) 
 	{
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to link to a URL");
-		RETURN_FALSE;
-	}
-
-	if (SAFE_MODE && !php_checkuid(dest_p, NULL, CHECKUID_CHECK_FILE_AND_DIR)) {
-		RETURN_FALSE;
-	}
-
-	if (SAFE_MODE && !php_checkuid(source_p, NULL, CHECKUID_CHECK_FILE_AND_DIR)) {
-		RETURN_FALSE;
-	}
-
-	if (php_check_open_basedir(dest_p TSRMLS_CC)) {
-		RETURN_FALSE;
-	}
-
-	if (php_check_open_basedir(source_p TSRMLS_CC)) {
 		RETURN_FALSE;
 	}
 

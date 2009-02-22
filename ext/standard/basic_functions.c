@@ -91,8 +91,6 @@ typedef struct yy_buffer_state *YY_BUFFER_STATE;
 #include <getopt.h>
 #endif
 
-#include "safe_mode.h"
-
 #ifdef PHP_WIN32
 # include "win32/unistd.h"
 #endif
@@ -3862,41 +3860,6 @@ zend_function_entry basic_functions[] = {
 	{NULL, NULL, NULL}
 };
 
-
-static PHP_INI_MH(OnUpdateSafeModeProtectedEnvVars)
-{
-	char *protected_vars, *protected_var;
-	char *token_buf;
-	int dummy = 1;
-
-	protected_vars = estrndup(new_value, new_value_length);
-	zend_hash_clean(&BG(sm_protected_env_vars));
-
-	protected_var = php_strtok_r(protected_vars, ", ", &token_buf);
-	while (protected_var) {
-		zend_hash_update(&BG(sm_protected_env_vars), protected_var, strlen(protected_var), &dummy, sizeof(int), NULL);
-		protected_var = php_strtok_r(NULL, ", ", &token_buf);
-	}
-	efree(protected_vars);
-	return SUCCESS;
-}
-
-
-static PHP_INI_MH(OnUpdateSafeModeAllowedEnvVars)
-{
-	if (BG(sm_allowed_env_vars)) {
-		free(BG(sm_allowed_env_vars));
-	}
-	BG(sm_allowed_env_vars) = zend_strndup(new_value, new_value_length);
-	return SUCCESS;
-}
-
-
-PHP_INI_BEGIN()
-	PHP_INI_ENTRY_EX("safe_mode_protected_env_vars", SAFE_MODE_PROTECTED_ENV_VARS, PHP_INI_SYSTEM, OnUpdateSafeModeProtectedEnvVars, NULL)
-	PHP_INI_ENTRY_EX("safe_mode_allowed_env_vars",   SAFE_MODE_ALLOWED_ENV_VARS,   PHP_INI_SYSTEM, OnUpdateSafeModeAllowedEnvVars,   NULL)
-PHP_INI_END()
-
 static zend_module_dep standard_deps[] = {
 	ZEND_MOD_OPTIONAL("session")
 	{NULL, NULL, NULL}
@@ -4101,8 +4064,6 @@ PHP_MINIT_FUNCTION(basic)
 #if ENABLE_TEST_CLASS
 	test_class_startup();
 #endif
-
-	REGISTER_INI_ENTRIES();
 
 #if WANT_INI
 	register_phpinfo_constants(INIT_FUNC_ARGS_PASSTHRU);
@@ -4497,39 +4458,6 @@ PHP_FUNCTION(putenv)
 			*p = '\0';
 		}
 		pe.key_len = strlen(pe.key);
-
-		if (SAFE_MODE) {
-			/* Check the protected list */
-			if (zend_hash_exists(&BG(sm_protected_env_vars), pe.key, pe.key_len)) {
-				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Safe Mode warning: Cannot override protected environment variable '%s'", pe.key);
-				efree(pe.putenv_string);
-				efree(pe.key);
-				RETURN_FALSE;
-			}
-
-			/* Check the allowed list */
-			if (BG(sm_allowed_env_vars) && *BG(sm_allowed_env_vars)) {
-				char *allowed_env_vars = estrdup(BG(sm_allowed_env_vars));
-				char *strtok_buf = NULL;
-				char *allowed_prefix = php_strtok_r(allowed_env_vars, ", ", &strtok_buf);
-				zend_bool allowed = 0;
-
-				while (allowed_prefix) {
-					if (!strncmp(allowed_prefix, pe.key, strlen(allowed_prefix))) {
-						allowed = 1;
-						break;
-					}
-					allowed_prefix = php_strtok_r(NULL, ", ", &strtok_buf);
-				}
-				efree(allowed_env_vars);
-				if (!allowed) {
-					php_error_docref(NULL TSRMLS_CC, E_WARNING, "Safe Mode warning: Cannot set environment variable '%s' - it's not in the allowed list", pe.key);
-					efree(pe.putenv_string);
-					efree(pe.key);
-					RETURN_FALSE;
-				}
-			}
-		}
 
 		zend_hash_del(&BG(putenv_ht), pe.key, pe.key_len+1);
 
@@ -4944,6 +4872,68 @@ PHP_FUNCTION(time_sleep_until)
 /* }}} */
 #endif
 
+PHPAPI char *php_get_current_user(void)
+{
+	struct stat *pstat;
+	TSRMLS_FETCH();
+
+	if (SG(request_info).current_user) {
+		return SG(request_info).current_user;
+	}
+
+	/* FIXME: I need to have this somehow handled if
+	USE_SAPI is defined, because cgi will also be
+	interfaced in USE_SAPI */
+
+	pstat = sapi_get_stat(TSRMLS_C);
+
+	if (!pstat) {
+		return "";
+	} else {
+#ifdef PHP_WIN32
+		char name[256];
+		DWORD len = sizeof(name)-1;
+
+		if (!GetUserName(name, &len)) {
+			return "";
+		}
+		name[len] = '\0';
+		SG(request_info).current_user_length = len;
+		SG(request_info).current_user = estrndup(name, len);
+		return SG(request_info).current_user;		
+#else
+		struct passwd *pwd;
+#if defined(ZTS) && defined(HAVE_GETPWUID_R) && defined(_SC_GETPW_R_SIZE_MAX)
+		struct passwd _pw;
+		struct passwd *retpwptr = NULL;
+		int pwbuflen = sysconf(_SC_GETPW_R_SIZE_MAX);
+		char *pwbuf;
+
+		if (pwbuflen < 1) {
+			return "";
+		}
+		pwbuf = emalloc(pwbuflen);
+		if (getpwuid_r(pstat->st_uid, &_pw, pwbuf, pwbuflen, &retpwptr) != 0) {
+			efree(pwbuf);
+			return "";
+		}
+		pwd = &_pw;
+#else
+		if ((pwd=getpwuid(pstat->st_uid))==NULL) {
+			return "";
+		}
+#endif
+		SG(request_info).current_user_length = strlen(pwd->pw_name);
+		SG(request_info).current_user = estrndup(pwd->pw_name, SG(request_info).current_user_length);
+#if defined(ZTS) && defined(HAVE_GETPWUID_R) && defined(_SC_GETPW_R_SIZE_MAX)
+		efree(pwbuf);
+#endif
+		return SG(request_info).current_user;		
+#endif
+	}	
+}	
+
+
 /* {{{ proto string get_current_user(void)
    Get the name of the owner of the current PHP script */
 PHP_FUNCTION(get_current_user)
@@ -5083,7 +5073,7 @@ PHPAPI int _php_error_log(int opt_err, char *message, char *opt, char *headers T
 			break;
 
 		case 3:		/*save to a file */
-			stream = php_stream_open_wrapper(opt, "a", IGNORE_URL_WIN | ENFORCE_SAFE_MODE | REPORT_ERRORS, NULL);
+			stream = php_stream_open_wrapper(opt, "a", IGNORE_URL_WIN | REPORT_ERRORS, NULL);
 			if (!stream)
 				return FAILURE;
 			php_stream_write(stream, message, strlen(message));
@@ -5519,14 +5509,6 @@ PHP_FUNCTION(highlight_file)
 		RETURN_FALSE;
 	}
 
-	if (SAFE_MODE && (!php_checkuid(filename, NULL, CHECKUID_ALLOW_ONLY_FILE))) {
-		RETURN_FALSE;
-	}
-
-	if (php_check_open_basedir(filename TSRMLS_CC)) {
-		RETURN_FALSE;
-	}
-
 	if (i) {
 		php_start_ob_buffer (NULL, 0, 1 TSRMLS_CC);
 	}
@@ -5765,34 +5747,6 @@ PHP_FUNCTION(ini_set)
 
 #define _CHECK_PATH(var, ini) php_ini_check_path(Z_STRVAL_PP(var), Z_STRLEN_PP(var), ini, sizeof(ini))
 	
-	/* safe_mode & basedir check */
-	if (SAFE_MODE || PG(open_basedir)) {
-		if (_CHECK_PATH(varname, "error_log") ||
-			_CHECK_PATH(varname, "java.class.path") ||
-			_CHECK_PATH(varname, "java.home") ||
-			_CHECK_PATH(varname, "java.library.path") ||
-			_CHECK_PATH(varname, "vpopmail.directory")) {
-			if (SAFE_MODE &&(!php_checkuid(Z_STRVAL_PP(new_value), NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
-				zval_dtor(return_value);
-				RETURN_FALSE;
-			}
-
-			if (php_check_open_basedir(Z_STRVAL_PP(new_value) TSRMLS_CC)) {
-				zval_dtor(return_value);
-				RETURN_FALSE;
-			}
-		}
-	}	
-		
-	/* checks that ensure the user does not overwrite certain ini settings when safe_mode is enabled */
-	if (SAFE_MODE) {
-		if (!strncmp("memory_limit", Z_STRVAL_PP(varname), sizeof("memory_limit")) ||
-			!strncmp("child_terminate", Z_STRVAL_PP(varname), sizeof("child_terminate"))) {
-			zval_dtor(return_value);
-			RETURN_FALSE;
-		}	
-	}	
-		
 	if (zend_alter_ini_entry(Z_STRVAL_PP(varname), Z_STRLEN_PP(varname)+1, Z_STRVAL_PP(new_value), Z_STRLEN_PP(new_value),
 								PHP_INI_USER, PHP_INI_STAGE_RUNTIME) == FAILURE) {
 		zval_dtor(return_value);
@@ -6175,14 +6129,6 @@ PHP_FUNCTION(move_uploaded_file)
 		RETURN_FALSE;
 	}
 
-	if (SAFE_MODE && (!php_checkuid(Z_STRVAL_PP(new_path), NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
-		RETURN_FALSE;
-	}
-
-	if (php_check_open_basedir(Z_STRVAL_PP(new_path) TSRMLS_CC)) {
-		RETURN_FALSE;
-	}
-
 	VCWD_UNLINK(Z_STRVAL_PP(new_path));
 	if (VCWD_RENAME(Z_STRVAL_PP(path), Z_STRVAL_PP(new_path)) == 0) {
 		successful = 1;
@@ -6196,7 +6142,7 @@ PHP_FUNCTION(move_uploaded_file)
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s", strerror(errno));
 		}
 #endif
-	} else if (php_copy_file_ex(Z_STRVAL_PP(path), Z_STRVAL_PP(new_path), STREAM_DISABLE_OPEN_BASEDIR TSRMLS_CC) == SUCCESS) {
+	} else if (php_copy_file_ex(Z_STRVAL_PP(path), Z_STRVAL_PP(new_path), 0 TSRMLS_CC) == SUCCESS) {
 		VCWD_UNLINK(Z_STRVAL_PP(path));
 		successful = 1;
 	}

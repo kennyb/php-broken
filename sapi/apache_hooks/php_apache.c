@@ -44,7 +44,7 @@ extern module **ap_loaded_modules;
 static int le_apachereq;
 static zend_class_entry *apacherequest_class_entry;
 
-static void apache_table_to_zval(table *, int safe_mode, zval *return_value);
+static void apache_table_to_zval(table *, zval *return_value);
 
 PHP_FUNCTION(virtual);
 PHP_FUNCTION(apache_request_headers);
@@ -1689,7 +1689,7 @@ PHP_MINFO_FUNCTION(apache)
 		env_arr = table_elts(r->headers_in);
 		env = (table_entry *)env_arr->elts;
 		for (i = 0; i < env_arr->nelts; ++i) {
-			if (env[i].key && (!SAFE_MODE || (SAFE_MODE && strncasecmp(env[i].key, "authorization", 13)))) {
+			if (env[i].key) {
 				php_info_print_table_row(2, env[i].key, env[i].val);
 			}
 		}
@@ -1754,9 +1754,9 @@ PHP_FUNCTION(virtual)
 /* }}} */
 
 
-/* {{{ apache_table_to_zval(table *, int safe_mode, zval *return_value)
+/* {{{ apache_table_to_zval(table *, zval *return_value)
    Fetch all HTTP request headers */
-static void apache_table_to_zval(table *t, int safe_mode, zval *return_value)
+static void apache_table_to_zval(table *t, zval *return_value)
 {
     array_header *env_arr;
     table_entry *tenv;
@@ -1766,8 +1766,7 @@ static void apache_table_to_zval(table *t, int safe_mode, zval *return_value)
     env_arr = table_elts(t);
     tenv = (table_entry *)env_arr->elts;
     for (i = 0; i < env_arr->nelts; ++i) {
-		if (!tenv[i].key ||
-			(safe_mode && !strncasecmp(tenv[i].key, "authorization", 13))) {
+		if (!tenv[i].key) {
 			continue;
 		}
 		if (add_assoc_string(return_value, tenv[i].key, (tenv[i].val==NULL) ? "" : tenv[i].val, 1)==FAILURE) {
@@ -1788,7 +1787,7 @@ static void apache_table_to_zval(table *t, int safe_mode, zval *return_value)
    Fetch all HTTP request headers */
 PHP_FUNCTION(apache_request_headers)
 {
-	apache_table_to_zval(((request_rec *)SG(server_context))->headers_in, SAFE_MODE, return_value);
+	apache_table_to_zval(((request_rec *)SG(server_context))->headers_in, return_value);
 }
 /* }}} */
 

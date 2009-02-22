@@ -77,7 +77,6 @@
 #endif
 #endif
 #include "ext/standard/head.h"
-#include "safe_mode.h"
 #include "php_string.h"
 #include "file.h"
 #if HAVE_PWD_H
@@ -384,7 +383,7 @@ PHP_FUNCTION(get_meta_tags)
 	}
 
 	md.stream = php_stream_open_wrapper(filename, "rb",
-			(use_include_path ? USE_PATH : 0) | ENFORCE_SAFE_MODE | REPORT_ERRORS,
+			(use_include_path ? USE_PATH : 0) | REPORT_ERRORS,
 			NULL);
 
 	if (!md.stream)	{
@@ -537,7 +536,7 @@ PHP_FUNCTION(file_get_contents)
 	context = php_stream_context_from_zval(zcontext, 0);
 
 	stream = php_stream_open_wrapper_ex(filename, "rb", 
-				(use_include_path ? USE_PATH : 0) | ENFORCE_SAFE_MODE | REPORT_ERRORS,
+				(use_include_path ? USE_PATH : 0) | REPORT_ERRORS,
 				NULL, context);
 	if (!stream) {
 		RETURN_FALSE;
@@ -596,7 +595,7 @@ PHP_FUNCTION(file_put_contents)
 	}
 	mode[2] = '\0';
 
-	stream = php_stream_open_wrapper_ex(filename, mode, ((flags & PHP_FILE_USE_INCLUDE_PATH) ? USE_PATH : 0) | ENFORCE_SAFE_MODE | REPORT_ERRORS, NULL, context);
+	stream = php_stream_open_wrapper_ex(filename, mode, ((flags & PHP_FILE_USE_INCLUDE_PATH) ? USE_PATH : 0) | REPORT_ERRORS, NULL, context);
 	if (stream == NULL) {
 		RETURN_FALSE;
 	}
@@ -725,7 +724,7 @@ PHP_FUNCTION(file)
 
 	context = php_stream_context_from_zval(zcontext, flags & PHP_FILE_NO_DEFAULT_CONTEXT);
 
-	stream = php_stream_open_wrapper_ex(filename, "rb", (use_include_path ? USE_PATH : 0) | ENFORCE_SAFE_MODE | REPORT_ERRORS, NULL, context);
+	stream = php_stream_open_wrapper_ex(filename, "rb", (use_include_path ? USE_PATH : 0) | REPORT_ERRORS, NULL, context);
 	if (!stream) {
 		RETURN_FALSE;
 	}
@@ -799,10 +798,6 @@ PHP_FUNCTION(tempnam)
 	convert_to_string_ex(arg1);
 	convert_to_string_ex(arg2);
 
-	if (php_check_open_basedir(Z_STRVAL_PP(arg1) TSRMLS_CC)) {
-		RETURN_FALSE;
-	}
-	
 	d = estrndup(Z_STRVAL_PP(arg1), Z_STRLEN_PP(arg1));
 
 	php_basename(Z_STRVAL_PP(arg2), Z_STRLEN_PP(arg2), NULL, 0, &p, &p_len TSRMLS_CC);
@@ -859,7 +854,7 @@ PHP_NAMED_FUNCTION(php_if_fopen)
 
 	context = php_stream_context_from_zval(zcontext, 0);
 	
-	stream = php_stream_open_wrapper_ex(filename, mode, (use_include_path ? USE_PATH : 0) | ENFORCE_SAFE_MODE | REPORT_ERRORS, NULL, context);
+	stream = php_stream_open_wrapper_ex(filename, mode, (use_include_path ? USE_PATH : 0) | REPORT_ERRORS, NULL, context);
 
 	if (stream == NULL) {
 		RETURN_FALSE;
@@ -921,48 +916,13 @@ PHP_FUNCTION(popen)
 		}
 	}
 #endif
-	if (SAFE_MODE){
-		b = strchr(Z_STRVAL_PP(arg1), ' ');
-		if (!b) {
-			b = strrchr(Z_STRVAL_PP(arg1), '/');
-		} else {
-			char *c;
-			c = Z_STRVAL_PP(arg1);
-			while((*b != '/') && (b != c)) {
-				b--;
-			}
-			if (b == c) {
-				b = NULL;
-			}
-		}
-		
-		if (b) {
-			spprintf(&buf, 0, "%s%s", SAFE_MODE_EXEC_DIR, b);
-		} else {
-			spprintf(&buf, 0, "%s/%s", SAFE_MODE_EXEC_DIR, Z_STRVAL_PP(arg1));
-		}
-
-		tmp = php_escape_shell_cmd(buf);
-		fp = VCWD_POPEN(tmp, p);
-		efree(tmp);
-
-		if (!fp) {
-			php_error_docref2(NULL TSRMLS_CC, buf, p, E_WARNING, "%s", strerror(errno));
-			efree(p);
-			efree(buf);
-			RETURN_FALSE;
-		}
-		
-		efree(buf);
-
-	} else {
-		fp = VCWD_POPEN(Z_STRVAL_PP(arg1), p);
-		if (!fp) {
-			php_error_docref2(NULL TSRMLS_CC, Z_STRVAL_PP(arg1), p, E_WARNING, "%s", strerror(errno));
-			efree(p);
-			RETURN_FALSE;
-		}
+	fp = VCWD_POPEN(Z_STRVAL_PP(arg1), p);
+	if (!fp) {
+		php_error_docref2(NULL TSRMLS_CC, Z_STRVAL_PP(arg1), p, E_WARNING, "%s", strerror(errno));
+		efree(p);
+		RETURN_FALSE;
 	}
+	
 	stream = php_stream_fopen_from_pipe(fp, p);
 
 	if (stream == NULL)	{
@@ -1368,14 +1328,6 @@ PHPAPI int php_mkdir_ex(char *dir, long mode, int options TSRMLS_DC) /* {{{ */
 {
 	int ret;
 
-	if (SAFE_MODE && (!php_checkuid(dir, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
-		return -1;
-	}
-
-	if (php_check_open_basedir(dir TSRMLS_CC)) {
-		return -1;
-	}
-
 	if ((ret = VCWD_MKDIR(dir, (mode_t)mode)) < 0 && (options & REPORT_ERRORS)) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s", strerror(errno));
 	}
@@ -1447,7 +1399,7 @@ PHP_FUNCTION(readfile)
 
 	context = php_stream_context_from_zval(zcontext, 0);
 
-	stream = php_stream_open_wrapper_ex(filename, "rb", (use_include_path ? USE_PATH : 0) | ENFORCE_SAFE_MODE | REPORT_ERRORS, NULL, context);
+	stream = php_stream_open_wrapper_ex(filename, "rb", (use_include_path ? USE_PATH : 0) | REPORT_ERRORS, NULL, context);
 	if (stream) {
 		size = php_stream_passthru(stream);
 		php_stream_close(stream);
@@ -1569,7 +1521,7 @@ PHP_FUNCTION(unlink)
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s does not allow unlinking", wrapper->wops->label ? wrapper->wops->label : "Wrapper");
 		RETURN_FALSE;
 	}
-	RETURN_BOOL(wrapper->wops->unlink(wrapper, filename, ENFORCE_SAFE_MODE | REPORT_ERRORS, context TSRMLS_CC));
+	RETURN_BOOL(wrapper->wops->unlink(wrapper, filename, REPORT_ERRORS, context TSRMLS_CC));
 }
 /* }}} */
 
@@ -1699,25 +1651,11 @@ PHP_FUNCTION(copy)
 	convert_to_string_ex(source);
 	convert_to_string_ex(target);
 
-	if (SAFE_MODE &&(!php_checkuid(Z_STRVAL_PP(source), NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
-		RETURN_FALSE;
-	}
-
-	if (php_check_open_basedir(Z_STRVAL_PP(source) TSRMLS_CC)) {
-		RETURN_FALSE;
-	}
-
 	if (php_copy_file(Z_STRVAL_PP(source), Z_STRVAL_PP(target) TSRMLS_CC)==SUCCESS) {
 		RETURN_TRUE;
 	} else {
 		RETURN_FALSE;
 	}
-}
-/* }}} */
-
-PHPAPI int php_copy_file(char *src, char *dest TSRMLS_DC) /* {{{ */
-{
-	return php_copy_file_ex(src, dest, ENFORCE_SAFE_MODE TSRMLS_CC);
 }
 /* }}} */
 
@@ -1788,7 +1726,7 @@ safe_to_copy:
 		return ret;
 	}
 
-	deststream = php_stream_open_wrapper(dest, "wb", ENFORCE_SAFE_MODE | REPORT_ERRORS, NULL);
+	deststream = php_stream_open_wrapper(dest, "wb", REPORT_ERRORS, NULL);
 
 	if (srcstream && deststream) {
 		ret = php_stream_copy_to_stream(srcstream, deststream, PHP_STREAM_COPY_ALL) == 0 ? FAILURE : SUCCESS;
@@ -2334,14 +2272,6 @@ PHP_FUNCTION(realpath)
 	convert_to_string_ex(path);
 
 	if (VCWD_REALPATH(Z_STRVAL_PP(path), resolved_path_buff)) {
-		if (SAFE_MODE && (!php_checkuid(resolved_path_buff, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
-			RETURN_FALSE;
-		}
-
-		if (php_check_open_basedir(resolved_path_buff TSRMLS_CC)) {
-			RETURN_FALSE;
-		}
-
 #ifdef ZTS
 		if (VCWD_ACCESS(resolved_path_buff, F_OK)) {
 			RETURN_FALSE;

@@ -493,10 +493,6 @@ static int pdo_mysql_handle_factory(pdo_dbh_t *dbh, zval *driver_options TSRMLS_
 			goto cleanup;
 		}
 
-		if ((PG(open_basedir) && PG(open_basedir)[0] != '\0') || SAFE_MODE) {
-			local_infile = 0;
-		}
-
 		if (mysql_options(H->server, MYSQL_OPT_LOCAL_INFILE, (const char *)&local_infile)) {
 			pdo_mysql_error(dbh);
 			goto cleanup;

@@ -82,10 +82,7 @@ static SWFVideoStream getVideoStream(zval *id TSRMLS_DC);
 static SWFPrebuiltClip getPrebuiltClip(zval *id TSRMLS_DC);
 #endif
 
-#define PHP_MING_FILE_CHK(file) \
-	if ((SAFE_MODE && !php_checkuid((file), NULL, CHECKUID_CHECK_FILE_AND_DIR)) || php_check_open_basedir((file) TSRMLS_CC)) {	\
-		RETURN_FALSE;	\
-	}	\
+#define PHP_MING_FILE_CHK(file)
 
 /* {{{ proto void ming_setcubicthreshold (int threshold)
    Set cubic threshold (?) */
@@ -1454,7 +1451,7 @@ PHP_METHOD(swffont, __construct)
 		php_stream * stream;
 		FILE * file;
 	
-		stream = php_stream_open_wrapper(Z_STRVAL_PP(zfile), "rb", REPORT_ERRORS|ENFORCE_SAFE_MODE, NULL);
+		stream = php_stream_open_wrapper(Z_STRVAL_PP(zfile), "rb", REPORT_ERRORS, NULL);
 
 		if (stream == NULL) {
 			RETURN_FALSE;
@@ -2476,7 +2473,7 @@ PHP_METHOD(swfmovie, save)
 	}
 
 	convert_to_string_ex(x);
-	stream = php_stream_open_wrapper(Z_STRVAL_PP(x), "wb", REPORT_ERRORS|ENFORCE_SAFE_MODE, NULL);
+	stream = php_stream_open_wrapper(Z_STRVAL_PP(x), "wb", REPORT_ERRORS, NULL);
 
 	if (stream == NULL) {
 		RETURN_FALSE;

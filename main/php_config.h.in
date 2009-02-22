@@ -1167,18 +1167,6 @@
 #undef HAVE_GCOV
 
 /*   */
-#undef PHP_SAFE_MODE
-
-/*   */
-#undef PHP_SAFE_MODE
-
-/*   */
-#undef PHP_SAFE_MODE_EXEC_DIR
-
-/*   */
-#undef PHP_SAFE_MODE_EXEC_DIR
-
-/*   */
 #undef PHP_SIGCHILD
 
 /*   */

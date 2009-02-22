@@ -1007,7 +1007,7 @@ SAPI_API SAPI_POST_HANDLER_FUNC(rfc1867_post_handler)
 
 			if (!skip_upload) {
 				/* Handle file */
-				fd = php_open_temporary_fd_ex(PG(upload_tmp_dir), "php", &temp_filename, 1 TSRMLS_CC);
+				fd = php_open_temporary_fd_ex(PG(upload_tmp_dir), "php", &temp_filename TSRMLS_CC);
 				if (fd==-1) {
 					sapi_module.sapi_error(E_WARNING, "File upload error - unable to create a temporary file");
 					cancel_upload = UPLOAD_ERROR_E;

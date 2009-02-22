@@ -1295,12 +1295,6 @@ PHP_FUNCTION(mysqli_options)
 	}
 	MYSQLI_FETCH_RESOURCE(mysql, MY_MYSQL *, &mysql_link, "mysqli_link", MYSQLI_STATUS_INITIALIZED);
 
-	if ((PG(open_basedir) && PG(open_basedir)[0] != '\0') || SAFE_MODE) {
-		if(mysql_option == MYSQL_OPT_LOCAL_INFILE) {
-			RETURN_FALSE;
-		}
-	}
-
 	switch (Z_TYPE_PP(&mysql_value)) {
 		case IS_STRING:
 			ret = mysql_options(mysql->mysql, mysql_option, Z_STRVAL_PP(&mysql_value));
@@ -1422,20 +1416,6 @@ PHP_FUNCTION(mysqli_real_connect)
 		socket = NULL;
 	}
 
-	/* TODO: safe mode handling */
-	if (SQL_SAFE_MODE) {
-	} else {
-		if (!passwd) {
-			passwd = MyG(default_pw);
-			if (!username){
-				username = MyG(default_user);
-				if (!hostname) {
-					hostname = MyG(default_host);
-				}
-			}
-		}
-	}	
-
 	MYSQLI_FETCH_RESOURCE(mysql, MY_MYSQL *, &mysql_link, "mysqli_link", MYSQLI_STATUS_INITIALIZED);
 
 
@@ -1443,10 +1423,6 @@ PHP_FUNCTION(mysqli_real_connect)
 	flags |= CLIENT_MULTI_RESULTS; /* needed for mysql_multi_query() */
 	/* remove some insecure options */
 	flags &= ~CLIENT_MULTI_STATEMENTS;   /* don't allow multi_queries via connect parameter */
-	if ((PG(open_basedir) && PG(open_basedir)[0] != '\0') || SAFE_MODE) {
-		flags &= ~CLIENT_LOCAL_FILES;
-	}
-
 	if (!socket) {
 		socket = MyG(default_socket);
 	}

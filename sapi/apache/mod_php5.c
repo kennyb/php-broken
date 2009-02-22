@@ -520,7 +520,7 @@ static void init_request_info(TSRMLS_D)
 	SG(request_info).auth_password = NULL;
 	SG(request_info).auth_digest = NULL;
 
-	if (authorization && (!SAFE_MODE || (SAFE_MODE && !auth_type(r)))) {
+	if (authorization) {
 		char *p = getword(r->pool, &authorization, ' ');
 		if (!strcasecmp(p, "Basic")) {
 			tmp = uudecode(r->pool, authorization);

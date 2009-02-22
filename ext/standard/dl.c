@@ -68,9 +68,6 @@ PHP_FUNCTION(dl)
 	if (!PG(enable_dl)) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Dynamically loaded extensions aren't enabled");
 		RETURN_FALSE;
-	} else if (SAFE_MODE) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Dynamically loaded extensions aren't allowed when running in Safe Mode");
-		RETURN_FALSE;
 	}
 
 	if (Z_STRLEN_PP(file) >= MAXPATHLEN) {

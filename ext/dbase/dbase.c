@@ -23,7 +23,6 @@
 #endif
 
 #include "php.h"
-#include "safe_mode.h"
 #include "fopen_wrappers.h"
 #include "php_globals.h"
 
@@ -139,14 +138,6 @@ PHP_FUNCTION(dbase_open)
 		RETURN_FALSE;
 	} else if (Z_LVAL_PP(options) < 0 || Z_LVAL_PP(options) > 3) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid access mode %ld", Z_LVAL_PP(options));
-		RETURN_FALSE;
-	}
-
-	if (SAFE_MODE && (!php_checkuid(Z_STRVAL_PP(dbf_name), NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
-		RETURN_FALSE;
-	}
-	
-	if (php_check_open_basedir(Z_STRVAL_PP(dbf_name) TSRMLS_CC)) {
 		RETURN_FALSE;
 	}
 
@@ -603,14 +594,6 @@ PHP_FUNCTION(dbase_create)
 
 	if (Z_TYPE_PP(fields) != IS_ARRAY) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Expected array as second parameter");
-		RETURN_FALSE;
-	}
-
-	if (SAFE_MODE && (!php_checkuid(Z_STRVAL_PP(filename), NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
-		RETURN_FALSE;
-	}
-	
-	if (php_check_open_basedir(Z_STRVAL_PP(filename) TSRMLS_CC)) {
 		RETURN_FALSE;
 	}
 

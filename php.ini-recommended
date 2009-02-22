@@ -67,10 +67,6 @@
 ; PHP.  Please make sure you read what's different, and modify your scripts
 ; accordingly, if you decide to use this file instead.
 ;
-; - register_long_arrays = Off     [Performance]
-;     Disables registration of the older (and deprecated) long predefined array
-;     variables ($HTTP_*_VARS).  Instead, use the superglobals that were
-;     introduced in PHP 4.1.0
 ; - display_errors = Off           [Security]
 ;     With this directive set to off, errors that occur during the execution of
 ;     scripts will no longer be displayed as a part of the script output, and thus,
@@ -100,13 +96,6 @@
 ;     are emitted for non-critical errors, but that could be a symptom of a bigger
 ;     problem.  Most notably, this will cause error messages about the use
 ;     of uninitialized variables to be displayed.
-; - allow_call_time_pass_reference = Off     [Code cleanliness]
-;     It's not possible to decide to force a variable to be passed by reference
-;     when calling a function.  The PHP 4 style to do this is by making the
-;     function require the relevant argument by reference.
-; - short_open_tag = Off           [Portability]
-;     Using short tags is discouraged when developing code meant for redistribution
-;     since short tags may not be supported on the target server.
 
 ;;;;;;;;;;;;;;;;;;;;
 ; Language Options ;
@@ -114,20 +103,6 @@
 
 ; Enable the PHP scripting language engine under Apache.
 engine = On
-
-; Enable compatibility mode with Zend Engine 1 (PHP 4.x)
-zend.ze1_compatibility_mode = Off
-
-; Allow the <? tag.  Otherwise, only <?php and <script> tags are recognized.
-; NOTE: Using short tags should be avoided when developing applications or
-; libraries that are meant for redistribution, or deployment on PHP
-; servers which are not under your control, because short tags may not
-; be supported on the target server. For portable, redistributable code,
-; be sure not to use short tags.
-short_open_tag = Off
-
-; Allow ASP-style <% %> tags.
-asp_tags = Off
 
 ; The number of significant digits displayed in floating point numbers.
 precision    =  14
@@ -193,56 +168,6 @@ unserialize_callback_func=
 ; are decoded with unserialize, the data will remain the same.
 serialize_precision = 100
 
-;
-; Safe Mode
-;
-safe_mode = Off
-
-; By default, Safe Mode does a UID compare check when
-; opening files. If you want to relax this to a GID compare,
-; then turn on safe_mode_gid.
-safe_mode_gid = Off
-
-; When safe_mode is on, UID/GID checks are bypassed when
-; including files from this directory and its subdirectories.
-; (directory must also be in include_path or full path must
-; be used when including)
-safe_mode_include_dir =
-
-; When safe_mode is on, only executables located in the safe_mode_exec_dir
-; will be allowed to be executed via the exec family of functions.
-safe_mode_exec_dir =
-
-; Setting certain environment variables may be a potential security breach.
-; This directive contains a comma-delimited list of prefixes.  In Safe Mode,
-; the user may only alter environment variables whose names begin with the
-; prefixes supplied here.  By default, users will only be able to set
-; environment variables that begin with PHP_ (e.g. PHP_FOO=BAR).
-;
-; Note:  If this directive is empty, PHP will let the user modify ANY
-; environment variable!
-safe_mode_allowed_env_vars = PHP_
-
-; This directive contains a comma-delimited list of environment variables that
-; the end user won't be able to change using putenv().  These variables will be
-; protected even if safe_mode_allowed_env_vars is set to allow to change them.
-safe_mode_protected_env_vars = LD_LIBRARY_PATH
-
-; open_basedir, if set, limits all file operations to the defined directory
-; and below.  This directive makes most sense if used in a per-directory
-; or per-virtualhost web server configuration file. This directive is
-; *NOT* affected by whether Safe Mode is turned On or Off.
-;open_basedir =
-
-; This directive allows you to disable certain functions for security reasons.
-; It receives a comma-delimited list of function names. This directive is
-; *NOT* affected by whether Safe Mode is turned On or Off.
-disable_functions =
-
-; This directive allows you to disable certain classes for security reasons.
-; It receives a comma-delimited list of class names. This directive is
-; *NOT* affected by whether Safe Mode is turned On or Off.
-disable_classes =
 
 ; Colors for Syntax Highlighting mode.  Anything that's acceptable in
 ; <span style="color: ???????"> would work.
@@ -378,16 +303,6 @@ track_errors = Off
 ; Note: Never use this feature for production boxes.
 ;html_errors = Off
 
-; If html_errors is set On PHP produces clickable error messages that direct
-; to a page describing the error or function causing the error in detail.
-; You can download a copy of the PHP manual from http://www.php.net/docs.php
-; and change docref_root to the base URL of your local copy including the
-; leading '/'. You must also specify the file extension being used including
-; the dot.
-; Note: Never use this feature for production boxes.
-;docref_root = "/phpmanual/"
-;docref_ext = .html
-
 ; String to output before an error message.
 ;error_prepend_string = "<font color=#ff0000>"
 
@@ -421,22 +336,6 @@ track_errors = Off
 ; referred to as EGPCS or GPC).  Registration is done from left to right, newer
 ; values override older values.
 variables_order = "GPCS"
-
-; Whether or not to register the EGPCS variables as global variables.  You may
-; want to turn this off if you don't want to clutter your scripts' global scope
-; with user data.  This makes most sense when coupled with track_vars - in which
-; case you can access all of the GPC variables through the $HTTP_*_VARS[],
-; variables.
-;
-; You should do your best to write your scripts so that they do not require
-; register_globals to be on;  Using form variables as globals can easily lead
-; to possible security problems, if the code is not very well thought of.
-register_globals = Off
-
-; Whether or not to register the old-style input arrays, HTTP_GET_VARS
-; and friends.  If you're not using them, it's recommended to turn them off,
-; for performance reasons.
-register_long_arrays = Off
 
 ; This directive tells PHP whether to declare the argv&argc variables (that
 ; would contain the GET information).  If you don't use these variables, you
@@ -717,9 +616,6 @@ smtp_port = 25
 ; to the sendmail binary. These parameters will always replace the value of
 ; the 5th parameter to mail(), even in safe mode.
 ;mail.force_extra_parameters =
-
-[SQL]
-sql.safe_mode = Off
 
 [ODBC]
 ;odbc.default_db    =  Not yet implemented
@@ -1040,23 +936,6 @@ session.gc_divisor     = 1000
 ; After this number of seconds, stored data will be seen as 'garbage' and
 ; cleaned up by the garbage collection process.
 session.gc_maxlifetime = 1440
-
-; NOTE: If you are using the subdirectory option for storing session files
-;       (see session.save_path above), then garbage collection does *not*
-;       happen automatically.  You will need to do your own garbage
-;       collection through a shell script, cron entry, or some other method.
-;       For example, the following script would is the equivalent of
-;       setting session.gc_maxlifetime to 1440 (1440 seconds = 24 minutes):
-;          cd /path/to/sessions; find -cmin +24 | xargs rm
-
-; PHP 4.2 and less have an undocumented feature/bug that allows you to
-; to initialize a session variable in the global scope, albeit register_globals
-; is disabled.  PHP 4.3 and later will warn you, if this feature is used.
-; You can disable the feature and the warning separately. At this time,
-; the warning is only displayed, if bug_compat_42 is enabled.
-
-session.bug_compat_42 = 0
-session.bug_compat_warn = 1
 
 ; Check HTTP Referer to invalidate externally stored URLs containing ids.
 ; HTTP_REFERER has to contain this substring for the session to be

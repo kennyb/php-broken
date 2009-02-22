@@ -167,28 +167,6 @@ static void ps_files_open(ps_files *data, const char *key TSRMLS_DC)
 		data->fd = VCWD_OPEN_MODE(buf, O_CREAT | O_RDWR | O_BINARY, data->filemode);
 
 		if (data->fd != -1) {
-#ifndef PHP_WIN32
-			/* check to make sure that the opened file is not a symlink, linking to data outside of allowable dirs */
-			if (SAFE_MODE || PG(open_basedir)) {
-				struct stat sbuf;
-
-				if (fstat(data->fd, &sbuf)) {
-					close(data->fd);
-					return;
-				}
-				if (
-					S_ISLNK(sbuf.st_mode) && 
-					(
-						php_check_open_basedir(buf TSRMLS_CC) ||
-						(SAFE_MODE && !php_checkuid(buf, NULL, CHECKUID_CHECK_FILE_AND_DIR))
-					)
-				) {
-
-					close(data->fd);
-					return;
-				}
-			}
-#endif
 			flock(data->fd, LOCK_EX);
 
 #ifdef F_SETFD
@@ -277,15 +255,6 @@ PS_OPEN_FUNC(files)
 	if (*save_path == '\0') {
 		/* if save path is an empty string, determine the temporary dir */
 		save_path = php_get_temporary_directory();
-
-		if (strcmp(save_path, "/tmp")) {
-			if (SAFE_MODE && (!php_checkuid(save_path, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
-				return FAILURE;
-			}
-			if (php_check_open_basedir(save_path TSRMLS_CC)) {
-				return FAILURE;
-			}
-		}
 	}
 	
 	/* split up input parameter */

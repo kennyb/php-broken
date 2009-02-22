@@ -779,13 +779,6 @@ static void php_imap_do_open(INTERNAL_FUNCTION_PARAMETERS, int persistent)
 		efree(IMAPG(imap_password));
 	}
 
-	/* local filename, need to perform open_basedir and safe_mode checks */
-	if (Z_STRVAL_PP(mailbox)[0] != '{' && 
-			(php_check_open_basedir(Z_STRVAL_PP(mailbox) TSRMLS_CC) || 
-			(SAFE_MODE && !php_checkuid(Z_STRVAL_PP(mailbox), NULL, CHECKUID_CHECK_FILE_AND_DIR)))) {
-		RETURN_FALSE;
-	}
-
 	IMAPG(imap_user)     = estrndup(Z_STRVAL_PP(user), Z_STRLEN_PP(user));
 	IMAPG(imap_password) = estrndup(Z_STRVAL_PP(passwd), Z_STRLEN_PP(passwd));
 
@@ -859,13 +852,7 @@ PHP_FUNCTION(imap_reopen)
 		mail_parameters(NIL, SET_MAXLOGINTRIALS, (void *) Z_LVAL_PP(retries));
 	}
 #endif
-	/* local filename, need to perform open_basedir and safe_mode checks */
-	if (Z_STRVAL_PP(mailbox)[0] != '{' && 
-			(php_check_open_basedir(Z_STRVAL_PP(mailbox) TSRMLS_CC) || 
-			(SAFE_MODE && !php_checkuid(Z_STRVAL_PP(mailbox), NULL, CHECKUID_CHECK_FILE_AND_DIR)))) {
-		RETURN_FALSE;
-	}
-
+	
 	imap_stream = mail_open(imap_le_struct->imap_stream, Z_STRVAL_PP(mailbox), flags);
 	if (imap_stream == NIL) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Couldn't re-open stream");
@@ -1936,7 +1923,7 @@ PHP_FUNCTION(imap_savebody)
 
 		default:
 			convert_to_string_ex(out);
-			writer = php_stream_open_wrapper(Z_STRVAL_PP(out), "wb", REPORT_ERRORS|ENFORCE_SAFE_MODE, NULL);
+			writer = php_stream_open_wrapper(Z_STRVAL_PP(out), "wb", REPORT_ERRORS, NULL);
 		break;
 	}
 	

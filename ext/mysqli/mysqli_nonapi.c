@@ -53,20 +53,6 @@ PHP_FUNCTION(mysqli_connect)
 		socket = NULL;
 	}
     
-	/* TODO: safe mode handling */
-	if (SQL_SAFE_MODE){
-	} else {
-		if (!passwd) {
-			passwd = MyG(default_pw);
-			if (!username){
-				username = MyG(default_user);
-				if (!hostname) {
-					hostname = MyG(default_host);
-				}
-			}
-		}
-	}
-
 	if (object && instanceof_function(Z_OBJCE_P(object), mysqli_link_class_entry TSRMLS_CC)) {
 		mysqli_resource = ((mysqli_object *) zend_object_store_get_object(object TSRMLS_CC))->ptr;
 		if (mysqli_resource && mysqli_resource->ptr &&

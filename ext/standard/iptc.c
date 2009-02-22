@@ -190,14 +190,6 @@ PHP_FUNCTION(iptcembed)
 		return;
 	}
 
-	if (SAFE_MODE && (!php_checkuid(jpeg_file, NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
-		RETURN_FALSE;
-	}
-
-	if (php_check_open_basedir(jpeg_file TSRMLS_CC)) {
-		RETURN_FALSE;
-	}
-
 	if ((fp = VCWD_FOPEN(jpeg_file, "rb")) == 0) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to open %s", jpeg_file);
 		RETURN_FALSE;

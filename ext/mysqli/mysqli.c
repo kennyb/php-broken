@@ -1077,14 +1077,6 @@ int php_local_infile_init(void **ptr, const char *filename, void *userdata)
 		return 1;
 	}
 
-	/* check open_basedir */
-	if (PG(open_basedir)) {
-		if (php_check_open_basedir_ex(filename, 0 TSRMLS_CC) == -1) {
-			LOCAL_INFILE_ERROR_MSG(data->error_msg, "open_basedir restriction in effect. Unable to open file");
-			return 1;
-		}
-	}
-
 	mysql->li_stream = php_stream_open_wrapper_ex((char *)filename, "r", 0, NULL, context);
 
 	if (mysql->li_stream == NULL) {

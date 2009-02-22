@@ -553,47 +553,32 @@ static void php_mysql_do_connect(INTERNAL_FUNCTION_PARAMETERS, int persistent)
 #endif
 	}
 	
-	if (PG(sql_safe_mode)) {
-		if (ZEND_NUM_ARGS()>0) {
-			php_error_docref(NULL TSRMLS_CC, E_NOTICE, "SQL safe mode in effect - ignoring host/user/password information");
-		}
-		host_and_port=passwd=NULL;
-		user=php_get_current_user();
-		hashed_details_length = spprintf(&hashed_details, 0, "mysql__%s_", user);
-		client_flags = CLIENT_INTERACTIVE;
-	} else {
-		/* mysql_pconnect does not support new_link parameter */
-		if (persistent) {
-			if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|s!s!s!l", &host_and_port, &host_len,
-									&user, &user_len, &passwd, &passwd_len,
-									&client_flags)==FAILURE) {
-				return;
-        	}
-		} else {
-			if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|s!s!s!bl", &host_and_port, &host_len,
-										&user, &user_len, &passwd, &passwd_len, 
-										&new_link, &client_flags)==FAILURE) {
-				return;
-			}
-		}
-
-		if (!host_and_port) {
-			host_and_port = MySG(default_host);
-		}
-		if (!user) {
-			user = MySG(default_user);
-		}
-		if (!passwd) {
-			passwd = MySG(default_password);
-		}
-
-		/* disable local infile option for open_basedir */
-		if (((PG(open_basedir) && PG(open_basedir)[0] != '\0') || SAFE_MODE) && (client_flags & CLIENT_LOCAL_FILES)) {
-                	client_flags ^= CLIENT_LOCAL_FILES;
-		}
-
-		hashed_details_length = spprintf(&hashed_details, 0, "mysql_%s_%s_%s_%ld", SAFE_STRING(host_and_port), SAFE_STRING(user), SAFE_STRING(passwd), client_flags);
+	/* mysql_pconnect does not support new_link parameter */
+	if (persistent) {
+		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|s!s!s!l", &host_and_port, &host_len,
+								&user, &user_len, &passwd, &passwd_len,
+								&client_flags)==FAILURE) {
+			return;
 	}
+	} else {
+		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|s!s!s!bl", &host_and_port, &host_len,
+									&user, &user_len, &passwd, &passwd_len, 
+									&new_link, &client_flags)==FAILURE) {
+			return;
+		}
+	}
+
+	if (!host_and_port) {
+		host_and_port = MySG(default_host);
+	}
+	if (!user) {
+		user = MySG(default_user);
+	}
+	if (!passwd) {
+		passwd = MySG(default_password);
+	}
+
+	hashed_details_length = spprintf(&hashed_details, 0, "mysql_%s_%s_%s_%ld", SAFE_STRING(host_and_port), SAFE_STRING(user), SAFE_STRING(passwd), client_flags);
 
 	/* We cannot use mysql_port anymore in windows, need to use
 	 * mysql_real_connect() to set the port.

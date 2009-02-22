@@ -28,7 +28,6 @@
 #include <stdio.h>
 #include <ctype.h>
 #include "php_string.h"
-#include "safe_mode.h"
 #include "ext/standard/head.h"
 #include "ext/standard/file.h"
 #include "exec.h"
@@ -255,43 +254,7 @@ static int php_make_safe_mode_command(char *cmd, char **safecmd, int is_persiste
 	int lcmd, larg0;
 	char *space, *sep, *arg0;
 
-	if (!SAFE_MODE) {
-		*safecmd = pestrdup(cmd, is_persistent);
-		return SUCCESS;
-	}
-
-	lcmd = strlen(cmd);
-
-	arg0 = estrndup(cmd, lcmd);
-
-	space = memchr(arg0, ' ', lcmd);
-	if (space) {
-		*space = '\0';
-		larg0 = space - arg0;
-	} else {
-		larg0 = lcmd;
-	}
-
-	if (php_memnstr(arg0, "..", sizeof("..")-1, arg0 + larg0)) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "No '..' components allowed in path");
-		efree(arg0);
-		return FAILURE;
-	}
-
-	sep = zend_memrchr(arg0, PHP_DIR_SEPARATOR, larg0);
-
-	spprintf(safecmd, 0, "%s%s%s%s", SAFE_MODE_EXEC_DIR, (sep ? sep : "/"), (sep ? "" : arg0), (space ? cmd + larg0 : ""));
-
-	efree(arg0);
-	arg0 = php_escape_shell_cmd(*safecmd);
-	efree(*safecmd);
-	if (is_persistent) {
-		*safecmd = pestrdup(arg0, 1);
-		efree(arg0);
-	} else {
-		*safecmd = arg0;
-	}
-
+	*safecmd = pestrdup(cmd, is_persistent);
 	return SUCCESS;
 }
 /* }}} */
@@ -665,7 +628,7 @@ PHP_FUNCTION(proc_open)
 
 				/* try a wrapper */
 				stream = php_stream_open_wrapper(Z_STRVAL_PP(zfile), Z_STRVAL_PP(zmode),
-						ENFORCE_SAFE_MODE|REPORT_ERRORS|STREAM_WILL_CAST, NULL);
+						REPORT_ERRORS|STREAM_WILL_CAST, NULL);
 
 				/* force into an fd */
 				if (stream == NULL || FAILURE == php_stream_cast(stream,

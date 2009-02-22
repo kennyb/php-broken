@@ -394,12 +394,6 @@ CPH_METHOD(SaveToFile)
 				RETURN_FALSE;
 			}
 	
-			if ((SAFE_MODE && (!php_checkuid(fullpath, NULL, CHECKUID_CHECK_FILE_AND_DIR))) || 
-					php_check_open_basedir(fullpath TSRMLS_CC)) {
-				efree(fullpath);
-				RETURN_FALSE;
-			}
-
 			olefilename = php_com_string_to_olestring(filename, strlen(fullpath), helper->codepage TSRMLS_CC);
 			efree(fullpath);
 		}
@@ -454,12 +448,6 @@ CPH_METHOD(LoadFromFile)
 		}
 
 		if (!(fullpath = expand_filepath(filename, NULL TSRMLS_CC))) {
-			RETURN_FALSE;
-		}
-
-		if ((SAFE_MODE && (!php_checkuid(fullpath, NULL, CHECKUID_CHECK_FILE_AND_DIR))) ||
-				php_check_open_basedir(fullpath TSRMLS_CC)) {
-			efree(fullpath);
 			RETURN_FALSE;
 		}
 

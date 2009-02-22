@@ -162,31 +162,7 @@ static void _php_curl_close(zend_rsrc_list_entry *rsrc TSRMLS_DC);
  #define php_curl_ret(__ret) RETVAL_FALSE; return;
 #endif
 
-#define PHP_CURL_CHECK_OPEN_BASEDIR(str, len, __ret)													\
-	if (((PG(open_basedir) && *PG(open_basedir)) || SAFE_MODE) &&                                                \
-	    strncasecmp(str, "file:", sizeof("file:") - 1) == 0)								\
-	{ 																							\
-		php_url *tmp_url; 																		\
-															\
-		if (!(tmp_url = php_url_parse_ex(str, len))) {											\
-			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid URL '%s'", str);				\
-			php_curl_ret(__ret);											\
-		} 													\
-															\
-		if (tmp_url->host || !php_memnstr(str, tmp_url->path, strlen(tmp_url->path), str + len)) {				\
-			php_error_docref(NULL TSRMLS_CC, E_WARNING, "URL '%s' contains unencoded control characters", str);	\
-			php_url_free(tmp_url); 																\
-			php_curl_ret(__ret);											\
-		}													\
-																								\
-		if (tmp_url->query || tmp_url->fragment || php_check_open_basedir(tmp_url->path TSRMLS_CC) || 									\
-			(SAFE_MODE && !php_checkuid(tmp_url->path, "rb+", CHECKUID_CHECK_MODE_PARAM))	\
-		) { 																					\
-			php_url_free(tmp_url); 																\
-			php_curl_ret(__ret);											\
-		} 																						\
-		php_url_free(tmp_url); 																	\
-	}
+#define PHP_CURL_CHECK_OPEN_BASEDIR(str, len, __ret)
 
 /* {{{ arginfo */
 static
@@ -1302,13 +1278,6 @@ static int _php_curl_setopt(php_curl *ch, long option, zval **zvalue, zval *retu
 			break;
 		case CURLOPT_FOLLOWLOCATION:
 			convert_to_long_ex(zvalue);
-			if ((PG(open_basedir) && *PG(open_basedir)) || SAFE_MODE) {
-				if (Z_LVAL_PP(zvalue) != 0) {
-					php_error_docref(NULL TSRMLS_CC, E_WARNING, "CURLOPT_FOLLOWLOCATION cannot be activated when in safe_mode or an open_basedir is set");
-					RETVAL_FALSE;
-					return 1;
-				}
-			}
 			error = curl_easy_setopt(ch->cp, option, Z_LVAL_PP(zvalue));
 			break;
 		case CURLOPT_PRIVATE:
@@ -1486,11 +1455,6 @@ static int _php_curl_setopt(php_curl *ch, long option, zval **zvalue, zval *retu
 					 * use since curl needs a long not an int. */
 					if (*postval == '@') {
 						++postval;
-						/* safe_mode / open_basedir check */
-						if (php_check_open_basedir(postval TSRMLS_CC) || (SAFE_MODE && !php_checkuid(postval, "rb+", CHECKUID_CHECK_MODE_PARAM))) {
-							RETVAL_FALSE;
-							return 1;
-						}
 						error = curl_formadd(&first, &last, 
 											 CURLFORM_COPYNAME, string_key,
 											 CURLFORM_NAMELENGTH, (long)string_key_len - 1,
@@ -1566,9 +1530,6 @@ static int _php_curl_setopt(php_curl *ch, long option, zval **zvalue, zval *retu
 
 			break;
 		}
-		/* the following options deal with files, therefor safe_mode & open_basedir checks
-		 * are required.
-		 */
 		case CURLOPT_COOKIEJAR:
 		case CURLOPT_SSLCERT:
 		case CURLOPT_RANDOM_FILE:
@@ -1576,11 +1537,6 @@ static int _php_curl_setopt(php_curl *ch, long option, zval **zvalue, zval *retu
 			char *copystr = NULL;
 
 			convert_to_string_ex(zvalue);
-
-			if (php_check_open_basedir(Z_STRVAL_PP(zvalue) TSRMLS_CC) || (SAFE_MODE && !php_checkuid(Z_STRVAL_PP(zvalue), "rb+", CHECKUID_CHECK_MODE_PARAM))) {
-				RETVAL_FALSE;
-				return 1;
-			}
 
 			copystr = estrndup(Z_STRVAL_PP(zvalue), Z_STRLEN_PP(zvalue));
 

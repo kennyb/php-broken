@@ -467,7 +467,6 @@ END_EXTERN_C()
 #define IGNORE_PATH			0
 #define USE_PATH			1
 #define IGNORE_URL			2
-#define ENFORCE_SAFE_MODE 	4
 #define REPORT_ERRORS		8
 /* If you don't need to write to the stream, but really need to
  * be able to seek, use this flag in your options. */
@@ -492,9 +491,6 @@ END_EXTERN_C()
 
 /* this flag is used when only the headers from HTTP request are to be fetched */
 #define STREAM_ONLY_GET_HEADERS		512
-
-/* don't apply open_basedir checks */
-#define STREAM_DISABLE_OPEN_BASEDIR	1024
 
 /* get (or create) a persistent version of the stream */
 #define STREAM_OPEN_PERSISTENT	2048

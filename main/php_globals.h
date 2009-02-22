@@ -48,34 +48,12 @@ extern ZEND_API struct _php_core_globals core_globals;
 
 struct _php_tick_function_entry;
 
-#if PHP_SAFE_MODE
-# define SAFE_MODE PG(safe_mode)
-# define SAFE_MODE PG(safe_mode_include_dir)
-# define SAFE_MODE_GID PG(safe_mode_gid)
-# define SAFE_MODE_EXEC_DIR PG(safe_mode_exec_dir)
-# define SQL_SAFE_MODE PG(sql_safe_mode)
-#else
-# define SAFE_MODE 0
-# define SAFE_MODE_INCLUDE_DIR ""
-# define SAFE_MODE_GID 0
-# define SAFE_MODE_EXEC_DIR ""
-# define SQL_SAFE_MODE 0
-#endif
-
 typedef struct _arg_separators {
 	char *output;
 	char *input;
 } arg_separators;
 
 struct _php_core_globals {
-#if PHP_SAFE_MODE
-	zend_bool safe_mode;
-	char *safe_mode_include_dir;
-	zend_bool safe_mode_gid;
-	zend_bool sql_safe_mode;
-	char *safe_mode_exec_dir;
-#endif
-
 	zend_bool implicit_flush;
 
 	long output_buffering;
@@ -100,7 +78,6 @@ struct _php_core_globals {
 	char *doc_root;
 	char *user_dir;
 	char *include_path;
-	char *open_basedir;
 	char *extension_dir;
 
 	char *upload_tmp_dir;
@@ -154,8 +131,6 @@ struct _php_core_globals {
 	error_handling_t  error_handling;
 	zend_class_entry *exception_class;
 
-	char *disable_functions;
-	char *disable_classes;
 	zend_bool allow_url_include;
 #ifdef PHP_WIN32
 	zend_bool com_initialized;

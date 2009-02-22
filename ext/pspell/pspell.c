@@ -312,16 +312,6 @@ static PHP_FUNCTION(pspell_new_personal)
 
 	convert_to_string_ex(personal);
 
-	if (SAFE_MODE && (!php_checkuid(Z_STRVAL_PP(personal), NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
-		delete_pspell_config(config);
-		RETURN_FALSE;
-	}
-
-	if (php_check_open_basedir(Z_STRVAL_PP(personal) TSRMLS_CC)) {
-		delete_pspell_config(config);
-		RETURN_FALSE;
-	}
-
 	pspell_config_replace(config, "personal", Z_STRVAL_PP(personal));
 	pspell_config_replace(config, "save-repl", "false");
 
@@ -806,14 +796,6 @@ static void pspell_config_path(INTERNAL_FUNCTION_PARAMETERS, char *option)
 
 	convert_to_string_ex(value);
 
-	if (SAFE_MODE && (!php_checkuid(Z_STRVAL_PP(value), NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
-		RETURN_FALSE;
-	}
-
-	if (php_check_open_basedir(Z_STRVAL_PP(value) TSRMLS_CC)) {
-		RETURN_FALSE;
-	}
-
 	pspell_config_replace(config, option, Z_STRVAL_PP(value));
 
 	RETURN_TRUE;
@@ -863,14 +845,6 @@ static PHP_FUNCTION(pspell_config_repl)
 	pspell_config_replace(config, "save-repl", "true");
 
 	convert_to_string_ex(repl);
-
-	if (SAFE_MODE && (!php_checkuid(Z_STRVAL_PP(repl), NULL, CHECKUID_CHECK_FILE_AND_DIR))) {
-		RETURN_FALSE;
-	}
-
-	if (php_check_open_basedir(Z_STRVAL_PP(repl) TSRMLS_CC)) {
-		RETURN_FALSE;
-	}
 
 	pspell_config_replace(config, "repl", Z_STRVAL_PP(repl));
 
