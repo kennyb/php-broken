@@ -388,9 +388,6 @@ static void sapi_apache_register_server_variables(zval *track_vars_array TSRMLS_
 	/* If PATH_TRANSLATED doesn't exist, copy it from SCRIPT_FILENAME */
 	if (track_vars_array) {
 		symbol_table = track_vars_array->value.ht;
-	} else if (PG(register_globals)) {
-		/* should never happen nowadays */
-		symbol_table = EG(active_symbol_table);
 	} else {
 		symbol_table = NULL;
 	}
@@ -1240,14 +1237,6 @@ static void php_init_handler(server_rec *s, pool *p)
 		sapi_startup(&apache_sapi_module);
 		php_apache_startup(&apache_sapi_module);
 	}
-#if MODULE_MAGIC_NUMBER >= 19980527
-	{
-		TSRMLS_FETCH();
-		if (PG(expose_php)) {
-			ap_add_version_component("PHP/" PHP_VERSION);
-		}
-	}
-#endif
 }
 /* }}} */
 

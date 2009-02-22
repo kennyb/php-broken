@@ -1425,7 +1425,7 @@ PHP_FUNCTION(mb_parse_str)
 	enum mbfl_no_encoding detected;
 
 	track_vars_array = NULL;
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|z", &encstr, &encstr_len, &track_vars_array) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz", &encstr, &encstr_len, &track_vars_array) == FAILURE) {
 		return;
 	}
 
@@ -1439,7 +1439,6 @@ PHP_FUNCTION(mb_parse_str)
 
 	info.data_type              = PARSE_STRING;
 	info.separator              = PG(arg_separator).input; 
-	info.force_register_globals = (track_vars_array == NULL);
 	info.report_errors          = 1;
 	info.to_encoding            = MBSTRG(current_internal_encoding);
 	info.to_language            = MBSTRG(current_language);

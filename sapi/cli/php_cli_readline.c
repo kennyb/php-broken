@@ -226,10 +226,7 @@ int cli_is_valid_code(char *code, int len, char **prompt TSRMLS_DC) /* {{{ */
 				}
 				break;
 			case outside:
-				if ((CG(short_tags) && !strncmp(code+i-1, "<?", 2))
-				||  (CG(asp_tags) && !strncmp(code+i-1, "<%", 2))
-				||  (i > 3 && !strncmp(code+i-4, "<?php", 5))
-				) {
+				if(!strncmp(code+i-1, "<?", 2)) {
 					code_type = body;
 				}
 				break;

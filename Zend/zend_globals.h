@@ -104,11 +104,8 @@ struct _zend_compiler_globals {
 	HashTable *auto_globals;
 
 	zend_bool in_compilation;
-	zend_bool short_tags;
-	zend_bool asp_tags;
 	zend_bool opcode_optimize;
-	zend_bool allow_call_time_pass_reference;
-
+	
 	zend_declarables declarables;
 
 	/* For extensions support */
@@ -229,9 +226,6 @@ struct _zend_executor_globals {
 #if WANT_EXCEPTIONS
 	zend_ptr_stack user_exception_handlers;
 #endif
-
-	/* timeout support */
-	int timeout_seconds;
 
 	int lambda_count;
 

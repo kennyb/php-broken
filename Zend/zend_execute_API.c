@@ -41,15 +41,6 @@ ZEND_API void (*zend_execute_internal)(zend_execute_data *execute_data_ptr, int 
 /* true globals */
 ZEND_API zend_fcall_info_cache empty_fcall_info_cache = { 0, NULL, NULL, NULL };
 
-#ifdef ZEND_WIN32
-#include <process.h>
-static WNDCLASS wc;
-static HWND timeout_window;
-static HANDLE timeout_thread_event;
-static HANDLE timeout_thread_handle;
-static DWORD timeout_thread_id;
-static int timeout_thread_initialized=0;
-#endif
 
 #if 0&&ZEND_DEBUG
 static void (*original_sigsegv_handler)(int);
@@ -181,9 +172,6 @@ void init_executor(TSRMLS_D)
 	zend_objects_store_init(&EG(objects_store), 1024);
 
 	EG(full_tables_cleanup) = 0;
-#ifdef ZEND_WIN32
-	EG(timed_out) = 0;
-#endif
 
 #if WANT_EXCEPTIONS
 	EG(exception) = NULL;
@@ -1311,196 +1299,11 @@ void execute_new_code(TSRMLS_D)
 }
 
 
-ZEND_API void zend_timeout(int dummy)
-{
-	TSRMLS_FETCH();
-
-	if (zend_on_timeout) {
-		zend_on_timeout(EG(timeout_seconds) TSRMLS_CC);
-	}
-
-	zend_error(E_ERROR, "Maximum execution time of %d second%s exceeded",
-			  EG(timeout_seconds), EG(timeout_seconds) == 1 ? "" : "s");
-}
-
-#ifdef ZEND_WIN32
-static LRESULT CALLBACK zend_timeout_WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-	switch (message) {
-		case WM_DESTROY:
-			PostQuitMessage(0);
-			break;
-		case WM_REGISTER_ZEND_TIMEOUT:
-			/* wParam is the thread id pointer, lParam is the timeout amount in seconds */
-			if (lParam==0) {
-				KillTimer(timeout_window, wParam);
-			} else {
-#ifdef ZTS
-				void ***tsrm_ls;
-#endif
-				SetTimer(timeout_window, wParam, lParam*1000, NULL);
-#ifdef ZTS
-				tsrm_ls = ts_resource_ex(0, &wParam);
-				if (!tsrm_ls) {
-					/* shouldn't normally happen */
-					break;
-				}
-#endif
-				EG(timed_out) = 0;
-			}
-			break;
-		case WM_UNREGISTER_ZEND_TIMEOUT:
-			/* wParam is the thread id pointer */
-			KillTimer(timeout_window, wParam);
-			break;
-		case WM_TIMER: {
-#ifdef ZTS
-				void ***tsrm_ls;
-
-				tsrm_ls = ts_resource_ex(0, &wParam);
-				if (!tsrm_ls) {
-					/* Thread died before receiving its timeout? */
-					break;
-				}
-#endif
-				KillTimer(timeout_window, wParam);
-				EG(timed_out) = 1;
-			}
-			break;
-		default:
-			return DefWindowProc(hWnd, message, wParam, lParam);
-	}
-	return 0;
-}
-
-
-
-static unsigned __stdcall timeout_thread_proc(void *pArgs)
-{
-	MSG message;
-
-	wc.style=0;
-	wc.lpfnWndProc = zend_timeout_WndProc;
-	wc.cbClsExtra=0;
-	wc.cbWndExtra=0;
-	wc.hInstance=NULL;
-	wc.hIcon=NULL;
-	wc.hCursor=NULL;
-	wc.hbrBackground=(HBRUSH)(COLOR_BACKGROUND + 5);
-	wc.lpszMenuName=NULL;
-	wc.lpszClassName = "Zend Timeout Window";
-	if (!RegisterClass(&wc)) {
-		return -1;
-	}
-	timeout_window = CreateWindow(wc.lpszClassName, wc.lpszClassName, 0, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, NULL, NULL);
-	SetEvent(timeout_thread_event);
-	while (GetMessage(&message, NULL, 0, 0)) {
-		SendMessage(timeout_window, message.message, message.wParam, message.lParam);
-		if (message.message == WM_QUIT) {
-			break;
-		}
-	}
-	DestroyWindow(timeout_window);
-	UnregisterClass(wc.lpszClassName, NULL);
-	SetEvent(timeout_thread_handle);
-	return 0;
-}
-
-
-void zend_init_timeout_thread(void)
-{
-	timeout_thread_event = CreateEvent(NULL, FALSE, FALSE, NULL);
-	timeout_thread_handle = CreateEvent(NULL, FALSE, FALSE, NULL);
-	_beginthreadex(NULL, 0, timeout_thread_proc, NULL, 0, &timeout_thread_id);
-	WaitForSingleObject(timeout_thread_event, INFINITE);
-}
-
-
-void zend_shutdown_timeout_thread(void)
-{
-	if (!timeout_thread_initialized) {
-		return;
-	}
-	PostThreadMessage(timeout_thread_id, WM_QUIT, 0, 0);
-
-	/* Wait for thread termination */
-	WaitForSingleObject(timeout_thread_handle, 5000);
-	CloseHandle(timeout_thread_handle);
-	timeout_thread_initialized = 0;
-}
-
-#endif
 
 /* This one doesn't exists on QNX */
 #ifndef SIGPROF
 #define SIGPROF 27
 #endif
-
-void zend_set_timeout(long seconds)
-{
-	TSRMLS_FETCH();
-
-	EG(timeout_seconds) = seconds;
-	if(!seconds) {
-		return;
-	}
-#ifdef ZEND_WIN32
-	if (timeout_thread_initialized==0 && InterlockedIncrement(&timeout_thread_initialized)==1) {
-		/* We start up this process-wide thread here and not in zend_startup(), because if Zend
-		 * is initialized inside a DllMain(), you're not supposed to start threads from it.
-		 */
-		zend_init_timeout_thread();
-	}
-	PostThreadMessage(timeout_thread_id, WM_REGISTER_ZEND_TIMEOUT, (WPARAM) GetCurrentThreadId(), (LPARAM) seconds);
-#else
-#	ifdef HAVE_SETITIMER
-	{
-		struct itimerval t_r;		/* timeout requested */
-		sigset_t sigset;
-
-		t_r.it_value.tv_sec = seconds;
-		t_r.it_value.tv_usec = t_r.it_interval.tv_sec = t_r.it_interval.tv_usec = 0;
-
-#	ifdef __CYGWIN__
-		setitimer(ITIMER_REAL, &t_r, NULL);
-		signal(SIGALRM, zend_timeout);
-		sigemptyset(&sigset);
-		sigaddset(&sigset, SIGALRM);
-#	else
-		setitimer(ITIMER_PROF, &t_r, NULL);
-		signal(SIGPROF, zend_timeout);
-		sigemptyset(&sigset);
-		sigaddset(&sigset, SIGPROF);
-#	endif
-		sigprocmask(SIG_UNBLOCK, &sigset, NULL);
-	}
-#	endif
-#endif
-}
-
-
-void zend_unset_timeout(TSRMLS_D)
-{
-#ifdef ZEND_WIN32
-	if(timeout_thread_initialized) {
-		PostThreadMessage(timeout_thread_id, WM_UNREGISTER_ZEND_TIMEOUT, (WPARAM) GetCurrentThreadId(), (LPARAM) 0);
-	}
-#else
-#	ifdef HAVE_SETITIMER
-	{
-		struct itimerval no_timeout;
-
-		no_timeout.it_value.tv_sec = no_timeout.it_value.tv_usec = no_timeout.it_interval.tv_sec = no_timeout.it_interval.tv_usec = 0;
-
-#ifdef __CYGWIN__
-		setitimer(ITIMER_REAL, &no_timeout, NULL);
-#else
-		setitimer(ITIMER_PROF, &no_timeout, NULL);
-#endif
-	}
-#	endif
-#endif
-}
 
 
 zend_class_entry *zend_fetch_class(char *class_name, uint class_name_len, int fetch_type TSRMLS_DC)

@@ -132,9 +132,6 @@ asp_tags = Off
 ; The number of significant digits displayed in floating point numbers.
 precision    =  14
 
-; Enforce year 2000 compliance (will cause problems with non-compliant browsers)
-y2k_compliance = On
-
 ; Output buffering allows you to send header lines (including cookies) even
 ; after you send body content, at the price of slowing PHP's output layer a
 ; bit.  You can enable output buffering during runtime by calling the output
@@ -195,17 +192,6 @@ unserialize_callback_func=
 ; digits after the floating point. The default value ensures that when floats
 ; are decoded with unserialize, the data will remain the same.
 serialize_precision = 100
-
-; Whether to enable the ability to force arguments to be passed by reference
-; at function call time.  This method is deprecated and is likely to be
-; unsupported in future versions of PHP/Zend.  The encouraged method of
-; specifying which arguments should be passed by reference is in the function
-; declaration.  You're encouraged to try and turn this option Off and make
-; sure your scripts work properly with it in order to ensure they will work
-; with future versions of the language (you will receive a warning each time
-; you use this feature, and the argument will be passed by value instead of by
-; reference).
-allow_call_time_pass_reference = Off
 
 ;
 ; Safe Mode
@@ -282,22 +268,10 @@ disable_classes =
 ; value.
 ; realpath_cache_ttl=120
 
-;
-; Misc
-;
-; Decides whether PHP may expose the fact that it is installed on the server
-; (e.g. by adding its signature to the Web server header).  It is no security
-; threat in any way, but it makes it possible to determine whether you use PHP
-; on your server or not.
-expose_php = On
-
-
 ;;;;;;;;;;;;;;;;;;;
 ; Resource Limits ;
 ;;;;;;;;;;;;;;;;;;;
 
-max_execution_time = 30     ; Maximum execution time of each script, in seconds
-max_input_time = 60	; Maximum amount of time each script may spend parsing request data
 ;max_input_nesting_level = 64 ; Maximum input variable nesting level
 memory_limit = 128M      ; Maximum amount of memory a script may consume (128MB)
 

@@ -1601,13 +1601,10 @@ void zend_do_pass_param(znode *param, zend_uchar op, int offset TSRMLS_DC)
 	zend_stack_top(&CG(function_call_stack), (void **) &function_ptr_ptr);
 	function_ptr = *function_ptr_ptr;
 
-	if (original_op==ZEND_SEND_REF
-		&& !CG(allow_call_time_pass_reference)) {
+	if (original_op==ZEND_SEND_REF) {
 		zend_error(E_COMPILE_WARNING,
 					"Call-time pass-by-reference has been deprecated; "
-					"If you would like to pass it by reference, modify the declaration of %s().  "
-					"If you would like to enable call-time pass-by-reference, you can set "
-					"allow_call_time_pass_reference to true in your INI file",
+					"If you would like to pass it by reference, modify the declaration of %s().",
 					(function_ptr ? function_ptr->common.function_name : "[runtime function name]"));
 	}
 

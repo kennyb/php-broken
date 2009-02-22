@@ -76,7 +76,6 @@ struct _php_core_globals {
 	char *safe_mode_exec_dir;
 #endif
 
-	zend_bool allow_call_time_pass_reference;
 	zend_bool implicit_flush;
 
 	long output_buffering;
@@ -87,8 +86,7 @@ struct _php_core_globals {
 	long serialize_precision;
 
 	long memory_limit;
-	long max_input_time;
-
+	
 	zend_bool track_errors;
 	zend_bool display_errors;
 	zend_bool display_startup_errors;
@@ -129,14 +127,8 @@ struct _php_core_globals {
 
 	zval *http_globals[6];
 
-	zend_bool expose_php;
-
-	zend_bool register_globals;
-	zend_bool register_long_arrays;
 	zend_bool register_argc_argv;
 	zend_bool auto_globals_jit;
-
-	zend_bool y2k_compliance;
 
 	char *docref_root;
 	char *docref_ext;

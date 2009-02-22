@@ -792,12 +792,7 @@ Testing
 Benchmarking
 
    If you have built PHP 3 as a CGI program, you may benchmark your build
-   by typing make bench. Note that if safe mode is on by default, the
-   benchmark may not be able to finish if it takes longer then the 30
-   seconds allowed. This is because the set_time_limit() can not be used
-   in safe mode. Use the max_execution_time configuration setting to
-   control this time for your own scripts. make bench ignores the
-   configuration file.
+   by typing make bench. make bench ignores the configuration file.
 
      Note: make bench is only available for PHP 3.
      __________________________________________________________________

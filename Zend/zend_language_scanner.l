@@ -1574,50 +1574,20 @@ HEREDOC_CHARS       ("{"*([^$\n\r\\{]|("\\"[^\n\r]))|{HEREDOC_LITERAL_DOLLAR}|({
 
 <INITIAL>"<?" {
 	HANDLE_NEWLINES(yytext, yyleng);
-	if (CG(short_tags) || yyleng>2) { /* yyleng>2 means it's not <? but <script> */
-		zendlval->value.str.val = yytext; /* no copying - intentional */
-		zendlval->value.str.len = yyleng;
-		zendlval->type = IS_STRING;
-		BEGIN(ST_IN_SCRIPTING);
-		return T_OPEN_TAG;
-	} else {
-		zendlval->value.str.val = (char *) estrndup(yytext, yyleng);
-		zendlval->value.str.len = yyleng;
-		zendlval->type = IS_STRING;
-		return T_INLINE_HTML;
-	}
+	zendlval->value.str.val = yytext; /* no copying - intentional */
+	zendlval->value.str.len = yyleng;
+	zendlval->type = IS_STRING;
+	BEGIN(ST_IN_SCRIPTING);
+	return T_OPEN_TAG;
 }
 
 
-<INITIAL>"<%="|"<?=" {
-	if ((yytext[1]=='%' && CG(asp_tags)) || (yytext[1]=='?' && CG(short_tags))) {
-		zendlval->value.str.val = yytext; /* no copying - intentional */
-		zendlval->value.str.len = yyleng;
-		zendlval->type = IS_STRING;
-		BEGIN(ST_IN_SCRIPTING);
-		return T_OPEN_TAG_WITH_ECHO;
-	} else {
-		zendlval->value.str.val = (char *) estrndup(yytext, yyleng);
-		zendlval->value.str.len = yyleng;
-		zendlval->type = IS_STRING;
-		return T_INLINE_HTML;
-	}
-}
-
-
-<INITIAL>"<%" {
-	if (CG(asp_tags)) {
-		zendlval->value.str.val = yytext; /* no copying - intentional */
-		zendlval->value.str.len = yyleng;
-		zendlval->type = IS_STRING;
-		BEGIN(ST_IN_SCRIPTING);
-		return T_OPEN_TAG;
-	} else {
-		zendlval->value.str.val = (char *) estrndup(yytext, yyleng);
-		zendlval->value.str.len = yyleng;
-		zendlval->type = IS_STRING;
-		return T_INLINE_HTML;
-	}
+<INITIAL>"<?=" {
+	zendlval->value.str.val = yytext; /* no copying - intentional */
+	zendlval->value.str.len = yyleng;
+	zendlval->type = IS_STRING;
+	BEGIN(ST_IN_SCRIPTING);
+	return T_OPEN_TAG_WITH_ECHO;
 }
 
 
@@ -1729,17 +1699,13 @@ HEREDOC_CHARS       ("{"*([^$\n\r\\{]|("\\"[^\n\r]))|{HEREDOC_LITERAL_DOLLAR}|({
 	return T_COMMENT;
 }
 
-<ST_ONE_LINE_COMMENT>"?>"|"%>" {
-    if (CG(asp_tags) || yytext[yyleng-2] != '%') { /* asp comment? */
-		zendlval->value.str.val = yytext; /* no copying - intentional */
-		zendlval->value.str.len = yyleng-2;
-		zendlval->type = IS_STRING;
-		yyless(yyleng-2);
-		BEGIN(ST_IN_SCRIPTING);
-		return T_COMMENT;
-	} else {
-		yymore();
-	}
+<ST_ONE_LINE_COMMENT>"?>" {
+    	zendlval->value.str.val = yytext; /* no copying - intentional */
+	zendlval->value.str.len = yyleng-2;
+	zendlval->type = IS_STRING;
+	yyless(yyleng-2);
+	BEGIN(ST_IN_SCRIPTING);
+	return T_COMMENT;
 }
 
 <ST_IN_SCRIPTING>"/**"{WHITESPACE} {
@@ -1784,20 +1750,6 @@ HEREDOC_CHARS       ("{"*([^$\n\r\\{]|("\\"[^\n\r]))|{HEREDOC_LITERAL_DOLLAR}|({
 	zendlval->type = IS_STRING;
 	BEGIN(INITIAL);
 	return T_CLOSE_TAG;  /* implicit ';' at php-end tag */
-}
-
-
-<ST_IN_SCRIPTING>"%>"{NEWLINE}? {
-	if (CG(asp_tags)) {
-		BEGIN(INITIAL);
-		zendlval->value.str.len = yyleng;
-		zendlval->type = IS_STRING;
-		zendlval->value.str.val = yytext; /* no copying - intentional */
-		return T_CLOSE_TAG;  /* implicit ';' at php-end tag */
-	} else {
-		yyless(1);
-		return yytext[0];
-	}
 }
 
 

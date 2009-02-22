@@ -447,8 +447,7 @@ PHPAPI void php_print_info(int flag TSRMLS_DC)
 {
 	char **env, *tmp1, *tmp2;
 	char *php_uname;
-	int expose_php = INI_INT("expose_php");
-
+	
 	if (!sapi_module.phpinfo_as_text) {
 		php_print_info_htmlhead(TSRMLS_C);
 	} else {
@@ -464,20 +463,6 @@ PHPAPI void php_print_info(int flag TSRMLS_DC)
 		
 		if (!sapi_module.phpinfo_as_text) {
 			php_info_print_box_start(1);
-		}
-
-		if (expose_php && !sapi_module.phpinfo_as_text) {
-			PUTS("<a href=\"http://www.php.net/\"><img border=\"0\" src=\"");
-			if (SG(request_info).request_uri) {
-				char *elem_esc = php_info_html_esc(SG(request_info).request_uri TSRMLS_CC);
-				PUTS(elem_esc);
-				efree(elem_esc);
-			}
-			PUTS("?=");
-			logo_guid = php_logo_guid();
-			PUTS(logo_guid);
-			efree(logo_guid);
-			PUTS("\" alt=\"PHP Logo\" /></a>");
 		}
 
 		if (!sapi_module.phpinfo_as_text) {
@@ -657,15 +642,6 @@ PHPAPI void php_print_info(int flag TSRMLS_DC)
 
 		/* Zend Engine */
 		php_info_print_box_start(0);
-		if (expose_php && !sapi_module.phpinfo_as_text) {
-			PUTS("<a href=\"http://www.zend.com/\"><img border=\"0\" src=\"");
-			if (SG(request_info).request_uri) {
-				char *elem_esc = php_info_html_esc(SG(request_info).request_uri TSRMLS_CC);
-				PUTS(elem_esc);
-				efree(elem_esc);
-			}
-			PUTS("?="ZEND_LOGO_GUID"\" alt=\"Zend logo\" /></a>\n");
-		}
 		PUTS("This program makes use of the Zend Scripting Language Engine:");
 		PUTS(!sapi_module.phpinfo_as_text?"<br />":"\n");
 		if (sapi_module.phpinfo_as_text) {
@@ -675,19 +651,6 @@ PHPAPI void php_print_info(int flag TSRMLS_DC)
 		}
 		php_info_print_box_end();
 		efree(php_uname);
-	}
-
-	if ((flag & PHP_INFO_CREDITS) && expose_php && !sapi_module.phpinfo_as_text) {	
-		php_info_print_hr();
-		PUTS("<h1><a href=\"");
-		if (SG(request_info).request_uri) {
-			char *elem_esc = php_info_html_esc(SG(request_info).request_uri TSRMLS_CC);
-			PUTS(elem_esc);
-			efree(elem_esc);
-		}
-		PUTS("?=PHPB8B5F2A0-3C92-11d3-A3A9-4C7B08C10000\">");
-		PUTS("PHP Credits");
-		PUTS("</a></h1>\n");
 	}
 
 	zend_ini_sort_entries(TSRMLS_C);

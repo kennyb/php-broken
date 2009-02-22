@@ -199,21 +199,6 @@ static void php_disable_classes(TSRMLS_D)
 }
 /* }}} */
 
-/* {{{ PHP_INI_MH
- */
-static PHP_INI_MH(OnUpdateTimeout)
-{
-	EG(timeout_seconds) = atoi(new_value);
-	if (stage==PHP_INI_STAGE_STARTUP) {
-		/* Don't set a timeout on startup, only per-request */
-		return SUCCESS;
-	}
-	zend_unset_timeout(TSRMLS_C);
-	zend_set_timeout(EG(timeout_seconds));
-	return SUCCESS;
-}
-/* }}} */
-
 /* {{{ php_get_display_errors_mode() helper function
  */
 static int php_get_display_errors_mode(char *value, int value_length)
@@ -369,19 +354,15 @@ PHP_INI_BEGIN()
 	PHP_INI_ENTRY_EX("highlight.keyword",		HL_KEYWORD_COLOR,	PHP_INI_ALL,	NULL,			php_ini_color_displayer_cb)
 	PHP_INI_ENTRY_EX("highlight.string",		HL_STRING_COLOR,	PHP_INI_ALL,	NULL,			php_ini_color_displayer_cb)
 
-	STD_PHP_INI_BOOLEAN("allow_call_time_pass_reference",	"1",	PHP_INI_SYSTEM|PHP_INI_PERDIR,		OnUpdateBool,	allow_call_time_pass_reference,	zend_compiler_globals,	compiler_globals)
-	STD_PHP_INI_BOOLEAN("asp_tags",				"0",		PHP_INI_SYSTEM|PHP_INI_PERDIR,		OnUpdateBool,			asp_tags,				zend_compiler_globals,	compiler_globals)
 	STD_PHP_INI_BOOLEAN("opcode_optimize",			"0",		PHP_INI_SYSTEM,		OnUpdateBool,			opcode_optimize,				zend_compiler_globals,	compiler_globals)
 	STD_PHP_INI_ENTRY_EX("display_errors",		"1",		PHP_INI_ALL,		OnUpdateDisplayErrors,	display_errors,			php_core_globals,	core_globals, display_errors_mode)
 	STD_PHP_INI_BOOLEAN("display_startup_errors",	"0",	PHP_INI_ALL,		OnUpdateBool,			display_startup_errors,	php_core_globals,	core_globals)
 	STD_PHP_INI_BOOLEAN("enable_dl",			"1",		PHP_INI_SYSTEM,		OnUpdateBool,			enable_dl,				php_core_globals,	core_globals)
-	STD_PHP_INI_BOOLEAN("expose_php",			"1",		PHP_INI_SYSTEM,		OnUpdateBool,			expose_php,				php_core_globals,	core_globals)
 	STD_PHP_INI_ENTRY("docref_root", 			"", 		PHP_INI_ALL,		OnUpdateString,			docref_root,			php_core_globals,	core_globals)
 	STD_PHP_INI_ENTRY("docref_ext",				"",			PHP_INI_ALL,		OnUpdateString,			docref_ext,				php_core_globals,	core_globals)
 	STD_PHP_INI_BOOLEAN("html_errors",			"1",		PHP_INI_ALL,		OnUpdateBool,			html_errors,			php_core_globals,	core_globals)
 	STD_PHP_INI_BOOLEAN("xmlrpc_errors",		"0",		PHP_INI_SYSTEM,		OnUpdateBool,			xmlrpc_errors,			php_core_globals,	core_globals)
 	STD_PHP_INI_ENTRY("xmlrpc_error_number",	"0",		PHP_INI_ALL,		OnUpdateLong,			xmlrpc_error_number,	php_core_globals,	core_globals)
-	STD_PHP_INI_ENTRY("max_input_time",			"-1",	PHP_INI_SYSTEM|PHP_INI_PERDIR,		OnUpdateLong,			max_input_time,	php_core_globals,	core_globals)
 	STD_PHP_INI_BOOLEAN("ignore_user_abort",	"0",		PHP_INI_ALL,		OnUpdateBool,			ignore_user_abort,		php_core_globals,	core_globals)
 	STD_PHP_INI_BOOLEAN("implicit_flush",		"0",		PHP_INI_ALL,		OnUpdateBool,			implicit_flush,			php_core_globals,	core_globals)
 	STD_PHP_INI_BOOLEAN("log_errors",			"0",		PHP_INI_ALL,		OnUpdateBool,			log_errors,				php_core_globals,	core_globals)
@@ -393,8 +374,6 @@ PHP_INI_BEGIN()
 	STD_PHP_INI_ENTRY("output_buffering",		"0",		PHP_INI_PERDIR|PHP_INI_SYSTEM,	OnUpdateLong,	output_buffering,		php_core_globals,	core_globals)
 	STD_PHP_INI_ENTRY("output_handler",			NULL,		PHP_INI_PERDIR|PHP_INI_SYSTEM,	OnUpdateString,	output_handler,		php_core_globals,	core_globals)
 	STD_PHP_INI_BOOLEAN("register_argc_argv",	"1",		PHP_INI_PERDIR|PHP_INI_SYSTEM,	OnUpdateBool,	register_argc_argv,		php_core_globals,	core_globals)
-	STD_PHP_INI_BOOLEAN("register_globals",		"0",		PHP_INI_PERDIR|PHP_INI_SYSTEM,	OnUpdateBool,	register_globals,		php_core_globals,	core_globals)
-	STD_PHP_INI_BOOLEAN("register_long_arrays",	"1",		PHP_INI_PERDIR|PHP_INI_SYSTEM,	OnUpdateBool,	register_long_arrays,	php_core_globals,	core_globals)
 	STD_PHP_INI_BOOLEAN("auto_globals_jit",		"1",		PHP_INI_PERDIR|PHP_INI_SYSTEM,	OnUpdateBool,	auto_globals_jit,	php_core_globals,	core_globals)
 #if PHP_SAFE_MODE
 	STD_PHP_INI_BOOLEAN("safe_mode",			"1",		PHP_INI_SYSTEM,		OnUpdateBool,			safe_mode,				php_core_globals,	core_globals)
@@ -403,10 +382,8 @@ PHP_INI_BEGIN()
 	STD_PHP_INI_BOOLEAN("sql.safe_mode",		"0",		PHP_INI_SYSTEM,		OnUpdateBool,			sql_safe_mode,			php_core_globals,	core_globals)
 	STD_PHP_INI_ENTRY("safe_mode_exec_dir",		PHP_SAFE_MODE_EXEC_DIR,	PHP_INI_SYSTEM,		OnUpdateString,			safe_mode_exec_dir,		php_core_globals,	core_globals)
 #endif
-	STD_PHP_INI_BOOLEAN("short_open_tag",	DEFAULT_SHORT_OPEN_TAG,	PHP_INI_SYSTEM|PHP_INI_PERDIR,		OnUpdateBool,			short_tags,				zend_compiler_globals,	compiler_globals)
 	STD_PHP_INI_BOOLEAN("track_errors",			"0",		PHP_INI_ALL,		OnUpdateBool,			track_errors,			php_core_globals,	core_globals)
-	STD_PHP_INI_BOOLEAN("y2k_compliance",		"1",		PHP_INI_ALL,		OnUpdateBool,			y2k_compliance,			php_core_globals,	core_globals)
-
+	
 	STD_PHP_INI_ENTRY("unserialize_callback_func",	NULL,	PHP_INI_ALL,		OnUpdateString,			unserialize_callback_func,	php_core_globals,	core_globals)
 	STD_PHP_INI_ENTRY("serialize_precision",	"100",	PHP_INI_ALL,		OnUpdateLongGEZero,			serialize_precision,	php_core_globals,	core_globals)
 	STD_PHP_INI_ENTRY("arg_separator.output",	"&",		PHP_INI_ALL,		OnUpdateStringUnempty,	arg_separator.output,	php_core_globals,	core_globals)
@@ -420,7 +397,6 @@ PHP_INI_BEGIN()
 	STD_PHP_INI_ENTRY("error_log",				NULL,		PHP_INI_ALL,		OnUpdateErrorLog,			error_log,				php_core_globals,	core_globals)
 	STD_PHP_INI_ENTRY("extension_dir",			PHP_EXTENSION_DIR,		PHP_INI_SYSTEM,		OnUpdateStringUnempty,	extension_dir,			php_core_globals,	core_globals)
 	STD_PHP_INI_ENTRY("include_path",			PHP_INCLUDE_PATH,		PHP_INI_ALL,		OnUpdateStringUnempty,	include_path,			php_core_globals,	core_globals)
-	PHP_INI_ENTRY("max_execution_time",			"30",		PHP_INI_ALL,			OnUpdateTimeout)
 	STD_PHP_INI_ENTRY("open_basedir",			NULL,		PHP_INI_SYSTEM,		OnUpdateString,			open_basedir,			php_core_globals,	core_globals)
 
 	STD_PHP_INI_BOOLEAN("file_uploads",			"1",		PHP_INI_SYSTEM,		OnUpdateBool,			file_uploads,			php_core_globals,	core_globals)
@@ -986,30 +962,6 @@ static void php_error_cb(int type, const char *error_filename, const uint error_
 }
 /* }}} */
 
-/* {{{ proto bool set_time_limit(int seconds)
-   Sets the maximum time a script can run */
-PHP_FUNCTION(set_time_limit)
-{
-	zval **new_timeout;
-
-	if (SAFE_MODE) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot set time limit in safe mode");
-		RETURN_FALSE;
-	}
-
-	if (ZEND_NUM_ARGS() != 1 || zend_get_parameters_ex(1, &new_timeout) == FAILURE) {
-		WRONG_PARAM_COUNT;
-	}
-
-	convert_to_string_ex(new_timeout);
-	if (zend_alter_ini_entry("max_execution_time", sizeof("max_execution_time"), Z_STRVAL_PP(new_timeout), Z_STRLEN_PP(new_timeout), PHP_INI_USER, PHP_INI_STAGE_RUNTIME) == SUCCESS) {
-		RETURN_TRUE;
-	} else {
-		RETURN_FALSE;
-	}
-}
-/* }}} */
-
 /* {{{ php_fopen_wrapper_for_zend
  */
 static FILE *php_fopen_wrapper_for_zend(const char *filename, char **opened_path)
@@ -1165,12 +1117,6 @@ static void php_message_handler_for_zend(long message, void *data)
 /* }}} */
 
 
-void php_on_timeout(int seconds TSRMLS_DC)
-{
-	PG(connection_status) |= PHP_CONNECTION_TIMEOUT;
-	zend_set_timeout(EG(timeout_seconds));
-}
-
 #if PHP_SIGCHILD
 /* {{{ sigchld_handler
  */
@@ -1198,7 +1144,6 @@ static int php_start_sapi(TSRMLS_D)
 			PG(connection_status) = PHP_CONNECTION_NORMAL;
 
 			zend_activate(TSRMLS_C);
-			zend_set_timeout(EG(timeout_seconds));
 			zend_activate_modules(TSRMLS_C);
 			PG(modules_activated)=1;
 		} zend_catch {
@@ -1241,19 +1186,9 @@ int php_request_startup(TSRMLS_D)
 		zend_activate(TSRMLS_C);
 		sapi_activate(TSRMLS_C);
 
-		if (PG(max_input_time) == -1) {
-			zend_set_timeout(EG(timeout_seconds));
-		} else {
-			zend_set_timeout(PG(max_input_time));
-		}
-
 		/* Disable realpath cache if safe_mode or open_basedir are set */
 		if (SAFE_MODE || (PG(open_basedir) && *PG(open_basedir))) {
 			CWDG(realpath_cache_size_limit) = 0;
-		}
-
-		if (PG(expose_php)) {
-			sapi_add_header(SAPI_PHP_VERSION_HEADER, sizeof(SAPI_PHP_VERSION_HEADER)-1, 1);
 		}
 
 		if (PG(output_handler) && PG(output_handler)[0]) {
@@ -1302,9 +1237,6 @@ int php_request_startup(TSRMLS_D)
 	zend_try {
 		PG(during_request_startup) = 1;
 		php_output_activate(TSRMLS_C);
-		if (PG(expose_php)) {
-			sapi_add_header(SAPI_PHP_VERSION_HEADER, sizeof(SAPI_PHP_VERSION_HEADER)-1, 1);
-		}
 	} zend_catch {
 		retval = FAILURE;
 	} zend_end_try();
@@ -1385,10 +1317,6 @@ void php_request_shutdown_for_hook(void *dummy)
 
 	zend_try {
 		shutdown_memory_manager(CG(unclean_shutdown), 0 TSRMLS_CC);
-	} zend_end_try();
-
-	zend_try {
-		zend_unset_timeout(TSRMLS_C);
 	} zend_end_try();
 }
 
@@ -1477,11 +1405,6 @@ void php_request_shutdown(void *dummy)
 	/* 11. Free Willy (here be crashes) */
 	zend_try {
 		shutdown_memory_manager(CG(unclean_shutdown) || !report_memleaks, 0 TSRMLS_CC);
-	} zend_end_try();
-
-	/* 12. Reset max_execution_time */
-	zend_try {
-		zend_unset_timeout(TSRMLS_C);
 	} zend_end_try();
 
 #ifdef PHP_WIN32
@@ -1659,7 +1582,6 @@ int php_module_startup(sapi_module_struct *sf, zend_module_entry *additional_mod
 	zuf.unblock_interruptions = sapi_module.unblock_interruptions;
 	zuf.get_configuration_directive = php_get_configuration_directive_for_zend;
 	zuf.ticks_function = php_run_ticks;
-	zuf.on_timeout = php_on_timeout;
 	zuf.stream_open_function = php_stream_open_for_zend;
 	zuf.vspprintf_function = vspprintf;
 	zuf.getenv_function = sapi_getenv;
@@ -1975,12 +1897,6 @@ PHPAPI int php_execute_script(zend_file_handle *primary_file TSRMLS_DC)
 			append_file_p = &append_file;
 		} else {
 			append_file_p = NULL;
-		}
-		if (PG(max_input_time) != -1) {
-#ifdef PHP_WIN32
-			zend_unset_timeout(TSRMLS_C);
-#endif
-			zend_set_timeout(INI_INT("max_execution_time"));
 		}
 		retval = (zend_execute_scripts(ZEND_REQUIRE TSRMLS_CC, NULL, 3, prepend_file_p, primary_file, append_file_p) == SUCCESS);
 

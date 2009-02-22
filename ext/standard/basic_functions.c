@@ -136,12 +136,6 @@ static void user_tick_function_dtor(user_tick_function_entry *tick_function_entr
 #undef sprintf
 
 /* {{{ arginfo */
-/* {{{ main/main.c */
-static
-ZEND_BEGIN_ARG_INFO(arginfo_set_time_limit, 0)
-	ZEND_ARG_INFO(0, seconds)
-ZEND_END_ARG_INFO()
-/* }}} */
 /* {{{ main/output.c */
 static
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ob_start, 0, 0, 0)
@@ -3414,7 +3408,6 @@ zend_function_entry basic_functions[] = {
 	PHP_FE(quoted_printable_decode,											arginfo_quoted_printable_decode)
 	PHP_FE(convert_cyr_string,												arginfo_convert_cyr_string)
 	PHP_FE(get_current_user,												arginfo_get_current_user)
-	PHP_FE(set_time_limit,													arginfo_set_time_limit)
 	PHP_FE(get_cfg_var,														arginfo_get_cfg_var)
 	PHP_FE(import_request_variables,										arginfo_import_request_variables)
 	PHP_FE(error_log,														arginfo_error_log)
@@ -5793,8 +5786,7 @@ PHP_FUNCTION(ini_set)
 		
 	/* checks that ensure the user does not overwrite certain ini settings when safe_mode is enabled */
 	if (SAFE_MODE) {
-		if (!strncmp("max_execution_time", Z_STRVAL_PP(varname), sizeof("max_execution_time")) ||
-			!strncmp("memory_limit", Z_STRVAL_PP(varname), sizeof("memory_limit")) ||
+		if (!strncmp("memory_limit", Z_STRVAL_PP(varname), sizeof("memory_limit")) ||
 			!strncmp("child_terminate", Z_STRVAL_PP(varname), sizeof("child_terminate"))) {
 			zval_dtor(return_value);
 			RETURN_FALSE;

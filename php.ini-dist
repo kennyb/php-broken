@@ -88,9 +88,6 @@ asp_tags = Off
 ; The number of significant digits displayed in floating point numbers.
 precision    =  12
 
-; Enforce year 2000 compliance (will cause problems with non-compliant browsers)
-y2k_compliance = On
-
 ; Output buffering allows you to send header lines (including cookies) even
 ; after you send body content, at the price of slowing PHP's output layer a
 ; bit.  You can enable output buffering during runtime by calling the output
@@ -151,17 +148,6 @@ unserialize_callback_func=
 ; digits after the floating point. The default value ensures that when floats
 ; are decoded with unserialize, the data will remain the same.
 serialize_precision = 100
-
-; Whether to enable the ability to force arguments to be passed by reference
-; at function call time.  This method is deprecated and is likely to be
-; unsupported in future versions of PHP/Zend.  The encouraged method of
-; specifying which arguments should be passed by reference is in the function
-; declaration.  You're encouraged to try and turn this option Off and make
-; sure your scripts work properly with it in order to ensure they will work
-; with future versions of the language (you will receive a warning each time
-; you use this feature, and the argument will be passed by value instead of by
-; reference).
-allow_call_time_pass_reference = On
 
 ;
 ; Safe Mode
@@ -238,22 +224,11 @@ disable_classes =
 ; value.
 ; realpath_cache_ttl=120
 
-;
-; Misc
-;
-; Decides whether PHP may expose the fact that it is installed on the server
-; (e.g. by adding its signature to the Web server header).  It is no security
-; threat in any way, but it makes it possible to determine whether you use PHP
-; on your server or not.
-expose_php = On
-
 
 ;;;;;;;;;;;;;;;;;;;
 ; Resource Limits ;
 ;;;;;;;;;;;;;;;;;;;
 
-max_execution_time = 30     ; Maximum execution time of each script, in seconds
-max_input_time = 60	; Maximum amount of time each script may spend parsing request data
 ;max_input_nesting_level = 64 ; Maximum input variable nesting level
 memory_limit = 128M      ; Maximum amount of memory a script may consume (128MB)
 
@@ -407,16 +382,6 @@ variables_order = "EGPCS"
 ; with user data.  This makes most sense when coupled with track_vars - in which
 ; case you can access all of the GPC variables through the $HTTP_*_VARS[],
 ; variables.
-;
-; You should do your best to write your scripts so that they do not require
-; register_globals to be on;  Using form variables as globals can easily lead
-; to possible security problems, if the code is not very well thought of.
-register_globals = Off
-
-; Whether or not to register the old-style input arrays, HTTP_GET_VARS
-; and friends.  If you're not using them, it's recommended to turn them off,
-; for performance reasons.
-register_long_arrays = On
 
 ; This directive tells PHP whether to declare the argv&argc variables (that
 ; would contain the GET information).  If you don't use these variables, you
@@ -426,8 +391,8 @@ register_argc_argv = On
 ; When enabled, the SERVER and ENV variables are created when they're first
 ; used (Just In Time) instead of when the script starts. If these variables
 ; are not used within a script, having this directive on will result in a
-; performance gain. The PHP directives register_globals, register_long_arrays,
-; and register_argc_argv must be disabled for this directive to have any affect.
+; performance gain. The PHP directive register_argc_argv must be disabled
+; for this directive to have any affect.
 auto_globals_jit = On
 
 ; Maximum size of POST data that PHP will accept.

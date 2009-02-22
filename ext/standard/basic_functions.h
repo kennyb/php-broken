@@ -70,7 +70,6 @@ PHP_FUNCTION(putenv);
 PHP_FUNCTION(getopt);
 
 PHP_FUNCTION(get_current_user);
-PHP_FUNCTION(set_time_limit);
 
 PHP_FUNCTION(get_cfg_var);
 PHP_FUNCTION(import_request_variables);
