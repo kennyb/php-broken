@@ -1423,10 +1423,7 @@ PHP_FUNCTION(mysqli_real_connect)
 	flags |= CLIENT_MULTI_RESULTS; /* needed for mysql_multi_query() */
 	/* remove some insecure options */
 	flags &= ~CLIENT_MULTI_STATEMENTS;   /* don't allow multi_queries via connect parameter */
-	if (!socket) {
-		socket = MyG(default_socket);
-	}
-
+	
 	if (mysql_real_connect(mysql->mysql,hostname,username,passwd,dbname,port,socket,flags) == NULL) {
 		php_mysqli_set_error(mysql_errno(mysql->mysql), (char *) mysql_error(mysql->mysql) TSRMLS_CC);
 		php_mysqli_throw_sql_exception( mysql->mysql->net.sqlstate, mysql->mysql->net.last_errno TSRMLS_CC,

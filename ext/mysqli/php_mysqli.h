@@ -254,6 +254,11 @@ PHP_MYSQLI_EXPORT(zend_object_value) mysqli_objects_new(zend_class_entry * TSRML
 { \
 	int i = 0; \
 	while (b[i].pname != NULL) { \
+		i++; \
+	}\
+	zend_hash_prealloc(a, i);\
+	i = 0;\
+	while (b[i].pname != NULL) { \
 		mysqli_add_property(a, b[i].pname, (mysqli_read_t)b[i].r_func, (mysqli_write_t)b[i].w_func TSRMLS_CC); \
 		i++; \
 	}\
@@ -429,11 +434,6 @@ ZEND_BEGIN_MODULE_GLOBALS(mysqli)
 	long			default_link;
 	long			num_links;
 	long			max_links;
-	unsigned int	default_port;
-	char			*default_host;
-	char			*default_user;
-	char			*default_socket;
-	char            *default_pw;
 	int				reconnect;
 	int				strict;
 	long			error_no;
