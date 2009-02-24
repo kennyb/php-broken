@@ -27,8 +27,6 @@ BEGIN_EXTERN_C()
 PHPAPI int php_fopen_primary_script(zend_file_handle *file_handle TSRMLS_DC);
 PHPAPI char *expand_filepath(const char *filepath, char *real_path TSRMLS_DC);
 
-PHPAPI int php_check_safe_mode_include_dir(const char *path TSRMLS_DC);
-
 PHPAPI FILE *php_fopen_with_path(const char *filename, const char *mode, const char *path, char **opened_path TSRMLS_DC);
 
 PHPAPI char *php_strip_url_passwd(char *path);
