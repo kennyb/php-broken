@@ -1118,6 +1118,18 @@ no_optimize:
 		ZEND_VM_SET_OPCODE_HANDLER(opline);
 		opline++;
 	}
+	
+#if 0
+	extern HashTable configuration_hash;
+	printf("============\n");
+	printf("# modules: (%d/%d)\n", module_registry.nNumOfElements, module_registry.nTableSize);
+	printf("# constants: (%d/%d)\n", EG(zend_constants)->nNumOfElements, EG(zend_constants)->nTableSize);
+	printf("# functions: (%d/%d)\n", EG(function_table)->nNumOfElements, EG(function_table)->nTableSize);
+	printf("# classes: (%d/%d)\n", EG(class_table)->nNumOfElements, EG(class_table)->nTableSize);
+	printf("# tmp vars: %d\n", op_array->T);
+	printf("# ops: %d\n", op_array->last);
+	printf("============\n");
+#endif
 
 	op_array->done_pass_two = 1;
 	return 0;

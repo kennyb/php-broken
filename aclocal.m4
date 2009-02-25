@@ -2703,8 +2703,11 @@ AC_DEFUN([PHP_CHECK_CONFIGURE_OPTIONS],[
       with-zend-vm | enable-maintainer-zts | enable-inline-optimization[)];;
 
       # Allow optimization options
-      with-prealloc-opcodes | enable-detailed-errors | enable-interactive-mode[)];;
+      enable-detailed-errors | enable-interactive-mode[)];;
       enable-exceptions[)];;
+
+      # Enable prealloc options
+      with-prealloc-opcodes | with-prealloc-function-opcodes | prealloc-functions | prealloc-classes | prealloc-constants[)];;
 
       # All the rest must be set using the PHP_ARG_* macros
       # PHP_ARG_* macros set php_enable_<arg_name> or php_with_<arg_name>

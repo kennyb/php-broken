@@ -1634,7 +1634,15 @@ ZEND_API int zend_register_functions(zend_class_entry *scope, zend_function_entr
 		class_name_len = strlen(scope->name);
 		lc_class_name = zend_str_tolower_dup(scope->name, class_name_len);
 	}
+	
+	while (ptr->fname) {
+		ptr++;
+		count++;
+	}
 
+	zend_hash_prealloc(target_function_table, count);
+	count = 0;
+	ptr = functions;
 	while (ptr->fname) {
 		internal_function->handler = ptr->handler;
 		internal_function->function_name = ptr->fname;

@@ -457,6 +457,7 @@ END_EXTERN_C()
 
 #define zend_bailout()		_zend_bailout(__FILE__, __LINE__)
 
+#if ZEND_DEBUG
 #define zend_try												\
 	{															\
 		jmp_buf *__orig_bailout = EG(bailout);					\
@@ -472,6 +473,17 @@ END_EXTERN_C()
 		EG(bailout) = __orig_bailout;							\
 	}
 #define zend_first_try		EG(bailout)=NULL; zend_try
+#else
+#define zend_try												\
+	{															\
+		if (1) {
+#define zend_catch												\
+		} else {
+#define zend_end_try()											\
+		}														\
+	}
+#define zend_first_try zend_try
+#endif
 
 BEGIN_EXTERN_C()
 ZEND_API char *get_zend_version(void);

@@ -232,7 +232,6 @@ ZEND_API int _zend_hash_add_or_update(HashTable *ht, char *arKey, uint nKeyLengt
 				}
 #endif
 				if (ht->pDestructor) {
-					if(ht == EG(zend_constants)) printf("!3\n");
 					ht->pDestructor(p->pData);
 				}
 				UPDATE_DATA(ht, p, pData, nDataSize);
@@ -298,7 +297,6 @@ ZEND_API int _zend_hash_quick_add_or_update(HashTable *ht, char *arKey, uint nKe
 				}
 #endif
 				if (ht->pDestructor) {
-					if(ht == EG(zend_constants)) printf("!4\n");
 					ht->pDestructor(p->pData);
 				}
 				UPDATE_DATA(ht, p, pData, nDataSize);
@@ -374,7 +372,6 @@ ZEND_API int _zend_hash_index_update_or_next_insert(HashTable *ht, ulong h, void
 			}
 #endif
 			if (ht->pDestructor) {
-				if(ht == EG(zend_constants)) printf("!5\n");
 				ht->pDestructor(p->pData);
 			}
 			UPDATE_DATA(ht, p, pData, nDataSize);
@@ -415,6 +412,32 @@ ZEND_API int _zend_hash_index_update_or_next_insert(HashTable *ht, ulong h, void
 	return SUCCESS;
 }
 
+#if DEBUG_RESIZE
+static int resizes = 0;
+#endif
+ZEND_API int zend_hash_prealloc(HashTable *ht, uint nSize)
+{
+	uint i = 3;
+	
+	if (nSize >= 0x80000000) {
+		/* prevent overflow */
+		i = 0x80000000;
+	} else {
+		while ((1U << i) < nSize) {
+			i++;
+		}
+		i = 1 << i;
+	}
+	
+	if(ht->nTableSize < i) {
+#if DEBUG_RESIZE
+		printf("tablesize_before: %d\n", ht->nTableSize);
+		printf("tablesize_after: %d\n", i);
+#endif
+		ht->nTableSize = i;
+		zend_hash_do_resize(ht);
+	}
+}
 
 static int zend_hash_do_resize(HashTable *ht)
 {
@@ -431,6 +454,10 @@ static int zend_hash_do_resize(HashTable *ht)
 			ht->nTableMask = ht->nTableSize - 1;
 			zend_hash_rehash(ht);
 			HANDLE_UNBLOCK_INTERRUPTIONS();
+#if DEBUG_RESIZE
+			asm("int3");
+			printf("#%d resized %d\n", ++resizes, ht->nTableSize);
+#endif
 			return SUCCESS;
 		}
 		return FAILURE;
@@ -498,7 +525,6 @@ ZEND_API int zend_hash_del_key_or_index(HashTable *ht, char *arKey, uint nKeyLen
 				ht->pInternalPointer = p->pListNext;
 			}
 			if (ht->pDestructor) {
-				if(ht == EG(zend_constants)) printf("!6\n");
 				ht->pDestructor(p->pData);
 			}
 			if (p->pData != &p->pDataPtr) {
@@ -519,10 +545,6 @@ ZEND_API void zend_hash_destroy(HashTable *ht)
 {
 	Bucket *p, *q;
 
-	if(ht == EG(zend_constants)) {
-		//asm("int3");
-	}
-
 	IS_CONSISTENT(ht);
 
 	SET_INCONSISTENT(HT_IS_DESTROYING);
@@ -532,7 +554,6 @@ ZEND_API void zend_hash_destroy(HashTable *ht)
 		q = p;
 		p = p->pListNext;
 		if (ht->pDestructor) {
-			//if(ht == EG(zend_constants)) asm("int3");//printf("!7\n");
 			ht->pDestructor(q->pData);
 		}
 		if (q->pData != &q->pDataPtr) {
@@ -559,7 +580,6 @@ ZEND_API void zend_hash_clean(HashTable *ht)
 		q = p;
 		p = p->pListNext;
 		if (ht->pDestructor) {
-			if(ht == EG(zend_constants)) printf("!1\n");
 			ht->pDestructor(q->pData);
 		}
 		if (q->pData != &q->pDataPtr) {
@@ -619,7 +639,6 @@ static Bucket *zend_hash_apply_deleter(HashTable *ht, Bucket *p)
 	HANDLE_UNBLOCK_INTERRUPTIONS();
 
 	if (ht->pDestructor) {
-		if(ht == EG(zend_constants)) asm("int3");//printf("!2\n");
 		ht->pDestructor(p->pData);
 	}
 	if (p->pData != &p->pDataPtr) {
@@ -658,7 +677,7 @@ ZEND_API void zend_hash_graceful_reverse_destroy(HashTable *ht)
 		zend_hash_apply_deleter(ht, p);
 		p = ht->pListTail;
 	}
-
+	
 	pefree(ht->arBuckets, ht->persistent);
 
 	SET_INCONSISTENT(HT_DESTROYED);

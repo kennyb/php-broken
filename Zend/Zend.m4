@@ -167,11 +167,57 @@ AC_ARG_ENABLE(inline-optimization,
 
 AC_ARG_WITH(prealloc-opcodes,
 [  --with-prealloc-opcodes=NUM
-                          if you would like to preallocate more or less to reduce memory operations ],[
+                          Tune the number of main file opcodes you preallocate to reduce memory operations ],[
   ZEND_PREALLOC_OPCODES=$withval
 ],[
-  ZEND_PREALLOC_OPCODES=64
+  ZEND_PREALLOC_OPCODES=1024
 ])
+
+
+AC_ARG_WITH(prealloc-function-opcodes,
+[  --with-prealloc-function-opcodes=NUM
+                          Tune the number of function opcodes you preallocate to reduce memory operations ],[
+  ZEND_PREALLOC_FUNCTION_OPCODES=$withval
+],[
+  ZEND_PREALLOC_FUNCTION_OPCODES=256
+])
+
+
+AC_ARG_WITH(prealloc-functions,
+[  --with-prealloc-functions=NUM
+                          Tune the number of function entries to preallocate to reduce memory operations ],[
+  ZEND_PREALLOC_FUNCTIONS=$withval
+],[
+  ZEND_PREALLOC_FUNCTIONS=128
+])
+
+
+AC_ARG_WITH(prealloc-classes,
+[  --with-prealloc-classes=NUM
+                          Tune the number of class entries to preallocate to reduce memory operations ],[
+  ZEND_PREALLOC_CLASSES=$withval
+],[
+  ZEND_PREALLOC_CLASSES=16
+])
+
+
+AC_ARG_WITH(prealloc-constants,
+[  --with-prealloc-constants=NUM
+                          Tune the number of constants entries to preallocate to reduce memory operations ],[
+  ZEND_PREALLOC_CONSTANTS=$withval
+],[
+  ZEND_PREALLOC_CONSTANTS=256
+])
+
+
+AC_ARG_WITH(prealloc-ini-entries,
+[  --with-prealloc-constants=NUM
+                          Tune the number of ini entries to preallocate to reduce memory operations ],[
+  ZEND_PREALLOC_INI_ENTRIES=$withval
+],[
+  ZEND_PREALLOC_INI_ENTRIES=256
+])
+
 
 AC_ARG_ENABLE(zend-multibyte,
 [  --enable-zend-multibyte Compile with zend multibyte support], [
@@ -181,6 +227,12 @@ AC_ARG_ENABLE(zend-multibyte,
 ])
 
 AC_DEFINE_UNQUOTED(INITIAL_OP_ARRAY_SIZE, $ZEND_PREALLOC_OPCODES, [ Initial size of the opcode array ])
+AC_DEFINE_UNQUOTED(INITIAL_FUNCTION_OP_ARRAY_SIZE, $ZEND_PREALLOC_FUNCTION_OPCODES, [ Initial size of the function opcode array ])
+AC_DEFINE_UNQUOTED(INITIAL_FUNCTION_ARRAY_SIZE, $ZEND_PREALLOC_FUNCTIONS, [ Initial size of the function lookup table ])
+AC_DEFINE_UNQUOTED(INITIAL_CLASS_ARRAY_SIZE, $ZEND_PREALLOC_CLASSES, [ Initial size of the class lookup table ])
+AC_DEFINE_UNQUOTED(INITIAL_CONSTANT_ARRAY_SIZE, $ZEND_PREALLOC_CONSTANTS, [ Initial size of the constant lookup table ])
+AC_DEFINE_UNQUOTED(INITIAL_INI_ARRAY_SIZE, $ZEND_PREALLOC_INI_ENTRIES, [ Initial size of the ini entry lookup table ])
+
 AC_DEFINE_UNQUOTED(DETAILED_ERRORS, $ZEND_DETAILED_ERRORS, [ want to include detailed errors ])
 
 AC_MSG_CHECKING([virtual machine dispatch method])

@@ -271,7 +271,7 @@ int php_init_config(TSRMLS_D)
 	int l, total_l=0;
 	zend_llist_element *element;
 
-	if (zend_hash_init(&configuration_hash, 0, NULL, (dtor_func_t) pvalue_config_destructor, 1) == FAILURE) {
+	if (zend_hash_init(&configuration_hash, INITIAL_INI_ARRAY_SIZE, NULL, (dtor_func_t) pvalue_config_destructor, 1) == FAILURE) {
 		return FAILURE;
 	}
 
@@ -560,6 +560,9 @@ int php_init_config(TSRMLS_D)
  */
 int php_shutdown_config(void)
 {
+#if 0
+	printf("# ini values: (%d/%d)\n", configuration_hash.nNumOfElements, configuration_hash.nTableSize);
+#endif
 	zend_hash_destroy(&configuration_hash);
 	if (php_ini_opened_path) {
 		free(php_ini_opened_path);

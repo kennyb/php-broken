@@ -626,8 +626,8 @@ int zend_startup(zend_utility_functions *utility_functions, char **extensions, i
 #ifdef ZTS
  	GLOBAL_CONSTANTS_TABLE = (HashTable *) malloc(sizeof(HashTable));
 #endif
-	zend_hash_init_ex(GLOBAL_FUNCTION_TABLE, 100, NULL, ZEND_FUNCTION_DTOR, 1, 0);
-	zend_hash_init_ex(GLOBAL_CLASS_TABLE, 10, NULL, ZEND_CLASS_DTOR, 1, 0);
+	zend_hash_init_ex(GLOBAL_FUNCTION_TABLE, INITIAL_FUNCTION_ARRAY_SIZE, NULL, ZEND_FUNCTION_DTOR, 1, 0);
+	zend_hash_init_ex(GLOBAL_CLASS_TABLE, INITIAL_CLASS_ARRAY_SIZE, NULL, ZEND_CLASS_DTOR, 1, 0);
 
 	zend_hash_init_ex(&module_registry, 50, NULL, ZEND_MODULE_DTOR, 1, 0);
 	zend_init_rsrc_list_dtors();
@@ -780,16 +780,20 @@ void zenderror(char *error)
 BEGIN_EXTERN_C()
 ZEND_API void _zend_bailout(char *filename, uint lineno)
 {
+	asm("int3");
+	return;
 	TSRMLS_FETCH();
 
 	if (!EG(bailout)) {
-		zend_output_debug_string(1, "%s(%d) : Bailed out without a bailout address!", filename, lineno);
-		exit(-1);
+		//zend_output_debug_string(1, "%s(%d) : Bailed out without a bailout address!", filename, lineno);
+		printf("BARF!");
+		//exit(-1);
 	}
 	CG(unclean_shutdown) = 1;
 	CG(in_compilation) = EG(in_execution) = 0;
 	EG(current_execute_data) = NULL;
-	longjmp(*EG(bailout), FAILURE);
+	printf("YUCK");
+	//longjmp(*EG(bailout), FAILURE);
 }
 END_EXTERN_C()
 
@@ -868,8 +872,11 @@ void zend_deactivate(TSRMLS_D)
 		shutdown_compiler(TSRMLS_C);
 	} zend_end_try();
 
+	/* TODO!!! this function is really problematic for me...I'm not totally sure why */
+#if TODO
 	zend_destroy_rsrc_list(&EG(regular_list) TSRMLS_CC);
-
+#endif
+	
 	zend_try {
 		zend_ini_deactivate(TSRMLS_C);
 	} zend_end_try();
