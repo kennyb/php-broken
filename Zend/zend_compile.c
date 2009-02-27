@@ -1031,11 +1031,25 @@ void zend_do_add_variable(znode *result, znode *op1, znode *op2 TSRMLS_DC)
 void zend_do_free(znode *op1 TSRMLS_DC)
 {
 	if (op1->op_type==IS_TMP_VAR) {
-		zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
+		zend_op* cur = &CG(active_op_array)->opcodes[CG(active_op_array)->last-1];
+		
+		if(cur->opcode == ZEND_POST_INC) {
+			cur->opcode = ZEND_PRE_INC;
+		} else if(cur->opcode == ZEND_POST_DEC) {
+			cur->opcode = ZEND_PRE_INC;
+		} else {
+			zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
 
-		opline->opcode = ZEND_FREE;
-		opline->op1 = *op1;
-		SET_UNUSED(opline->op2);
+			opline->opcode = ZEND_FREE;
+			opline->op1 = *op1;
+			SET_UNUSED(opline->op2);
+			return;
+		}
+		
+		cur->result.op_type = IS_UNUSED;
+		cur->result.u.EA.type = 0;
+		CG(active_op_array)->T--;
+		
 	} else if (op1->op_type==IS_VAR) {
 		zend_op *opline = &CG(active_op_array)->opcodes[CG(active_op_array)->last-1];
 
