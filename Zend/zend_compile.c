@@ -1047,7 +1047,7 @@ void zend_do_free(znode *op1 TSRMLS_DC)
 		}
 		
 		cur->result.op_type = IS_UNUSED;
-		cur->result.u.EA.type = 0;
+		cur->result.u.EA.type = ZEND_FETCH_LOCAL;
 		CG(active_op_array)->T--;
 		
 	} else if (op1->op_type==IS_VAR) {
