@@ -488,11 +488,21 @@ void zend_do_print(znode *result, znode *arg TSRMLS_DC)
 
 void zend_do_echo(znode *arg TSRMLS_DC)
 {
-	zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
+	if(!(arg->op_type == IS_CONST && Z_STRLEN(arg->u.constant) == 0)) {
+		if(arg->op_type == IS_CONST && CG(active_op_array)->last > 0 && jumps_here(CG(active_op_array), CG(active_op_array)->last TSRMLS_CC) == 0) {
+			zend_op* cur = &CG(active_op_array)->opcodes[CG(active_op_array)->last-1];
+			if(cur->op1.op_type == IS_CONST && cur->opcode == ZEND_ECHO) {
+				concat_function(&cur->op1.u.constant, &cur->op1.u.constant, &arg->u.constant TSRMLS_CC);
+				return;
+			}
+		}
+		
+		zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
 
-	opline->opcode = ZEND_ECHO;
-	opline->op1 = *arg;
-	SET_UNUSED(opline->op2);
+		opline->opcode = ZEND_ECHO;
+		opline->op1 = *arg;
+		SET_UNUSED(opline->op2);
+	}
 }
 
 void zend_do_abstract_method(znode *function_name, znode *modifiers, znode *body TSRMLS_DC)
@@ -697,16 +707,29 @@ static inline void do_end_loop(int cont_addr, int has_loop_var TSRMLS_DC)
 
 void zend_do_while_cond(znode *expr, znode *close_bracket_token TSRMLS_DC)
 {
-	int while_cond_op_number = get_next_op_number(CG(active_op_array));
-	zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
-
-	opline->opcode = ZEND_JMPZ;
-	opline->op1 = *expr;
-	close_bracket_token->u.opline_num = while_cond_op_number;
-	SET_UNUSED(opline->op2);
-
-	do_begin_loop(TSRMLS_C);
 	INC_BPC(CG(active_op_array));
+	if(expr->op_type == IS_CONST && i_zend_is_true(&expr->u.constant)) {
+		close_bracket_token->op_type = 0;
+		close_bracket_token->u.opline_num = CG(active_op_array)->last;
+	} else {
+	
+		close_bracket_token->u.opline_num = get_next_op_number(CG(active_op_array));
+		zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
+		
+		if(expr->op_type == IS_CONST) {
+			close_bracket_token->op_type = 1;
+			opline->opcode = ZEND_JMP;
+			SET_UNUSED(opline->op1);
+		} else {
+			close_bracket_token->op_type = 2;
+			opline->opcode = ZEND_JMPZ;
+			opline->op1 = *expr;
+		}
+		
+		SET_UNUSED(opline->op2);
+	}
+	
+	do_begin_loop(TSRMLS_C);
 }
 
 
@@ -721,11 +744,16 @@ void zend_do_while_end(znode *while_token, znode *close_bracket_token TSRMLS_DC)
 	SET_UNUSED(opline->op2);
 
 	/* update while's conditional jmp */
-	CG(active_op_array)->opcodes[close_bracket_token->u.opline_num].op2.u.opline_num = get_next_op_number(CG(active_op_array));
-
-	do_end_loop(while_token->u.opline_num, 0 TSRMLS_CC);
+	if(close_bracket_token->op_type != 0) {
+		if(close_bracket_token->op_type == 2) {
+			CG(active_op_array)->opcodes[close_bracket_token->u.opline_num].op2.u.opline_num = get_next_op_number(CG(active_op_array));
+		} else {
+			CG(active_op_array)->opcodes[close_bracket_token->u.opline_num].op1.u.opline_num = get_next_op_number(CG(active_op_array));
+		}
+	}
 
 	DEC_BPC(CG(active_op_array));
+	do_end_loop(while_token->u.opline_num, 0 TSRMLS_CC);
 }
 
 
@@ -734,9 +762,22 @@ void zend_do_for_cond(znode *expr, znode *second_semicolon_token TSRMLS_DC)
 	int for_cond_op_number = get_next_op_number(CG(active_op_array));
 	zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
 
-	opline->opcode = ZEND_JMPZNZ;
-	opline->op1 = *expr;  /* the conditional expression */
 	second_semicolon_token->u.opline_num = for_cond_op_number;
+	if(expr->op_type == IS_CONST) {
+		opline->opcode = ZEND_JMP;
+		if(i_zend_is_true(&expr->u.constant)) {
+			second_semicolon_token->op_type = 2;
+		} else {
+			second_semicolon_token->op_type = 3;
+		}
+		
+		SET_UNUSED(opline->op1);
+	} else {
+		second_semicolon_token->op_type = 1;
+		opline->opcode = ZEND_JMPZNZ;
+		opline->op1 = *expr;  /* the conditional expression */
+	}
+	
 	SET_UNUSED(opline->op2);
 }
 
@@ -747,7 +788,14 @@ void zend_do_for_before_statement(znode *cond_start, znode *second_semicolon_tok
 
 	opline->opcode = ZEND_JMP;
 	opline->op1.u.opline_num = cond_start->u.opline_num;
-	CG(active_op_array)->opcodes[second_semicolon_token->u.opline_num].extended_value = get_next_op_number(CG(active_op_array));
+	int next_op = get_next_op_number(CG(active_op_array));
+	
+	if(second_semicolon_token->op_type == 1) {
+		CG(active_op_array)->opcodes[second_semicolon_token->u.opline_num].extended_value = next_op;
+	} else if(second_semicolon_token->op_type == 2) {
+		CG(active_op_array)->opcodes[second_semicolon_token->u.opline_num].op1.u.opline_num = next_op;
+	}
+	
 	SET_UNUSED(opline->op1);
 	SET_UNUSED(opline->op2);
 
@@ -763,7 +811,14 @@ void zend_do_for_end(znode *second_semicolon_token TSRMLS_DC)
 
 	opline->opcode = ZEND_JMP;
 	opline->op1.u.opline_num = second_semicolon_token->u.opline_num+1;
-	CG(active_op_array)->opcodes[second_semicolon_token->u.opline_num].op2.u.opline_num = get_next_op_number(CG(active_op_array));
+	int next_op = get_next_op_number(CG(active_op_array));
+	
+	if(second_semicolon_token->op_type == 1) {
+		CG(active_op_array)->opcodes[second_semicolon_token->u.opline_num].op2.u.opline_num = next_op;
+	} else if(second_semicolon_token->op_type == 3) {
+		CG(active_op_array)->opcodes[second_semicolon_token->u.opline_num].op1.u.opline_num = next_op;
+	}
+	
 	SET_UNUSED(opline->op1);
 	SET_UNUSED(opline->op2);
 
@@ -831,14 +886,26 @@ void zend_do_post_incdec(znode *result, znode *op1, zend_uchar op TSRMLS_DC)
 
 void zend_do_if_cond(znode *cond, znode *closing_bracket_token TSRMLS_DC)
 {
-	int if_cond_op_number = get_next_op_number(CG(active_op_array));
-	zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
-
-	opline->opcode = ZEND_JMPZ;
-	opline->op1 = *cond;
-	closing_bracket_token->u.opline_num = if_cond_op_number;
-	SET_UNUSED(opline->op2);
 	INC_BPC(CG(active_op_array));
+	if(cond->op_type == IS_CONST && i_zend_is_true(&cond->u.constant)) {
+		closing_bracket_token->op_type = 0;
+		return;
+	}
+	
+	closing_bracket_token->u.opline_num = get_next_op_number(CG(active_op_array));
+	zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
+	
+	if(cond->op_type == IS_CONST) {
+		closing_bracket_token->op_type = 1;
+		opline->opcode = ZEND_JMP;
+		SET_UNUSED(opline->op1);
+	} else {
+		closing_bracket_token->op_type = 2;
+		opline->opcode = ZEND_JMPZ;
+		opline->op1 = *cond;
+	}
+	
+	SET_UNUSED(opline->op2);
 }
 
 
@@ -859,7 +926,12 @@ void zend_do_if_after_statement(znode *closing_bracket_token, unsigned char init
 	zend_stack_top(&CG(bp_stack), (void **) &jmp_list_ptr);
 	zend_llist_add_element(jmp_list_ptr, &if_end_op_number);
 
-	CG(active_op_array)->opcodes[closing_bracket_token->u.opline_num].op2.u.opline_num = if_end_op_number+1;
+	if(closing_bracket_token->op_type == 2) {
+		CG(active_op_array)->opcodes[closing_bracket_token->u.opline_num].op2.u.opline_num = if_end_op_number+1;
+	} else if(closing_bracket_token->op_type == 1) {
+		CG(active_op_array)->opcodes[closing_bracket_token->u.opline_num].op1.u.opline_num = if_end_op_number+1;
+	}
+	
 	SET_UNUSED(opline->op1);
 	SET_UNUSED(opline->op2);
 }
@@ -878,6 +950,11 @@ void zend_do_if_end(TSRMLS_D)
 	zend_llist_destroy(jmp_list_ptr);
 	zend_stack_del_top(&CG(bp_stack));
 	DEC_BPC(CG(active_op_array));
+	
+	zend_op* cur = &CG(active_op_array)->opcodes[CG(active_op_array)->last-1];
+	if(cur->opcode == ZEND_JMP && cur->op1.u.opline_num == CG(active_op_array)->last) {
+		CG(active_op_array)->last--;
+	}
 }
 
 void zend_check_writable_variable(znode *variable)
@@ -2668,13 +2745,21 @@ void zend_do_do_while_begin(TSRMLS_D)
 
 void zend_do_do_while_end(znode *do_token, znode *expr_open_bracket, znode *expr TSRMLS_DC)
 {
-	zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
+	if(!(expr->op_type == IS_CONST && !i_zend_is_true(&expr->u.constant))) {
+		zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
 
-	opline->opcode = ZEND_JMPNZ;
-	opline->op1 = *expr;
-	opline->op2.u.opline_num = do_token->u.opline_num;
-	SET_UNUSED(opline->op2);
+		if(expr->op_type == IS_CONST) {
+			opline->opcode = ZEND_JMP;
+			SET_UNUSED(opline->op1);
+		} else {
+			opline->opcode = ZEND_JMPNZ;
+			opline->op1 = *expr;
+			opline->op2.u.opline_num = do_token->u.opline_num;
+		}
 
+		SET_UNUSED(opline->op2);
+	}
+	
 	do_end_loop(expr_open_bracket->u.opline_num, 0 TSRMLS_CC);
 
 	DEC_BPC(CG(active_op_array));
