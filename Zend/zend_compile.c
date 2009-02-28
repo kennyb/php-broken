@@ -939,6 +939,14 @@ void zend_do_if_after_statement(znode *closing_bracket_token, unsigned char init
 
 void zend_do_if_end(TSRMLS_D)
 {
+#if BROKEN
+	/* this is broken because I'd have to modify all of the above jumps... should be obsolete with new expression parser */
+	zend_op* cur = &CG(active_op_array)->opcodes[CG(active_op_array)->last-1];
+	if(cur->opcode == ZEND_JMP) {
+		CG(active_op_array)->last--;
+	}
+#endif
+	
 	int next_op_number = get_next_op_number(CG(active_op_array));
 	zend_llist *jmp_list_ptr;
 	zend_llist_element *le;
@@ -950,11 +958,6 @@ void zend_do_if_end(TSRMLS_D)
 	zend_llist_destroy(jmp_list_ptr);
 	zend_stack_del_top(&CG(bp_stack));
 	DEC_BPC(CG(active_op_array));
-	
-	zend_op* cur = &CG(active_op_array)->opcodes[CG(active_op_array)->last-1];
-	if(cur->opcode == ZEND_JMP && cur->op1.u.opline_num == CG(active_op_array)->last) {
-		CG(active_op_array)->last--;
-	}
 }
 
 void zend_check_writable_variable(znode *variable)
