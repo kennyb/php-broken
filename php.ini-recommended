@@ -352,10 +352,6 @@ auto_globals_jit = On
 ; Maximum size of POST data that PHP will accept.
 post_max_size = 8M
 
-; Automatically add files before or after any PHP document.
-auto_prepend_file =
-auto_append_file =
-
 ; As of 4.0b4, PHP always outputs a character encoding by default in
 ; the Content-type: header.  To disable sending of the charset, simply
 ; set it to be empty.

@@ -239,8 +239,6 @@ static PHP_INI_MH(OnChangeMailForceExtra)
 
 
 /* Need to be read from the environment (?):
- * PHP_AUTO_PREPEND_FILE
- * PHP_AUTO_APPEND_FILE
  * PHP_DOCUMENT_ROOT
  * PHP_USER_DIR
  * PHP_INCLUDE_PATH
@@ -291,8 +289,6 @@ PHP_INI_BEGIN()
 	STD_PHP_INI_ENTRY("arg_separator.output",	"&",		PHP_INI_ALL,		OnUpdateStringUnempty,	arg_separator.output,	php_core_globals,	core_globals)
 	STD_PHP_INI_ENTRY("arg_separator.input",	"&",		PHP_INI_SYSTEM|PHP_INI_PERDIR,	OnUpdateStringUnempty,	arg_separator.input,	php_core_globals,	core_globals)
 
-	STD_PHP_INI_ENTRY("auto_append_file",		NULL,		PHP_INI_SYSTEM|PHP_INI_PERDIR,		OnUpdateString,			auto_append_file,		php_core_globals,	core_globals)
-	STD_PHP_INI_ENTRY("auto_prepend_file",		NULL,		PHP_INI_SYSTEM|PHP_INI_PERDIR,		OnUpdateString,			auto_prepend_file,		php_core_globals,	core_globals)
 	STD_PHP_INI_ENTRY("doc_root",				NULL,		PHP_INI_SYSTEM,		OnUpdateStringUnempty,	doc_root,				php_core_globals,	core_globals)
 	STD_PHP_INI_ENTRY("default_charset",		SAPI_DEFAULT_CHARSET,	PHP_INI_ALL,	OnUpdateString,			default_charset,		sapi_globals_struct,sapi_globals)
 	STD_PHP_INI_ENTRY("default_mimetype",		SAPI_DEFAULT_MIMETYPE,	PHP_INI_ALL,	OnUpdateString,			default_mimetype,		sapi_globals_struct,sapi_globals)
@@ -1698,8 +1694,6 @@ void php_module_shutdown(TSRMLS_D)
  */
 PHPAPI int php_execute_script(zend_file_handle *primary_file TSRMLS_DC)
 {
-	zend_file_handle *prepend_file_p, *append_file_p;
-	zend_file_handle prepend_file = {0}, append_file = {0};
 #if HAVE_BROKEN_GETCWD 
 	int old_cwd_fd = -1;
 #else
@@ -1756,26 +1750,7 @@ PHPAPI int php_execute_script(zend_file_handle *primary_file TSRMLS_DC)
 			}
 		}
 
-		if (PG(auto_prepend_file) && PG(auto_prepend_file)[0]) {
-			prepend_file.filename = PG(auto_prepend_file);
-			prepend_file.opened_path = NULL;
-			prepend_file.free_filename = 0;
-			prepend_file.type = ZEND_HANDLE_FILENAME;
-			prepend_file_p = &prepend_file;
-		} else {
-			prepend_file_p = NULL;
-		}
-
-		if (PG(auto_append_file) && PG(auto_append_file)[0]) {
-			append_file.filename = PG(auto_append_file);
-			append_file.opened_path = NULL;
-			append_file.free_filename = 0;
-			append_file.type = ZEND_HANDLE_FILENAME;
-			append_file_p = &append_file;
-		} else {
-			append_file_p = NULL;
-		}
-		retval = (zend_execute_scripts(ZEND_REQUIRE TSRMLS_CC, NULL, 3, prepend_file_p, primary_file, append_file_p) == SUCCESS);
+		retval = (zend_execute_scripts(ZEND_REQUIRE TSRMLS_CC, NULL, 1, primary_file) == SUCCESS);
 
 	} zend_end_try();
 

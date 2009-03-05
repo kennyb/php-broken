@@ -86,9 +86,6 @@ struct _php_core_globals {
 	char *error_append_string;
 	char *error_prepend_string;
 
-	char *auto_prepend_file;
-	char *auto_append_file;
-
 	arg_separators arg_separator;
 
 	char *variables_order;
