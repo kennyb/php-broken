@@ -50,6 +50,7 @@ DATA;
 
 error_reporting(E_ALL);
 
+/*
 echo "rebuilding ini scanner...\n";
 system("flex -B -8 -L -Sflex.skl -Pini_ -ozend_ini_scanner.c zend_ini_scanner.l");
 
@@ -62,6 +63,7 @@ system("yacc -l -p zend -d zend_language_parser.y -o zend_language_parser.c");
 echo "rebuilding ini parser...\n";
 system("yacc -l -p ini_ -d zend_ini_parser.y -o zend_ini_parser.c");
 //exit;
+*/
 
 define("ZEND_VM_KIND_CALL",   1);
 define("ZEND_VM_KIND_SWITCH", 2);
@@ -1251,6 +1253,12 @@ function gen_vm($def, $skel) {
 		$op = str_pad($dsc["op"],$max_opcode_len);
 		fputs($f,"#define $op $code\n");
 	}
+	
+	// output the final OP_DATA used for the foreach...
+	$code++;
+	$op = str_pad("ZEND_OP_DATA", $max_opcode_len);
+	fputs($f,"#define $op $code\n");
+	
 	fclose($f);
 	echo "zend_vm_opcodes.h generated successfully.\n";
 

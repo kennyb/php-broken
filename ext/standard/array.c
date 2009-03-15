@@ -1243,7 +1243,7 @@ static void php_search_array(INTERNAL_FUNCTION_PARAMETERS, int behavior)
 	if (ZEND_NUM_ARGS() == 3) {
 		convert_to_boolean_ex(strict);
 		if (Z_LVAL_PP(strict)) {
-			is_equal_func = is_identical_function;
+			is_equal_func = typesafe_compare_function;
 		}
 	}
 
@@ -2446,7 +2446,7 @@ PHP_FUNCTION(array_keys)
 	if (ZEND_NUM_ARGS() == 3) {
 		convert_to_boolean_ex(strict);
 		if (Z_LVAL_PP(strict)) {
-			is_equal_func = is_identical_function;
+			is_equal_func = typesafe_compare_function;
 		}
 	}
 	

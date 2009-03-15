@@ -31,6 +31,7 @@
 #endif
 
 #include "zend_strtod.h"
+#include "zend_variables.h"
 
 #if 0&&HAVE_BCMATH
 #include "ext/bcmath/libbcmath/src/bcmath.h"
@@ -256,6 +257,41 @@ static inline void *zend_memrchr(const void *s, int c, size_t n)
 	return NULL;
 }
 
+
+static inline int is_smaller(zval *op1, zval *op2 TSRMLS_DC)
+{
+	int ret = 0;
+	if(op1->type == op2->type) {
+		switch(op1->type) {
+			case IS_LONG:
+				if(op1->value.lval < op2->value.lval) {
+					ret = 1;
+				}
+
+				return ret;
+		
+			case IS_DOUBLE:
+				if(op1->value.dval < op2->value.dval) {
+					ret = 1;
+				}
+
+				return ret;
+		}
+
+#if STRICT_DEBUG
+		zend_error(E_ERROR, "comparison operators less than / greater than must be of the type long or double");
+		return 0;
+#endif
+	}
+
+#if STRICT_DEBUG
+	zend_error(E_ERROR, "comparison operators must be of the same type");
+#endif
+	return 0;
+}
+
+
+
 BEGIN_EXTERN_C()
 ZEND_API int increment_function(zval *op1);
 ZEND_API int decrement_function(zval *op2);
@@ -282,6 +318,7 @@ ZEND_API int compare_function(zval *result, zval *op1, zval *op2 TSRMLS_DC);
 ZEND_API int numeric_compare_function(zval *result, zval *op1, zval *op2 TSRMLS_DC);
 ZEND_API int typesafe_compare_function(zval *result, zval *op1, zval *op2 TSRMLS_DC);
 ZEND_API int string_compare_function(zval *result, zval *op1, zval *op2 TSRMLS_DC);
+ZEND_API int hash_zval_typesafe_compare_function(const zval **z1, const zval **z2);
 #if HAVE_STRCOLL
 ZEND_API int string_locale_compare_function(zval *result, zval *op1, zval *op2 TSRMLS_DC);
 #endif
@@ -432,6 +469,100 @@ ZEND_API void zend_update_current_locale(void);
 #else
 #define zend_update_current_locale()
 #endif
+
+
+static inline int is_smaller_or_equal(zval *op1, zval *op2 TSRMLS_DC)
+{
+	int ret = 0;
+	if(op1->type == op2->type) {
+		switch(op1->type) {
+			case IS_LONG:
+				if(op1->value.lval <= op2->value.lval) {
+					ret = 1;
+				}
+
+				return ret;
+		
+			case IS_DOUBLE:
+				if(op1->value.dval <= op2->value.dval) {
+					ret = 1;
+				}
+
+				return ret;
+		}
+
+#if STRICT_DEBUG
+		zend_error(E_ERROR, "comparison operators less than / greater than must be of the type long or double");
+		return 0;
+#endif
+	}
+
+#if STRICT_DEBUG
+	zend_error(E_ERROR, "comparison operators must be of the same type");
+#endif
+	return 0;
+}
+
+static inline int compare(zval *op1, zval *op2 TSRMLS_DC)
+{
+	int ret = 0;
+	if (op1->type != op2->type) {
+		if((op1->type == IS_DOUBLE || op1->type == IS_LONG) && (op2->type == IS_DOUBLE || op2->type == IS_LONG)) {
+			zval op1_copy, op2_copy;
+
+			op1_copy = *op1;
+#ifdef zval_copy_ctor
+			zval_copy_ctor(&op1_copy);
+#else
+			zendi_zval_copy_ctor(op1_copy);
+#endif
+
+			op2_copy = *op2;
+			zval_copy_ctor(&op2_copy);
+
+			convert_to_double(&op1_copy);
+			convert_to_double(&op2_copy);
+			
+			op1 = &op1_copy;
+			op2 = &op2_copy;
+		} else {
+#if STRICT_DEBUG
+			zend_error(E_WARNING,"You cannot compare two objects of different types");
+#endif
+			return FAILURE;
+		}
+	}
+	
+	switch (op1->type) {
+		case IS_NULL:
+			ret = (op2->type==IS_NULL);
+			break;
+		case IS_BOOL:
+		case IS_LONG:
+		case IS_RESOURCE:
+			ret = (op1->value.lval - op2->value.lval);
+			break;
+		case IS_DOUBLE:
+			ret = (op1->value.dval - op2->value.dval);
+			break;
+		case IS_STRING:
+			if (op1->value.str.len != op2->value.str.len) {
+				ret = zend_binary_zval_strcmp(op1, op2);
+			}
+			break;
+		case IS_ARRAY:
+			ret = zend_hash_compare(op1->value.ht, op2->value.ht, (compare_func_t) hash_zval_typesafe_compare_function, 1 TSRMLS_CC);
+			break;
+		case IS_OBJECT:
+			if (Z_OBJ_HT_P(op1) == Z_OBJ_HT_P(op2)) {
+				ret = (Z_OBJ_HANDLE_P(op1) - Z_OBJ_HANDLE_P(op2));
+			}
+			break;
+	}
+	
+	return ret;
+}
+
 
 #endif
 

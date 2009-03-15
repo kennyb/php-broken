@@ -93,7 +93,9 @@ struct _zend_op {
 	znode op1;
 	znode op2;
 	ulong extended_value;
+	
 	uint lineno;
+	/* TODO zend_uchar file */
 	zend_uchar opcode;
 };
 
@@ -375,7 +377,7 @@ typedef int (*unary_op_type)(zval *, zval *);
 ZEND_API unary_op_type get_unary_op(int opcode);
 ZEND_API void *get_binary_op(int opcode);
 
-void zend_do_while_cond(znode *expr, znode *close_bracket_token TSRMLS_DC);
+void zend_do_while_cond(znode *expr, znode *opening_bracket_token, znode *close_bracket_token TSRMLS_DC);
 void zend_do_while_end(znode *while_token, znode *close_bracket_token TSRMLS_DC);
 void zend_do_do_while_begin(TSRMLS_D);
 void zend_do_do_while_end(znode *do_token, znode *expr_open_bracket, znode *expr TSRMLS_DC);
@@ -443,6 +445,11 @@ void zend_do_early_binding(TSRMLS_D);
 
 void zend_do_pass_param(znode *param, zend_uchar op, int offset TSRMLS_DC);
 
+void zend_do_and_begin(TSRMLS_DC);
+void zend_do_and(znode* expr TSRMLS_DC);
+
+void zend_do_or_begin(TSRMLS_DC);
+void zend_do_or(znode* expr TSRMLS_DC);
 
 void zend_do_boolean_or_begin(znode *expr1, znode *op_token TSRMLS_DC);
 void zend_do_boolean_or_end(znode *result, znode *expr1, znode *expr2, znode *op_token TSRMLS_DC);
@@ -551,7 +558,6 @@ ZEND_API int zend_unmangle_property_name(char *mangled_property, int mangled_pro
 
 zend_op *get_next_op(zend_op_array *op_array TSRMLS_DC);
 void init_op(zend_op *op TSRMLS_DC);
-int get_next_op_number(zend_op_array *op_array);
 int print_class(zend_class_entry *class_entry TSRMLS_DC);
 void print_op_array(zend_op_array *op_array, int optimizations);
 int pass_two(zend_op_array *op_array TSRMLS_DC);
@@ -585,11 +591,18 @@ ZEND_API int zend_auto_global_disable_jit(char *varname, zend_uint varname_lengt
 
 int zendlex(znode *zendlval TSRMLS_DC);
 
+int var_used_again(zend_op_array *op_array, zend_uint op_num, znode* zn TSRMLS_DC);
+int var_used_previously(zend_op_array *op_array, zend_uint op_num, znode* zn TSRMLS_DC);
+int ext_val_previously(zend_op_array *op_array, zend_uint op_num, int val TSRMLS_DC);
+
+static inline int get_next_op_number(zend_op_array *op_array)
+{
+	return op_array->last;
+}
+
 /* BEGIN: OPCODES */
 
 #include "zend_vm_opcodes.h"
-
-#define ZEND_OP_DATA				137
 
 /* END: OPCODES */
 

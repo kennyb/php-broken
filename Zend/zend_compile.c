@@ -31,6 +31,9 @@
 #include "zend_multibyte.h"
 #endif /* ZEND_MULTIBYTE */
 
+#define JMP_SUCCESS -1
+#define JMP_FAILURE -2
+
 ZEND_API zend_op_array *(*zend_compile_file)(zend_file_handle *file_handle, int type TSRMLS_DC);
 ZEND_API zend_op_array *(*zend_compile_string)(zval *source_string, char *filename TSRMLS_DC);
 
@@ -489,7 +492,7 @@ void zend_do_print(znode *result, znode *arg TSRMLS_DC)
 void zend_do_echo(znode *arg TSRMLS_DC)
 {
 	if(!(arg->op_type == IS_CONST && Z_STRLEN(arg->u.constant) == 0)) {
-		if(arg->op_type == IS_CONST && CG(active_op_array)->last > 0 && jumps_here(CG(active_op_array), CG(active_op_array)->last TSRMLS_CC) == 0) {
+		if(arg->op_type == IS_CONST && CG(active_op_array)->last > 0 && jumps_here(CG(active_op_array), CG(active_op_array)->last TSRMLS_CC) == -1) {
 			zend_op* cur = &CG(active_op_array)->opcodes[CG(active_op_array)->last-1];
 			if(cur->op1.op_type == IS_CONST && cur->opcode == ZEND_ECHO) {
 				concat_function(&cur->op1.u.constant, &cur->op1.u.constant, &arg->u.constant TSRMLS_CC);
@@ -705,7 +708,7 @@ static inline void do_end_loop(int cont_addr, int has_loop_var TSRMLS_DC)
 }
 
 
-void zend_do_while_cond(znode *expr, znode *close_bracket_token TSRMLS_DC)
+void zend_do_while_cond(znode *expr, znode *opening_bracket_token, znode *close_bracket_token TSRMLS_DC)
 {
 	INC_BPC(CG(active_op_array));
 	if(expr->op_type == IS_CONST && i_zend_is_true(&expr->u.constant)) {
@@ -722,7 +725,7 @@ void zend_do_while_cond(znode *expr, znode *close_bracket_token TSRMLS_DC)
 			SET_UNUSED(opline->op1);
 		} else {
 			close_bracket_token->op_type = 2;
-			opline->opcode = ZEND_JMPZ;
+			opline->opcode = ZEND_NOP;//ZEND_JMPZ;
 			opline->op1 = *expr;
 		}
 		
@@ -739,7 +742,7 @@ void zend_do_while_end(znode *while_token, znode *close_bracket_token TSRMLS_DC)
 
 	/* add unconditional jump */
 	opline->opcode = ZEND_JMP;
-	opline->op1.u.opline_num = while_token->u.opline_num;
+	opline->extended_value = while_token->u.opline_num;
 	SET_UNUSED(opline->op1);
 	SET_UNUSED(opline->op2);
 
@@ -748,7 +751,7 @@ void zend_do_while_end(znode *while_token, znode *close_bracket_token TSRMLS_DC)
 		if(close_bracket_token->op_type == 2) {
 			CG(active_op_array)->opcodes[close_bracket_token->u.opline_num].op2.u.opline_num = get_next_op_number(CG(active_op_array));
 		} else {
-			CG(active_op_array)->opcodes[close_bracket_token->u.opline_num].op1.u.opline_num = get_next_op_number(CG(active_op_array));
+			CG(active_op_array)->opcodes[close_bracket_token->u.opline_num].extended_value = get_next_op_number(CG(active_op_array));
 		}
 	}
 
@@ -774,7 +777,7 @@ void zend_do_for_cond(znode *expr, znode *second_semicolon_token TSRMLS_DC)
 		SET_UNUSED(opline->op1);
 	} else {
 		second_semicolon_token->op_type = 1;
-		opline->opcode = ZEND_JMPZNZ;
+		opline->opcode = ZEND_NOP;//ZEND_JMPZNZ;
 		opline->op1 = *expr;  /* the conditional expression */
 	}
 	
@@ -787,13 +790,13 @@ void zend_do_for_before_statement(znode *cond_start, znode *second_semicolon_tok
 	zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
 
 	opline->opcode = ZEND_JMP;
-	opline->op1.u.opline_num = cond_start->u.opline_num;
+	opline->extended_value = cond_start->u.opline_num;
 	int next_op = get_next_op_number(CG(active_op_array));
 	
 	if(second_semicolon_token->op_type == 1) {
 		CG(active_op_array)->opcodes[second_semicolon_token->u.opline_num].extended_value = next_op;
 	} else if(second_semicolon_token->op_type == 2) {
-		CG(active_op_array)->opcodes[second_semicolon_token->u.opline_num].op1.u.opline_num = next_op;
+		CG(active_op_array)->opcodes[second_semicolon_token->u.opline_num].extended_value = next_op;
 	}
 	
 	SET_UNUSED(opline->op1);
@@ -810,13 +813,13 @@ void zend_do_for_end(znode *second_semicolon_token TSRMLS_DC)
 	zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
 
 	opline->opcode = ZEND_JMP;
-	opline->op1.u.opline_num = second_semicolon_token->u.opline_num+1;
+	opline->extended_value = second_semicolon_token->u.opline_num+1;
 	int next_op = get_next_op_number(CG(active_op_array));
 	
 	if(second_semicolon_token->op_type == 1) {
-		CG(active_op_array)->opcodes[second_semicolon_token->u.opline_num].op2.u.opline_num = next_op;
+		CG(active_op_array)->opcodes[second_semicolon_token->u.opline_num].extended_value = next_op;
 	} else if(second_semicolon_token->op_type == 3) {
-		CG(active_op_array)->opcodes[second_semicolon_token->u.opline_num].op1.u.opline_num = next_op;
+		CG(active_op_array)->opcodes[second_semicolon_token->u.opline_num].extended_value = next_op;
 	}
 	
 	SET_UNUSED(opline->op1);
@@ -883,38 +886,145 @@ void zend_do_post_incdec(znode *result, znode *op1, zend_uchar op TSRMLS_DC)
 	*result = opline->result;
 }
 
+void print_znode(znode* z) {
+	
+	switch(z->op_type) {
+		case IS_UNUSED:
+			printf("op type: UNUSED\n");
+			break;
+		
+		case IS_CONST:
+			printf("op type: CONST\n");
+			switch(z->u.constant.type) {
+				case IS_CONSTANT:
+				case IS_STRING:
+					printf(" (string) %.*s\n", Z_STRLEN(z->u.constant), Z_STRVAL(z->u.constant));
+					break;
+				case IS_NULL:
+					printf(" (NULL)\n");
+					break;
+				case IS_LONG:
+					printf(" (int) %ld\n", z->u.constant.value.lval);
+					break;
+				case IS_BOOL:
+					printf(" (bool) %s\n", z->u.constant.value.lval ? "true" : "false");
+					break;
+				case IS_DOUBLE:
+					printf(" (int) %0.2f\n", z->u.constant.value.dval);
+					break;
+				case IS_CONSTANT_ARRAY:
+					zend_error(E_ERROR, "Illegal offset type");
+					break;
+			}
+			break;
+		
+		case IS_TMP_VAR:
+			printf("op type: TMP_VAR\nvar: %ld\n", z->u.var / sizeof(temp_variable));
+			break;
+		
+		case IS_VAR:
+			printf("op type: VAR\n");
+			break;
+		
+		case IS_CV:
+			printf("op type: CV\n");
+			break;
+	}
+	
+}
 
-void zend_do_if_cond(znode *cond, znode *closing_bracket_token TSRMLS_DC)
+void zend_do_if_cond(znode *cond, znode *opening_bracket_token TSRMLS_DC)
 {
+	znode tmp;
 	INC_BPC(CG(active_op_array));
-	if(cond->op_type == IS_CONST && i_zend_is_true(&cond->u.constant)) {
-		closing_bracket_token->op_type = 0;
-		return;
-	}
-	
-	closing_bracket_token->u.opline_num = get_next_op_number(CG(active_op_array));
-	zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
-	
+	opening_bracket_token->op_type = 0;
 	if(cond->op_type == IS_CONST) {
-		closing_bracket_token->op_type = 1;
-		opline->opcode = ZEND_JMP;
-		SET_UNUSED(opline->op1);
-	} else {
-		closing_bracket_token->op_type = 2;
-		opline->opcode = ZEND_JMPZ;
-		opline->op1 = *cond;
+		if(i_zend_is_true(&cond->u.constant)) {
+			/*TODO! - set it so all elses never get called */
+		} else {
+			opening_bracket_token->op_type = 1;
+			
+			zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
+			opline->opcode = ZEND_JMP;
+			SET_UNUSED(opline->op1);
+			
+		}
 	}
 	
-	SET_UNUSED(opline->op2);
+	zend_op* cur;
+	int last = CG(active_op_array)->last - 2;
+	int cur_op = opening_bracket_token->u.opline_num;
+	printf("if-cond: %d-%d\n", cur_op, CG(active_op_array)->last-1);
+	
+	do {
+		cur = &CG(active_op_array)->opcodes[cur_op];
+		
+		switch(cur->opcode) {
+			case ZEND_IS_SMALLER:
+				printf("(%d)->FAILURE (non-expression-if)\n", cur_op);
+				cur->extended_value = JMP_FAILURE;
+				cur->opcode = ZEND_JMPLE;
+				tmp = cur->op1;
+				cur->op1 = cur->op2;
+				cur->op2 = tmp;
+				break;
+			
+			case ZEND_IS_SMALLER_OR_EQUAL:
+				printf("(%d)->FAILURE (non-expression-if)\n", cur_op);
+				cur->extended_value = JMP_FAILURE;
+				cur->opcode = ZEND_JMPL;
+				tmp = cur->op1;
+				cur->op1 = cur->op2;
+				cur->op2 = tmp;
+				break;
+			
+			case ZEND_IS_EQUAL:
+				printf("(%d)->FAILURE (non-expression-if)\n", cur_op);
+				cur->extended_value = JMP_FAILURE;
+				cur->opcode = ZEND_JMPNE;
+				break;
+			
+			case ZEND_IS_NOT_EQUAL:
+				printf("(%d)->FAILURE (non-expression-if)\n", cur_op);
+				cur->extended_value = JMP_FAILURE;
+				cur->opcode = ZEND_JMPE;
+				break;
+			
+			default:
+				printf("(%d)->DONE (if)\n", cur_op);
+		}
+		
+	} while(++cur_op < last);
+	
+	cur_op = CG(active_op_array)->last;
+	int prev = ext_val_previously(CG(active_op_array), cur_op, JMP_SUCCESS);
+	while(prev != -1) {
+		cur = &CG(active_op_array)->opcodes[prev];
+		printf("(%d)->%d (end-if-success)\n", prev, cur_op);
+		cur->extended_value = cur_op;
+		prev = ext_val_previously(CG(active_op_array), prev, JMP_SUCCESS);
+	}
 }
 
 
-void zend_do_if_after_statement(znode *closing_bracket_token, unsigned char initialize TSRMLS_DC)
+void zend_do_if_after_statement(znode *opening_bracket_token, unsigned char initialize TSRMLS_DC)
 {
+	zend_op* cur;
+	int cur_op = CG(active_op_array)->last;
+	
 	int if_end_op_number = get_next_op_number(CG(active_op_array));
 	zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
 	zend_llist *jmp_list_ptr;
 
+	cur_op = CG(active_op_array)->last;
+	int prev = ext_val_previously(CG(active_op_array), cur_op, JMP_FAILURE);
+	while(prev != -1) {
+		cur = &CG(active_op_array)->opcodes[prev];
+		printf("(%d)->%d (after-if-failure)\n", prev, cur_op);
+		cur->extended_value = cur_op;
+		prev = ext_val_previously(CG(active_op_array), prev, JMP_FAILURE);
+	}
+	
 	opline->opcode = ZEND_JMP;
 	/* save for backpatching */
 	if (initialize) {
@@ -926,10 +1036,8 @@ void zend_do_if_after_statement(znode *closing_bracket_token, unsigned char init
 	zend_stack_top(&CG(bp_stack), (void **) &jmp_list_ptr);
 	zend_llist_add_element(jmp_list_ptr, &if_end_op_number);
 
-	if(closing_bracket_token->op_type == 2) {
-		CG(active_op_array)->opcodes[closing_bracket_token->u.opline_num].op2.u.opline_num = if_end_op_number+1;
-	} else if(closing_bracket_token->op_type == 1) {
-		CG(active_op_array)->opcodes[closing_bracket_token->u.opline_num].op1.u.opline_num = if_end_op_number+1;
+	if(opening_bracket_token->op_type == 1) {
+		CG(active_op_array)->opcodes[opening_bracket_token->u.opline_num].extended_value = if_end_op_number+1;
 	}
 	
 	SET_UNUSED(opline->op1);
@@ -939,13 +1047,25 @@ void zend_do_if_after_statement(znode *closing_bracket_token, unsigned char init
 
 void zend_do_if_end(TSRMLS_D)
 {
+	zend_op* cur;
+	
 #if BROKEN
 	/* this is broken because I'd have to modify all of the above jumps... should be obsolete with new expression parser */
-	zend_op* cur = &CG(active_op_array)->opcodes[CG(active_op_array)->last-1];
+	cur = &CG(active_op_array)->opcodes[CG(active_op_array)->last-1];
 	if(cur->opcode == ZEND_JMP) {
 		CG(active_op_array)->last--;
+		printf("fucked\n");
 	}
 #endif
+	
+	int cur_op = CG(active_op_array)->last - 1;
+	int prev = ext_val_previously(CG(active_op_array), cur_op, JMP_FAILURE);
+	while(prev != -1) {
+		cur = &CG(active_op_array)->opcodes[prev];
+		printf("(%d)->%d (end-if)\n", prev, cur_op);
+		cur->extended_value = cur_op;
+		prev = ext_val_previously(CG(active_op_array), prev, JMP_FAILURE);
+	}
 	
 	int next_op_number = get_next_op_number(CG(active_op_array));
 	zend_llist *jmp_list_ptr;
@@ -953,7 +1073,8 @@ void zend_do_if_end(TSRMLS_D)
 
 	zend_stack_top(&CG(bp_stack), (void **) &jmp_list_ptr);
 	for (le=jmp_list_ptr->head; le; le = le->next) {
-		CG(active_op_array)->opcodes[*((int *) le->data)].op1.u.opline_num = next_op_number;
+		printf("(???)->%d\n", next_op_number);
+		CG(active_op_array)->opcodes[*((int *) le->data)].extended_value = next_op_number;
 	}
 	zend_llist_destroy(jmp_list_ptr);
 	zend_stack_del_top(&CG(bp_stack));
@@ -1113,17 +1234,34 @@ void zend_do_free(znode *op1 TSRMLS_DC)
 	if (op1->op_type==IS_TMP_VAR) {
 		zend_op* cur = &CG(active_op_array)->opcodes[CG(active_op_array)->last-1];
 		
-		if(cur->opcode == ZEND_POST_INC) {
-			cur->opcode = ZEND_PRE_INC;
-		} else if(cur->opcode == ZEND_POST_DEC) {
-			cur->opcode = ZEND_PRE_INC;
-		} else {
-			zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
+		switch(cur->opcode) {
+			case ZEND_JMPE:
+			case ZEND_JMPNE:
+			case ZEND_JMPL:
+			case ZEND_JMPLE:
+			case ZEND_IS_SMALLER:
+			case ZEND_IS_SMALLER_OR_EQUAL:
+			case ZEND_IS_EQUAL:
+			case ZEND_IS_NOT_EQUAL:
+				CG(active_op_array)->last--;
+				break;
+			
+			case ZEND_POST_INC:
+				cur->opcode = ZEND_PRE_INC;
+				break;
+			
+			case ZEND_POST_DEC:
+				cur->opcode = ZEND_PRE_INC;
+				break;
+		
+			default: {
+				zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
 
-			opline->opcode = ZEND_FREE;
-			opline->op1 = *op1;
-			SET_UNUSED(opline->op2);
-			return;
+				opline->opcode = ZEND_FREE;
+				opline->op1 = *op1;
+				SET_UNUSED(opline->op2);
+				return;
+			}
 		}
 		
 		cur->result.op_type = IS_UNUSED;
@@ -1364,7 +1502,12 @@ void zend_do_end_function_declaration(znode *function_token TSRMLS_DC)
 	int name_len;
 
 	zend_do_extended_info(TSRMLS_C);
-	zend_do_return(NULL, 0 TSRMLS_CC);
+	if(CG(active_op_array)->last > 0) {
+		zend_op* cur = &CG(active_op_array)->opcodes[CG(active_op_array)->last-1];
+		if(cur->opcode != ZEND_RETURN) {
+			zend_do_return(NULL, 0 TSRMLS_CC);
+		}
+	}
 	zend_do_handle_exception(TSRMLS_C);
 
 	pass_two(CG(active_op_array) TSRMLS_CC);
@@ -2668,75 +2811,263 @@ void zend_do_early_binding(TSRMLS_D)
 	SET_UNUSED(opline->op2);
 }
 
-
-void zend_do_boolean_or_begin(znode *expr1, znode *op_token TSRMLS_DC)
+int begin_and;
+void zend_do_and_begin(TSRMLS_DC)
 {
-	int next_op_number = get_next_op_number(CG(active_op_array));
-	zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
+	begin_and = 0;
+	printf("begin and\n");
+}
 
-	opline->opcode = ZEND_JMPNZ_EX;
-	if (expr1->op_type == IS_TMP_VAR) {
-		opline->result = *expr1;
-	} else {
-		opline->result.u.var = get_temporary_variable(CG(active_op_array));
-		opline->result.op_type = IS_TMP_VAR;
+void zend_do_and(znode* expr TSRMLS_DC)
+{
+	znode tmp;
+	int cur_op = CG(active_op_array)->last - 1;
+	
+	int prev = var_used_previously(CG(active_op_array), ++cur_op, expr);
+	while(prev != -1) {
+		zend_op* cur = &CG(active_op_array)->opcodes[prev];
+		//printf("and expr %d\n", prev);
+		
+		if(begin_and == 0 || begin_and > prev) {
+			begin_and = prev;
+		}
+		
+		memset(&cur->result, 0, sizeof(znode));
+		SET_UNUSED(cur->result);
+		
+		printf("(%d)->FAILURE (and)\n", prev);
+		cur->extended_value = JMP_FAILURE;
+		switch(cur->opcode) {
+			case ZEND_JMPL:
+			case ZEND_IS_SMALLER:
+				cur->opcode = ZEND_JMPLE;
+				tmp = cur->op1;
+				cur->op1 = cur->op2;
+				cur->op2 = tmp;
+				break;
+			
+			case ZEND_JMPLE:
+			case ZEND_IS_SMALLER_OR_EQUAL:
+				cur->opcode = ZEND_JMPL;
+				tmp = cur->op1;
+				cur->op1 = cur->op2;
+				cur->op2 = tmp;
+				break;
+			
+			case ZEND_JMPE:
+			case ZEND_IS_EQUAL:
+				cur->opcode = ZEND_JMPNE;
+				break;
+			
+			case ZEND_JMPNE:
+			case ZEND_IS_NOT_EQUAL:
+				cur->opcode = ZEND_JMPE;
+				break;
+			
+			default:
+				printf("wtf huh?\n");
+		}
+		
+		prev = var_used_previously(CG(active_op_array), prev, expr);
 	}
-	opline->op1 = *expr1;
-	SET_UNUSED(opline->op2);
-
-	op_token->u.opline_num = next_op_number;
-
-	*expr1 = opline->result;
 }
 
-
-void zend_do_boolean_or_end(znode *result, znode *expr1, znode *expr2, znode *op_token TSRMLS_DC)
+void zend_do_and_end(znode *result TSRMLS_DC)
 {
-	zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
-
-	*result = *expr1; /* we saved the original result in expr1 */
-	opline->opcode = ZEND_BOOL;
-	opline->result = *result;
-	opline->op1 = *expr2;
-	SET_UNUSED(opline->op2);
-
-	CG(active_op_array)->opcodes[op_token->u.opline_num].op2.u.opline_num = get_next_op_number(CG(active_op_array));
-}
-
-
-void zend_do_boolean_and_begin(znode *expr1, znode *op_token TSRMLS_DC)
-{
-	int next_op_number = get_next_op_number(CG(active_op_array));
-	zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
-
-	opline->opcode = ZEND_JMPZ_EX;
-	if (expr1->op_type == IS_TMP_VAR) {
-		opline->result = *expr1;
-	} else {
-		opline->result.u.var = get_temporary_variable(CG(active_op_array));
-		opline->result.op_type = IS_TMP_VAR;
+	znode tmp;
+	int cur_op = CG(active_op_array)->last - 1;
+	zend_op* cur = &CG(active_op_array)->opcodes[cur_op];
+	printf("end and %d\n", cur_op);
+	
+	/*
+	me parece que esta espresion no necesitamos
+	cur->extended_value = JMP_SUCCESS;
+	switch(cur->opcode) {
+		case ZEND_JMPL:
+			printf("switching...\n");
+		case ZEND_IS_SMALLER:
+			cur->opcode = ZEND_JMPLE;
+			tmp = cur->op1;
+			cur->op1 = cur->op2;
+			cur->op2 = tmp;
+			break;
+		
+		case ZEND_JMPLE:
+			printf("switching...\n");
+		case ZEND_IS_SMALLER_OR_EQUAL:
+			cur->opcode = ZEND_JMPL;
+			tmp = cur->op1;
+			cur->op1 = cur->op2;
+			cur->op2 = tmp;
+			break;
+		
+		case ZEND_JMPE:
+			printf("switching...\n");
+		case ZEND_IS_EQUAL:
+			cur->opcode = ZEND_JMPNE;
+			break;
+		
+		case ZEND_JMPNE:
+			printf("switching...\n");
+		case ZEND_IS_NOT_EQUAL:
+			cur->opcode = ZEND_JMPE;
+			break;
+		
+		default:
+			printf("wtf2 huh?\n");
 	}
-	opline->op1 = *expr1;
-	SET_UNUSED(opline->op2);
-
-	op_token->u.opline_num = next_op_number;
-
-	*expr1 = opline->result;
+	*/
 }
 
 
-void zend_do_boolean_and_end(znode *result, znode *expr1, znode *expr2, znode *op_token TSRMLS_DC)
+void zend_do_or_begin(znode *result TSRMLS_DC)
 {
-	zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
-
-	*result = *expr1; /* we saved the original result in expr1 */
-	opline->opcode = ZEND_BOOL;
-	opline->result = *result;
-	opline->op1 = *expr2;
-	SET_UNUSED(opline->op2);
-
-	CG(active_op_array)->opcodes[op_token->u.opline_num].op2.u.opline_num = get_next_op_number(CG(active_op_array));
+	printf("begin or\n");
 }
+
+void zend_do_or(znode* expr TSRMLS_DC)
+{
+	zend_op* cur;
+	znode tmp;
+	int cur_op = CG(active_op_array)->last;
+	//printf("or expr %d\n", cur_op);
+	
+	if(cur_op >= 0) {
+		//int prev_success = ext_val_previously(CG(active_op_array), cur_op, JMP_SUCCESS);
+		//printf("prev success??? %d\n", prev_success);
+		
+		int prev = ext_val_previously(CG(active_op_array), cur_op, JMP_FAILURE);
+		if(prev != -1 && prev >= begin_and) {
+			cur = &CG(active_op_array)->opcodes[prev];
+			
+			memset(&cur->result, 0, sizeof(znode));
+			SET_UNUSED(cur->result);
+			
+			// first we need to switch it's polarity, then we need to set it to JMP_SUCCESS
+			printf("(%d)->SUCCESS (last-and-in-or)\n", prev);
+			cur->extended_value = JMP_SUCCESS;
+			switch(cur->opcode) {
+				case ZEND_JMPL:
+				case ZEND_IS_SMALLER:
+					cur->opcode = ZEND_JMPLE;
+					tmp = cur->op1;
+					cur->op1 = cur->op2;
+					cur->op2 = tmp;
+					break;
+				
+				case ZEND_JMPLE:
+				case ZEND_IS_SMALLER_OR_EQUAL:
+					cur->opcode = ZEND_JMPL;
+					tmp = cur->op1;
+					cur->op1 = cur->op2;
+					cur->op2 = tmp;
+					break;
+				
+				case ZEND_JMPE:
+				case ZEND_IS_EQUAL:
+					cur->opcode = ZEND_JMPNE;
+					break;
+				
+				case ZEND_JMPNE:
+				case ZEND_IS_NOT_EQUAL:
+					cur->opcode = ZEND_JMPE;
+					break;
+				
+				default:
+					printf("wtf2 huh?\n");
+			}
+		
+			prev = ext_val_previously(CG(active_op_array), prev, JMP_FAILURE);
+			while(prev != -1 && prev >= begin_and) {
+				cur = &CG(active_op_array)->opcodes[prev];
+				printf("(%d)-->%d (and-in-or)\n", prev, cur_op);
+				cur->extended_value = cur_op;
+				prev = ext_val_previously(CG(active_op_array), prev, JMP_FAILURE);
+			}
+		}
+	
+	
+		prev = var_used_previously(CG(active_op_array), ++cur_op, expr);
+		while(prev != -1) {
+			cur = &CG(active_op_array)->opcodes[prev];
+			
+			memset(&cur->result, 0, sizeof(znode));
+			SET_UNUSED(cur->result);
+			
+			printf("(%d)->SUCCESS (or)\n", prev);
+			cur->extended_value = JMP_SUCCESS;
+			switch(cur->opcode) {
+				case ZEND_IS_SMALLER:
+					cur->opcode = ZEND_JMPL;
+					break;
+				
+				case ZEND_IS_SMALLER_OR_EQUAL:
+					cur->opcode = ZEND_JMPLE;
+					break;
+				
+				case ZEND_IS_EQUAL:
+					cur->opcode = ZEND_JMPE;
+					break;
+				
+				case ZEND_IS_NOT_EQUAL:
+					cur->opcode = ZEND_JMPNE;
+					break;
+				
+				default:
+					printf("wtf3 huh?\n");
+			}
+			
+			prev = var_used_previously(CG(active_op_array), prev, expr);
+		}
+	}
+	
+	begin_and = 0;
+}
+
+void zend_do_or_end(znode *result TSRMLS_DC)
+{
+	zend_op* cur = &CG(active_op_array)->opcodes[CG(active_op_array)->last - 1];
+	znode tmp;
+	int cur_op;
+	int next_op_number = get_next_op_number(CG(active_op_array));
+	printf("end or %d\n", next_op_number);
+	
+	/* come back here ... reverse values... */
+	printf("(%d)->FAILURE (last-or-switch)\n", CG(active_op_array)->last - 1);
+	cur->extended_value = JMP_FAILURE;
+	switch(cur->opcode) {
+		case ZEND_JMPL:
+		case ZEND_IS_SMALLER:
+			cur->opcode = ZEND_JMPLE;
+			tmp = cur->op1;
+			cur->op1 = cur->op2;
+			cur->op2 = tmp;
+			break;
+		
+		case ZEND_JMPLE:
+		case ZEND_IS_SMALLER_OR_EQUAL:
+			cur->opcode = ZEND_JMPL;
+			tmp = cur->op1;
+			cur->op1 = cur->op2;
+			cur->op2 = tmp;
+			break;
+		
+		case ZEND_JMPE:
+		case ZEND_IS_EQUAL:
+			cur->opcode = ZEND_JMPNE;
+			break;
+		
+		case ZEND_JMPNE:
+		case ZEND_IS_NOT_EQUAL:
+			cur->opcode = ZEND_JMPE;
+			break;
+		
+		
+		default:
+			printf("huh?\n");
+	}
+}
+
 
 
 void zend_do_do_while_begin(TSRMLS_D)
@@ -2755,7 +3086,7 @@ void zend_do_do_while_end(znode *do_token, znode *expr_open_bracket, znode *expr
 			opline->opcode = ZEND_JMP;
 			SET_UNUSED(opline->op1);
 		} else {
-			opline->opcode = ZEND_JMPNZ;
+			opline->opcode = ZEND_NOP;//ZEND_JMPNZ;
 			opline->op1 = *expr;
 			opline->op2.u.opline_num = do_token->u.opline_num;
 		}
@@ -2870,7 +3201,7 @@ void zend_do_case_before_statement(znode *case_list, znode *case_token, znode *c
 
 	next_op_number = get_next_op_number(CG(active_op_array));
 	opline = get_next_op(CG(active_op_array) TSRMLS_CC);
-	opline->opcode = ZEND_JMPZ;
+	opline->opcode = ZEND_NOP;//ZEND_JMPZ;
 	opline->op1 = result;
 	SET_UNUSED(opline->op2);
 	case_token->u.opline_num = next_op_number;
@@ -2897,9 +3228,9 @@ void zend_do_case_after_statement(znode *result, znode *case_token TSRMLS_DC)
 		case ZEND_JMP:
 			CG(active_op_array)->opcodes[case_token->u.opline_num].op1.u.opline_num = get_next_op_number(CG(active_op_array));
 			break;
-		case ZEND_JMPZ:
+		/*case ZEND_JMPZ:
 			CG(active_op_array)->opcodes[case_token->u.opline_num].op2.u.opline_num = get_next_op_number(CG(active_op_array));
-			break;
+			break;*/
 	}
 }
 
@@ -3953,7 +4284,7 @@ void zend_do_foreach_end(znode *foreach_token, znode *as_token TSRMLS_DC)
 	zend_op *opline = get_next_op(CG(active_op_array) TSRMLS_CC);
 
 	opline->opcode = ZEND_JMP;
-	opline->op1.u.opline_num = as_token->u.opline_num;
+	opline->extended_value = as_token->u.opline_num;
 	SET_UNUSED(opline->op1);
 	SET_UNUSED(opline->op2);
 
@@ -4069,7 +4400,7 @@ void zend_do_begin_qm_op(znode *cond, znode *qm_token TSRMLS_DC)
 
 	opline = get_next_op(CG(active_op_array) TSRMLS_CC);
 
-	opline->opcode = ZEND_JMPZ;
+	opline->opcode = ZEND_NOP;//ZEND_JMPZ;
 	opline->op1 = *cond;
 	SET_UNUSED(opline->op2);
 	opline->op2.u.opline_num = jmpz_op_number;

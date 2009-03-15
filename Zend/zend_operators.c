@@ -1187,7 +1187,7 @@ static inline void zend_free_obj_get_result(zval *op)
 	}
 }
 
-static int hash_zval_typesafe_compare_function(const zval **z1, const zval **z2)
+ZEND_API int hash_zval_typesafe_compare_function(const zval **z1, const zval **z2)
 {
 	zval result;
 	TSRMLS_FETCH();
@@ -1197,6 +1197,7 @@ static int hash_zval_typesafe_compare_function(const zval **z1, const zval **z2)
 	 * whereas this comparison function is expected to return 0 on identity,
 	 * and non zero otherwise.
 	 */
+	/* TODO!! - duplicate code to make this function a bit faster :) */
 	if (typesafe_compare_function(&result, (zval *) *z1, (zval *) *z2 TSRMLS_CC)==FAILURE) {
 		return 1;
 	}
@@ -1261,86 +1262,6 @@ ZEND_API int typesafe_compare_function(zval *result, zval *op1, zval *op2 TSRMLS
 	}
 	return SUCCESS;
 }
-
-
-static int hash_zval_identical_function(const zval **z1, const zval **z2)
-{
-	zval result;
-	TSRMLS_FETCH();
-
-	/* is_identical_function() returns 1 in case of identity and 0 in case
-	 * of a difference;
-	 * whereas this comparison function is expected to return 0 on identity,
-	 * and non zero otherwise.
-	 */
-	if (is_identical_function(&result, (zval *) *z1, (zval *) *z2 TSRMLS_CC)==FAILURE) {
-		return 1;
-	}
-	return !result.value.lval;
-}
-
-
-ZEND_API int is_identical_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
-{
-	result->type = IS_BOOL;
-	if (op1->type != op2->type) {
-		result->value.lval = 0;
-		return SUCCESS;
-	}
-	switch (op1->type) {
-		case IS_NULL:
-			result->value.lval = (op2->type==IS_NULL);
-			break;
-		case IS_BOOL:
-		case IS_LONG:
-		case IS_RESOURCE:
-			result->value.lval = (op1->value.lval == op2->value.lval);
-			break;
-		case IS_DOUBLE:
-			result->value.lval = (op1->value.dval == op2->value.dval);
-			break;
-		case IS_STRING:
-			if ((op1->value.str.len == op2->value.str.len)
-				&& (!memcmp(op1->value.str.val, op2->value.str.val, op1->value.str.len))) {
-				result->value.lval = 1;
-			} else {
-				result->value.lval = 0;
-			}
-			break;
-		case IS_ARRAY:
-			if (zend_hash_compare(op1->value.ht, op2->value.ht, (compare_func_t) hash_zval_identical_function, 1 TSRMLS_CC)==0) {
-				result->value.lval = 1;
-			} else {
-				result->value.lval = 0;
-			}
-			break;
-		case IS_OBJECT:
-			if (Z_OBJ_HT_P(op1) == Z_OBJ_HT_P(op2)) {
-				result->value.lval = (Z_OBJ_HANDLE_P(op1) == Z_OBJ_HANDLE_P(op2));
-			} else {
-				result->value.lval = 0;
-			}
-			break;
-		default:
-			ZVAL_BOOL(result, 0);
-			return FAILURE;
-	}
-	return SUCCESS;
-}
-
-
-ZEND_API int is_not_identical_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)
-{
-	result->type = IS_BOOL;
-	if (is_identical_function(result, op1, op2 TSRMLS_CC) == FAILURE) {
-		return FAILURE;
-	}
-	
-	result->value.lval = !result->value.lval;
-	return SUCCESS;
-}
-
-
 
 
 ZEND_API int is_smaller_function(zval *result, zval *op1, zval *op2 TSRMLS_DC)

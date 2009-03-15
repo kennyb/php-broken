@@ -1270,13 +1270,13 @@ void execute_new_code(TSRMLS_D)
 		}
 		switch (opline->opcode) {
 			case ZEND_JMP:
-				opline->op1.u.jmp_addr = &CG(active_op_array)->opcodes[opline->op1.u.opline_num];
-				break;
-			case ZEND_JMPZ:
-			case ZEND_JMPNZ:
-			case ZEND_JMPZ_EX:
-			case ZEND_JMPNZ_EX:
-				opline->op2.u.jmp_addr = &CG(active_op_array)->opcodes[opline->op2.u.opline_num];
+			case ZEND_JMPL:
+			case ZEND_JMPLE:
+			case ZEND_JMPE:
+			case ZEND_JMPNE:
+				memset(&opline->result, 0, sizeof(znode));
+				SET_UNUSED(opline->result);
+				opline->result.u.jmp_addr = &CG(active_op_array)->opcodes[opline->extended_value];
 				break;
 		}
 		ZEND_VM_SET_OPCODE_HANDLER(opline);
@@ -1294,7 +1294,11 @@ void execute_new_code(TSRMLS_D)
 		zend_exception_error(EXCEPTION TSRMLS_CC);
 	}
 
+#if WANT_EXCEPTIONS
 	CG(active_op_array)->last -= 2;	/* get rid of that ZEND_RETURN and ZEND_HANDLE_EXCEPTION */
+#else
+	CG(active_op_array)->last -= 1;	/* get rid of the ZEND_RETURN */
+#endif
 	CG(active_op_array)->start_op = CG(active_op_array)->opcodes+CG(active_op_array)->last;
 }
 
