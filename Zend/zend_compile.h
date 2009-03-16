@@ -72,6 +72,10 @@ typedef struct _znode {
 			zend_uint var;	/* dummy */
 			zend_uint type;
 		} EA;
+		struct {
+			zend_uint val1;
+			zend_uint val2;
+		} save;
 	} u;
 } znode;
 
@@ -380,16 +384,16 @@ ZEND_API void *get_binary_op(int opcode);
 void zend_do_while_cond(znode *expr, znode *opening_bracket_token, znode *close_bracket_token TSRMLS_DC);
 void zend_do_while_end(znode *while_token, znode *close_bracket_token TSRMLS_DC);
 void zend_do_do_while_begin(TSRMLS_D);
-void zend_do_do_while_end(znode *do_token, znode *expr_open_bracket, znode *expr TSRMLS_DC);
+void zend_do_do_while_end(znode *do_token, znode *expr_start, znode *expr TSRMLS_DC);
 
 
-void zend_do_if_cond(znode *cond, znode *closing_bracket_token TSRMLS_DC);
-void zend_do_if_after_statement(znode *closing_bracket_token, unsigned char initialize TSRMLS_DC);
-void zend_do_if_end(TSRMLS_D);
+void zend_do_if_cond(znode *cond, znode *opening_bracket_token TSRMLS_DC);
+void zend_do_if_after_statement(znode *opening_bracket_token, unsigned char initialize TSRMLS_DC);
+void zend_do_if_end(znode *opening_bracket_token TSRMLS_DC);
 
-void zend_do_for_cond(znode *expr, znode *second_semicolon_token TSRMLS_DC);
-void zend_do_for_before_statement(znode *cond_start, znode *second_semicolon_token TSRMLS_DC);
-void zend_do_for_end(znode *second_semicolon_token TSRMLS_DC);
+void zend_do_for_cond(znode* expr, znode* expr_start TSRMLS_DC);
+void zend_do_for_before_statement(TSRMLS_DC);
+void zend_do_for_end(znode* afterward_token, znode* condition_start TSRMLS_DC);
 
 void zend_do_pre_incdec(znode *result, znode *op1, zend_uchar op TSRMLS_DC);
 void zend_do_post_incdec(znode *result, znode *op1, zend_uchar op TSRMLS_DC);

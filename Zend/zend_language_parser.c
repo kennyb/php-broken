@@ -2902,7 +2902,7 @@ yyreduce:
 
 /* Line 1455 of yacc.c  */
 #line 185 "/home/kenny/php/php-5.2.6/Zend/zend_language_parser.y"
-    { zend_do_if_end(TSRMLS_C); }
+    { zend_do_if_end(&(yyvsp[(1) - (9)]) TSRMLS_C); }
     break;
 
   case 23:
@@ -2937,7 +2937,7 @@ yyreduce:
 
 /* Line 1455 of yacc.c  */
 #line 187 "/home/kenny/php/php-5.2.6/Zend/zend_language_parser.y"
-    { (yyvsp[(5) - (5)]).u.opline_num = get_next_op_number(CG(active_op_array)); }
+    { (yyvsp[(5) - (5)]).u.save.val1 = get_next_op_number(CG(active_op_array)); }
     break;
 
   case 28:
@@ -2951,28 +2951,28 @@ yyreduce:
 
 /* Line 1455 of yacc.c  */
 #line 191 "/home/kenny/php/php-5.2.6/Zend/zend_language_parser.y"
-    { zend_do_free(&(yyvsp[(3) - (4)]) TSRMLS_CC); (yyvsp[(4) - (4)]).u.opline_num = get_next_op_number(CG(active_op_array)); }
+    { zend_do_free(&(yyvsp[(3) - (4)]) TSRMLS_CC); (yyvsp[(4) - (4)]).u.save.val1 = get_next_op_number(CG(active_op_array)); printf("saving into %d\n", get_next_op_number(CG(active_op_array))); }
     break;
 
   case 30:
 
 /* Line 1455 of yacc.c  */
 #line 193 "/home/kenny/php/php-5.2.6/Zend/zend_language_parser.y"
-    { zend_do_extended_info(TSRMLS_C); zend_do_for_cond(&(yyvsp[(6) - (7)]), &(yyvsp[(7) - (7)]) TSRMLS_CC); }
+    { zend_do_extended_info(TSRMLS_C); zend_do_for_cond(&(yyvsp[(6) - (7)]), &(yyvsp[(4) - (7)]) TSRMLS_CC); (yyvsp[(7) - (7)]).u.save.val1 = get_next_op_number(CG(active_op_array)); }
     break;
 
   case 31:
 
 /* Line 1455 of yacc.c  */
 #line 195 "/home/kenny/php/php-5.2.6/Zend/zend_language_parser.y"
-    { zend_do_free(&(yyvsp[(9) - (10)]) TSRMLS_CC); zend_do_for_before_statement(&(yyvsp[(4) - (10)]), &(yyvsp[(7) - (10)]) TSRMLS_CC); }
+    { zend_do_free(&(yyvsp[(9) - (10)]) TSRMLS_CC); (yyvsp[(7) - (10)]).u.save.val2 = get_next_op_number(CG(active_op_array)); zend_do_for_before_statement(TSRMLS_CC); }
     break;
 
   case 32:
 
 /* Line 1455 of yacc.c  */
 #line 196 "/home/kenny/php/php-5.2.6/Zend/zend_language_parser.y"
-    { zend_do_for_end(&(yyvsp[(7) - (12)]) TSRMLS_CC); }
+    { zend_do_for_end(&(yyvsp[(7) - (12)]), &(yyvsp[(4) - (12)]) TSRMLS_CC); }
     break;
 
   case 33:

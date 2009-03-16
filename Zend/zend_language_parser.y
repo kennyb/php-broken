@@ -182,18 +182,18 @@ statement:
 
 unticked_statement:
 		'{' inner_statement_list '}'
-	|	T_IF '(' { $1.u.opline_num = get_next_op_number(CG(active_op_array)); } expr ')' { zend_do_if_cond(&$4, &$1 TSRMLS_CC); } statement { zend_do_if_after_statement(&$1, 1 TSRMLS_CC); } else_single { zend_do_if_end(TSRMLS_C); }
+	|	T_IF '(' { $1.u.opline_num = get_next_op_number(CG(active_op_array)); } expr ')' { zend_do_if_cond(&$4, &$1 TSRMLS_CC); } statement { zend_do_if_after_statement(&$1, 1 TSRMLS_CC); } else_single { zend_do_if_end(&$1 TSRMLS_C); }
 	|	T_WHILE '(' { $1.u.opline_num = get_next_op_number(CG(active_op_array));  } expr  ')' { zend_do_while_cond(&$4, &$1, &$5 TSRMLS_CC); } statement { zend_do_while_end(&$1, &$5 TSRMLS_CC); }
-	|	T_DO { $1.u.opline_num = get_next_op_number(CG(active_op_array));  zend_do_do_while_begin(TSRMLS_C); } statement T_WHILE '(' { $5.u.opline_num = get_next_op_number(CG(active_op_array)); } expr ')' ';' { zend_do_do_while_end(&$1, &$5, &$7 TSRMLS_CC); }
+	|	T_DO { $1.u.opline_num = get_next_op_number(CG(active_op_array));  zend_do_do_while_begin(TSRMLS_C); } statement T_WHILE '(' { $5.u.save.val1 = get_next_op_number(CG(active_op_array)); } expr ')' ';' { zend_do_do_while_end(&$1, &$5, &$7 TSRMLS_CC); }
 	|	T_FOR
 			'('
 				for_expr
-			';' { zend_do_free(&$3 TSRMLS_CC); $4.u.opline_num = get_next_op_number(CG(active_op_array)); }
+			';' { zend_do_free(&$3 TSRMLS_CC); $4.u.save.val1 = get_next_op_number(CG(active_op_array)); printf("saving into %d\n", get_next_op_number(CG(active_op_array))); }
 				for_expr
-			';' { zend_do_extended_info(TSRMLS_C); zend_do_for_cond(&$6, &$7 TSRMLS_CC); }
+			';' { zend_do_extended_info(TSRMLS_C); zend_do_for_cond(&$6, &$4 TSRMLS_CC); $7.u.save.val1 = get_next_op_number(CG(active_op_array)); }
 				for_expr
-			')' { zend_do_free(&$9 TSRMLS_CC); zend_do_for_before_statement(&$4, &$7 TSRMLS_CC); }
-			statement { zend_do_for_end(&$7 TSRMLS_CC); }
+			')' { zend_do_free(&$9 TSRMLS_CC); $7.u.save.val2 = get_next_op_number(CG(active_op_array)); zend_do_for_before_statement(TSRMLS_CC); }
+			statement { zend_do_for_end(&$7, &$4 TSRMLS_CC); }
 	|	T_SWITCH '(' expr ')'	{ zend_do_switch_cond(&$3 TSRMLS_CC); } switch_case_list { zend_do_switch_end(&$6 TSRMLS_CC); }
 	|	T_BREAK ';'				{ zend_do_brk_cont(ZEND_BRK, NULL TSRMLS_CC); }
 	|	T_BREAK expr ';'		{ zend_do_brk_cont(ZEND_BRK, &$2 TSRMLS_CC); }

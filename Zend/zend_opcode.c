@@ -430,7 +430,7 @@ int jumps_here(zend_op_array *op_array, zend_uint op_num TSRMLS_DC)
 
 #define DELETE_OP(cur) delete_op(op_array, cur TSRMLS_CC); end--; changes++;
 #define DELETE_ZNODE(znode) delete_znode(&opline->znode); changes++;
-void delete_op(zend_op_array *op_array, zend_uint op_num TSRMLS_DC)
+void delete_op(zend_op_array *op_array, int op_num TSRMLS_DC)
 {
 	zend_op *opline, *opline_src, *opline_dest, *end;
 #if DEBUG_OPCODE > 1
@@ -454,7 +454,7 @@ void delete_op(zend_op_array *op_array, zend_uint op_num TSRMLS_DC)
 				/* just op1 */
 				case ZEND_BRK:
 				case ZEND_CONT:
-					if(opline->op1.u.opline_num >= op_num) {
+					if(opline->op1.u.opline_num >= op_num && (int) opline->op1.u.opline_num >= 0) {
 						opline->op1.u.opline_num--;
 					}
 				
@@ -466,14 +466,14 @@ void delete_op(zend_op_array *op_array, zend_uint op_num TSRMLS_DC)
 				case ZEND_JMPNE:
 				case ZEND_JMPL:
 				case ZEND_JMPLE:
-					if(opline->extended_value >= op_num) {
+					if(opline->extended_value >= op_num && (int) opline->extended_value >= 0) {
 						opline->extended_value--;
 					}
 				break;
 				
 				/* extended + op2 values */
 				case ZEND_CATCH:
-					if(opline->extended_value >= op_num) {
+					if(opline->extended_value >= op_num && (int) opline->extended_value >= 0) {
 						opline->extended_value--;
 					}
 				
@@ -481,7 +481,7 @@ void delete_op(zend_op_array *op_array, zend_uint op_num TSRMLS_DC)
 				case ZEND_NEW:
 				case ZEND_FE_RESET:
 				case ZEND_FE_FETCH:
-					if(opline->op2.u.opline_num >= op_num) {
+					if(opline->op2.u.opline_num >= op_num && (int) opline->op2.u.opline_num >= 0) {
 						opline->op2.u.opline_num--;
 					}
 				

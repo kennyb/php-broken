@@ -535,7 +535,7 @@ static inline int compare(zval *op1, zval *op2 TSRMLS_DC)
 	
 	switch (op1->type) {
 		case IS_NULL:
-			ret = (op2->type==IS_NULL);
+			ret = 1;
 			break;
 		case IS_BOOL:
 		case IS_LONG:
