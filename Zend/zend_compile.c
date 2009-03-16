@@ -842,8 +842,9 @@ void zend_do_for_cond(znode* expr, znode* expr_start TSRMLS_DC)
 	} else {
 		zend_op* cur;
 		znode tmp;
+		int begin_cond = expr_start->u.save.val1;
 		int last = CG(active_op_array)->last - 2;
-		int cur_op = expr_start->u.save.val1;
+		int cur_op = begin_cond;
 		printf("for-cond: %d-%d\n", cur_op, CG(active_op_array)->last-1);
 		
 		do {
@@ -901,9 +902,11 @@ void zend_do_for_end(znode* afterward_token, znode* expr_start TSRMLS_DC)
 {
 	zend_op* opline;
 	int cur_op;
+	int begin_cond = expr_start->u.save.val1;
+	int end_cond = afterward_token->u.save.val1;
 	
 	/* copy for-statement after code */
-	for(cur_op = afterward_token->u.save.val1; cur_op < afterward_token->u.save.val2; cur_op++) {
+	for(cur_op = end_cond; cur_op < afterward_token->u.save.val2; cur_op++) {
 		//afterward_token->u.save.val1
 		opline = get_next_op(CG(active_op_array) TSRMLS_CC);
 		*opline = CG(active_op_array)->opcodes[cur_op];
@@ -911,26 +914,43 @@ void zend_do_for_end(znode* afterward_token, znode* expr_start TSRMLS_DC)
 	
 	opline = get_next_op(CG(active_op_array) TSRMLS_CC);
 	opline->opcode = ZEND_JMP;
-	opline->extended_value = expr_start->u.save.val1;
+	opline->extended_value = begin_cond;
 	int next_op = get_next_op_number(CG(active_op_array));
 	
 	if(expr_start->op_type == 1) {
-		printf("(%d)->%d (end-for-const-failure)\n", expr_start->u.save.val1, next_op);
-		CG(active_op_array)->opcodes[expr_start->u.save.val1].extended_value = next_op;
+		printf("(%d)->%d (end-for-const-failure)\n", begin_cond, next_op);
+		CG(active_op_array)->opcodes[begin_cond].extended_value = next_op;
 	}
 	
 	SET_UNUSED(opline->op1);
 	SET_UNUSED(opline->op2);
 
-	//do_end_loop(second_semicolon_token->u.opline_num+1, 0 TSRMLS_CC);
-	cur_op = CG(active_op_array)->last;
-	int prev = ext_val_previously(CG(active_op_array), cur_op, JMP_FAILURE);
-	while(prev != -1) {
-		opline = &CG(active_op_array)->opcodes[prev];
-		printf("(%d)->%d (end-for-failure)\n", prev, cur_op);
-		opline->extended_value = cur_op;
-		prev = ext_val_previously(CG(active_op_array), prev, JMP_FAILURE);
-	}
+	/* finish the expressions... */
+	cur_op = begin_cond;
+	
+	do {
+		opline = &CG(active_op_array)->opcodes[cur_op];
+		
+		switch(opline->opcode) {
+			case ZEND_JMPLE:
+			case ZEND_JMPL:
+			case ZEND_JMPNE:
+			case ZEND_JMPE:
+				if(opline->extended_value == JMP_FAILURE) {
+					opline->extended_value = next_op;
+					printf("(%d)->%d (expression-for-failure)\n", cur_op, (int) opline->extended_value);
+				} else if(opline->extended_value == JMP_SUCCESS) {
+					opline->extended_value = end_cond;
+					printf("(%d)->%d (expression-for-success)\n", cur_op, (int) opline->extended_value);
+				}
+				
+				break;
+				
+			default:
+				printf("(%d)->UNKNOWN (expression-for)\n", cur_op);
+		}
+		
+	} while(++cur_op <= end_cond);
 	
 	/* delete for-statement after code */
 	for(cur_op = afterward_token->u.save.val2; afterward_token->u.save.val1 < cur_op; cur_op--) {
@@ -3049,12 +3069,8 @@ void zend_do_or(znode* expr TSRMLS_DC)
 	zend_op* cur;
 	znode tmp;
 	int cur_op = CG(active_op_array)->last;
-	//printf("or expr %d\n", cur_op);
 	
 	if(cur_op >= 0) {
-		//int prev_success = ext_val_previously(CG(active_op_array), cur_op, JMP_SUCCESS);
-		//printf("prev success??? %d\n", prev_success);
-		
 		int prev = ext_val_previously(CG(active_op_array), cur_op, JMP_FAILURE);
 		if(prev != -1 && prev >= begin_and) {
 			cur = &CG(active_op_array)->opcodes[prev];
